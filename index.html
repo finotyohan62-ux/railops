@@ -1452,12 +1452,12 @@ function processRows(rows){
     }
 
     // ID : utiliser la ref comme ID (nettoyée), ou générer
-    let idRaw = iId>=0 && row[iId] ? String(row[iId]).trim().replace(/\s/g,'').replace(/[*]/g,'') : '';
-    // Si même colonne que nom, utiliser directement
-    if(iId===iNom) idRaw = nom.replace(/\s/g,'-').replace(/[*]/g,'');
+    let idRaw = iId>=0 && row[iId] && iId!==iNom ? String(row[iId]).trim().replace(/\s/g,'').replace(/[*]/g,'') : '';
+    // Si même colonne que nom ou pas d'ID dédié : générer depuis le nom + index pour éviter les doublons
+    if(!idRaw) idRaw = nom.replace(/\s/g,'-').replace(/[^a-zA-Z0-9\-]/g,'').substring(0,20)+'-'+i;
     const id = idRaw || newId('MAT');
 
-    // Éviter les doublons
+    // Éviter les vrais doublons (même ID exact déjà présent)
     if(S.mat.find(m=>m.id===id)){skipped++;continue;}
 
     // État
