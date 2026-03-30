@@ -191,6 +191,79 @@ function toggleTheme(){
   try{const t=localStorage.getItem('ro_theme')||'dark';applyTheme(t);}catch(e){}
 })();
 
+// ══════════════════════════════════════
+// MODE HORS LIGNE — FILE D'ATTENTE
+// ══════════════════════════════════════
+const OFFLINE_KEY='ro_offline_queue';
+
+function getOfflineQueue(){
+  try{return JSON.parse(localStorage.getItem(OFFLINE_KEY)||'[]');}catch(e){return [];}
+}
+function saveOfflineQueue(q){
+  try{localStorage.setItem(OFFLINE_KEY,JSON.stringify(q));}catch(e){}
+}
+function addToOfflineQueue(type, data){
+  const q=getOfflineQueue();
+  q.push({type, data, ts:Date.now()});
+  saveOfflineQueue(q);
+  updateOfflineBadge();
+}
+function updateOfflineBadge(){
+  const q=getOfflineQueue();
+  const badge=document.getElementById('offline-badge');
+  if(!badge)return;
+  if(q.length>0){
+    badge.style.display='flex';
+    badge.textContent=q.length;
+  } else {
+    badge.style.display='none';
+  }
+}
+async function flushOfflineQueue(){
+  const q=getOfflineQueue();
+  if(!q.length)return;
+  if(!navigator.onLine)return;
+  let sent=0;
+  const remaining=[];
+  for(const item of q){
+    try{
+      if(item.type==='scan'){
+        await db.from('scans').upsert([item.data],{onConflict:'id'});
+        // Also update materiel
+        const mIdx=S.mat.findIndex(m=>m.id===item.data.materielId);
+        if(mIdx!==-1){
+          await db.from('materiels').upsert([S.mat[mIdx]],{onConflict:'id'});
+        }
+        sent++;
+      } else if(item.type==='materiel'){
+        await db.from('materiels').upsert([item.data],{onConflict:'id'});
+        sent++;
+      }
+    } catch(e){
+      remaining.push(item);
+    }
+  }
+  saveOfflineQueue(remaining);
+  updateOfflineBadge();
+  if(sent>0){
+    toast(sent+' inspection(s) synchronisée(s) ✓','ok');
+    setSyncStatus('connected');
+  }
+}
+
+// Écouter le retour en ligne
+window.addEventListener('online',()=>{
+  setSyncStatus('connecting');
+  setTimeout(()=>{
+    flushOfflineQueue();
+    setSyncStatus('connected');
+  },1500);
+});
+window.addEventListener('offline',()=>{
+  setSyncStatus('offline');
+  toast('Hors ligne — les inspections seront synchronisées au retour du réseau','warn');
+});
+
 const S={
   page:'login',agent:null,role:null,
   chantiers:[],mat:[],scans:[],users:[],
@@ -505,7 +578,10 @@ function render(){
 
   app.innerHTML=`
     <div class="sb" style="padding:6px 16px"><div style="background:transparent;border-radius:8px;padding:2px 4px;display:inline-flex"><img src="data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 120 40%22%3E%3Crect width%3D%22120%22 height%3D%2240%22 rx%3D%226%22 fill%3D%22%23f5a623%22%2F%3E%3Ctext x%3D%2260%22 y%3D%2226%22 text-anchor%3D%22middle%22 font-family%3D%22Arial%2Csans-serif%22 font-weight%3D%22700%22 font-size%3D%2216%22 fill%3D%22%23fff%22%3ERailOps%3C%2Ftext%3E%3C%2Fsvg%3E" alt="SFERIS" style="height:22px;display:block;object-fit:contain"></div><div style="display:flex;align-items:center;gap:8px">
-      <div id="sync-dot" onclick="showSyncInfo()" style="width:8px;height:8px;border-radius:50%;background:#e24b4a;flex-shrink:0;cursor:pointer;transition:background .5s" title="Sync hors ligne"></div>
+      <div style="position:relative;display:flex;align-items:center">
+        <div id="sync-dot" onclick="showSyncInfo()" style="width:8px;height:8px;border-radius:50%;background:#e24b4a;flex-shrink:0;cursor:pointer;transition:background .5s" title="Sync hors ligne"></div>
+        <div id="offline-badge" onclick="flushOfflineQueue()" title="Inspections en attente — appuie pour synchroniser" style="display:none;position:absolute;top:-8px;left:6px;min-width:16px;height:16px;border-radius:8px;background:var(--accent);color:#1a0a00;font-size:9px;font-weight:700;line-height:16px;text-align:center;padding:0 3px;cursor:pointer;z-index:10"></div>
+      </div>
       <button onclick="openNotifs()" style="position:relative;background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;color:var(--text2)" title="Notifications">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span id="notif-badge" style="display:none;position:absolute;top:0;right:0;min-width:16px;height:16px;border-radius:8px;background:#e24b4a;color:#fff;font-size:9px;font-weight:700;line-height:16px;text-align:center;padding:0 3px"></span>
@@ -522,6 +598,7 @@ function render(){
   setTimeout(updateNotifBadge,0);
   setTimeout(updateSyncDot,0);
   setTimeout(attachFooter,0);
+  setTimeout(updateOfflineBadge,0);
 }
 
 // ══════════════════════════════════════
@@ -556,7 +633,7 @@ function doLogin(){
   if(!n||!p){toast('Remplis tous les champs','danger');return;}
   const user=S.users.find(u=>u.nom.toLowerCase()===n.toLowerCase()&&u.mdp===p);
   if(!user){toast('Nom ou mot de passe incorrect','danger');return;}
-  S.agent=user.nom;S.role=user.role;S.page='dashboard';save();render();setupRealtime();
+  S.agent=user.nom;S.role=user.role;S.page='dashboard';save();render();setupRealtime();setTimeout(flushOfflineQueue,2000);
 }
 
 // ══════════════════════════════════════
@@ -2249,13 +2326,17 @@ function submitF(){
   if(idx!==-1){
     S.mat[idx].etat=scan.etatGeneral;
     S.mat[idx].scan=scan.date;
-    // Mise à jour présence selon le formulaire
     if(S.fd._pres)S.mat[idx].presence=S.fd._pres;
     else if(S.mat[idx].presence!=='absent')S.mat[idx].presence='confirme';
-    // ── Enregistrement vérification hebdo ──
     recordVerif(idx);
   }
+  // Sauvegarder localement dans tous les cas
   save();
+  // Si hors ligne → mettre en file d'attente
+  if(!navigator.onLine){
+    addToOfflineQueue('scan', {...scan});
+    if(idx!==-1) addToOfflineQueue('materiel', {...S.mat[idx]});
+  }
   const slot=getTodaySlot();
   if(m?.chantierId){S.curC=m.chantierId;S.page='chantier_detail';S.tab='registre';}else S.page='dashboard';
   render();
@@ -2264,7 +2345,7 @@ function submitF(){
   const v1ok=idx2!==-1&&S.mat[idx2].verifLundi?.weekKey===wk2;
   const v2ok=idx2!==-1&&S.mat[idx2].verifSemaine?.weekKey===wk2;
   const dotMsg=v1ok&&v2ok?' · 🟢🟢 Semaine complète':v1ok?' · 🟢 1ère vérif OK':'';
-  setTimeout(()=>toast('Inspection enregistrée'+dotMsg,'ok'),80);
+  const offlineMsg=!navigator.onLine?' · En attente de sync':''; setTimeout(()=>toast('Inspection enregistrée'+dotMsg+offlineMsg,!navigator.onLine?'warn':'ok'),80);
 }
 
 // ══════════════════════════════════════
@@ -3464,7 +3545,7 @@ function setupRealtime(){
       }
     })
     .subscribe(status=>{
-      if(status==='SUBSCRIBED') setSyncStatus('connected');
+      if(status==='SUBSCRIBED'){setSyncStatus('connected');setTimeout(flushOfflineQueue,1000);}
       else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT') setSyncStatus('offline');
       else setSyncStatus('connecting');
     });
