@@ -1280,12 +1280,12 @@ function tabRegistre(el){
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ajouter
         </button>
         <button onclick="triggerImport()" style="flex:1;background:rgba(55,138,221,.1);border:.5px solid rgba(55,138,221,.3);border-radius:10px;padding:9px 8px;font-size:12px;color:#85B7EB;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importer
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Import Excel/CSV
         </button>
         <button onclick="toggleSelMode()" style="flex:1;background:${S.selMode?'rgba(61,181,74,.15)':'var(--bg3)'};border:.5px solid ${S.selMode?'rgba(61,181,74,.4)':'var(--border)'};border-radius:10px;padding:9px 8px;font-size:12px;color:${S.selMode?'var(--accent)':'var(--text2)'};cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>${S.selMode?'Annuler':'Sélectionner'}
         </button>
-        <input type="file" id="csv-input" accept=".csv,.txt,.xlsx,.xls" style="display:none" onchange="importCSV(this)">
+        <input type="file" id="csv-input" accept=".csv,.txt,.xlsx,.xls,.pdf" style="display:none" onchange="importCSV(this)">
       </div>
       <!-- Barre de sélection multiple -->
       ${S.selMode?`<div style="background:var(--bg3);border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;border:.5px solid var(--border)">
@@ -1499,25 +1499,41 @@ function importCSV(input){
   const file=input.files[0];if(!file){return;}
   const ext=file.name.split('.').pop().toLowerCase();
   input.value='';
+  
+  if(ext==='pdf'){
+    toast('Import PDF non supporté — convertis en Excel ou CSV','warn');
+    return;
+  }
+  
   if(ext==='xlsx'||ext==='xls'){
     if(typeof XLSX==='undefined'){toast('Librairie Excel non chargée — réessaie','danger');return;}
     const reader=new FileReader();
     reader.onload=function(e){
       try{
         const wb=XLSX.read(e.target.result,{type:'array'});
-        const ws=wb.Sheets[wb.SheetNames[0]];
-        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        // Chercher la première feuille non vide
+        let rows=[];
+        for(const sheetName of wb.SheetNames){
+          const ws=wb.Sheets[sheetName];
+          const r=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+          // Filtrer les lignes vides
+          const nonEmpty=r.filter(row=>row.some(cell=>String(cell||'').trim()!==''));
+          if(nonEmpty.length>0){rows=nonEmpty;break;}
+        }
+        if(!rows.length){toast('Toutes les feuilles sont vides','danger');return;}
         processRows(rows);
-      }catch(err){toast('Erreur lecture Excel','danger');}
+      }catch(err){toast('Erreur lecture Excel : '+err.message,'danger');}
     };
     reader.readAsArrayBuffer(file);
     return;
   }
+  
+  // CSV / TXT
   const reader=new FileReader();
   reader.onload=function(e){
     const text=e.target.result;
     const lines=text.split(/\r?\n/).filter(l=>l.trim());
-    if(lines.length<2){toast('Fichier vide','danger');return;}
+    if(!lines.length){toast('Fichier vide','danger');return;}
     const sep=lines[0].includes(';')?';':',';
     const rows=lines.map(l=>l.split(sep).map(c=>c.trim().replace(/^["']|["']$/g,'')));
     processRows(rows);
@@ -1861,17 +1877,11 @@ function tabInfos(el){
       <div class="card" style="border:.5px solid rgba(55,138,221,.2)">
         <div style="font-size:11px;color:var(--text3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.07em">Importer un registre</div>
         <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Importez directement votre fichier <strong>Excel (.xlsx)</strong> ou CSV sans conversion. Colonnes reconnues automatiquement : Nom, Catégorie, ID, État, Quantité.</div>
-        <input type="file" id="csv-input" accept=".csv,.txt,.xlsx,.xls" style="display:none" onchange="importCSV(this)">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-          <button onclick="triggerImport()" style="background:rgba(29,158,117,.1);border:.5px solid rgba(29,158,117,.3);border-radius:10px;padding:10px 8px;font-size:12px;color:#5DCAA5;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:5px">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-            Importer Excel (.xlsx)
-          </button>
-          <button onclick="triggerImport()" style="background:rgba(55,138,221,.1);border:.5px solid rgba(55,138,221,.3);border-radius:10px;padding:10px 8px;font-size:12px;color:#85B7EB;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:5px">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Importer CSV / TXT
-          </button>
-        </div>
+        <input type="file" id="csv-input" accept=".csv,.txt,.xlsx,.xls,.pdf" style="display:none" onchange="importCSV(this)">
+        <button onclick="triggerImport()" style="width:100%;background:rgba(61,181,74,.1);border:.5px solid rgba(61,181,74,.3);border-radius:10px;padding:12px;font-size:13px;color:var(--accent);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;font-weight:500">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Importer un registre (Excel · CSV)
+        </button>
         <div style="background:var(--bg);border-radius:8px;padding:10px 12px">
           <div style="font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.07em">Colonnes reconnues (Excel ou CSV)</div>
           <div style="font-family:monospace;font-size:10px;color:var(--text3);line-height:1.8">Nom &nbsp;·&nbsp; Catégorie &nbsp;·&nbsp; ID/Code/Référence<br>État &nbsp;·&nbsp; Quantité (crée N articles)</div>
@@ -1912,17 +1922,25 @@ function confirmTerminer(){
   div.addEventListener('click',e=>{if(e.target===div)div.remove();});
   document.getElementById('app').appendChild(div);
 }
-function doTerminer(){
-  // Supprimer le chantier et son matériel de la liste active
-  // Les scans (historique) sont conservés
-  S.chantiers=S.chantiers.filter(c=>c.id!==S.curC);
-  S.mat=S.mat.filter(m=>m.chantierId!==S.curC);
-  save();
+async function doTerminer(){
+  const chantierId=S.curC;
+  S.chantiers=S.chantiers.filter(c=>c.id!==chantierId);
+  S.mat=S.mat.filter(m=>m.chantierId!==chantierId);
+  // Sauvegarder localement
+  try{
+    localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));
+    localStorage.setItem('ro3_m',JSON.stringify(S.mat));
+  }catch(e){}
+  // Supprimer dans Supabase (critique pour éviter le retour du chantier)
+  try{
+    await db.from('chantiers').delete().eq('id',chantierId);
+    await db.from('materiels').delete().eq('chantierId',chantierId);
+  }catch(e){console.warn('Erreur suppression Supabase:',e);}
   const existing=document.getElementById('movl');if(existing)existing.remove();
   S.curC=null;
   S.page=S.role==='chef'?'chantiers':'dashboard';
   render();
-  setTimeout(()=>toast('Chantier terminé et archivé','ok'),80);
+  setTimeout(()=>toast('Chantier terminé','ok'),80);
 }
 
 // ══════════════════════════════════════
