@@ -3520,7 +3520,11 @@ function exportPDF(){
       +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;font-family:monospace">'+m.id+'</td>'
       +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:'+eC(m.etat)+';font-weight:500">'+eL2(m.etat)+'</td>'
       +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:'+pC(m.presence)+';font-weight:500">'+pL(m.presence)+'</td>'
-      +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#666">'+(m.scan?fd(m.scan):'—')+'</td>'
+      +(()=>{
+        const lastScan=S.scans.filter(s=>s.materielId===m.id).slice(-1)[0];
+        const agentName=lastScan?lastScan.agentNom:'';
+        return '<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#666">'+(m.scan?fd(m.scan)+(agentName?' · '+agentName:''):'—')+'</td>';
+      })()
       +'</tr>';
   });
 
