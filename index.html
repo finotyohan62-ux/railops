@@ -1761,7 +1761,7 @@ function tabInfos(el){
             <!-- Ajouter un agent -->
             <select id="add-agent-sel" style="width:100%;background:var(--bg3);border:.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);font-family:inherit;margin-bottom:6px">
               <option value="">-- Sélectionner un agent --</option>
-              ${S.users.filter(u=>u.role==='agent'&&!(c.agents||[]).includes(u.nom)).map(u=>`<option value="${u.nom}">${u.nom} #${u.badge}</option>`).join('')}
+              ${S.users.filter(u=>(u.role==='agent'||!u.role)&&!(c.agents||[]).includes(u.nom)).map(u=>`<option value="${u.nom}">${u.nom} #${u.badge} · ${u.role||'agent'}</option>`).join('')}
             </select>
             <button onclick="addAgentToC('${c.id}')" style="width:100%;background:rgba(61,181,74,.12);border:.5px solid rgba(61,181,74,.3);border-radius:8px;padding:8px;font-size:12px;color:#3db54a;cursor:pointer;font-family:inherit;font-weight:500">+ Assigner cet agent</button>
           </div>
