@@ -4127,34 +4127,39 @@ async function silentSync(){
       db.from('scans').select('*'),
       db.from('users').select('*'),
     ]);
-    const {data:dc,error:ec}=resC, {data:dm,error:em}=resM, {data:ds}=resS, {data:du}=resU;
+    const {data:dc,error:ec}=resC;
+    const {data:dm,error:em}=resM;
+    const {data:ds,error:es}=resS;
+    const {data:du,error:eu}=resU;
 
-    if(ec||em){
-      console.warn('silentSync Supabase error:',ec||em);
-      setSyncStatus('offline');
-      return;
-    }
+    // Log les erreurs mais ne pas bail — continuer avec ce qui fonctionne
+    if(ec) console.warn('chantiers fetch error:',ec.message);
+    if(em) console.warn('materiels fetch error:',em.message);
+    if(es) console.warn('scans fetch error:',es.message);
+    if(eu) console.warn('users fetch error:',eu.message);
 
     let newChantiers=0, newMats=0;
 
-    if(dc&&dc.length){
+    if(!ec && dc&&dc.length){
       const ids=new Set(dc.map(x=>x.id));
       const extras=S.chantiers.filter(x=>!ids.has(x.id));
       newChantiers=dc.length - S.chantiers.filter(c=>ids.has(c.id)).length;
       S.chantiers=[...dc,...extras];
       if(extras.length) db.from('chantiers').upsert(extras,{onConflict:'id'}).catch(()=>{});
     }
-    if(dm&&dm.length){
+    if(!em && dm&&dm.length){
       newMats=dm.length - S.mat.length;
       S.mat=dm;
     }
-    if(ds) S.scans=ds;
-    if(du&&du.length) S.users=du;
+    if(!es && ds) S.scans=ds;
+    if(!eu && du&&du.length) S.users=du;
 
-    setSyncStatus('connected');
+    // Statut selon les erreurs
+    const hasError=ec||em||es||eu;
+    setSyncStatus(hasError?'connecting':'connected');
+    if(hasError) toast('Sync partiel — erreur: '+(ec||em||es||eu)?.message,'warn');
+
     updateNotifBadge();
-
-    // Toast si nouvelles données détectées
     if(newChantiers>0) toast(newChantiers+' nouveau(x) chantier(s) reçu(s)','info');
     else if(newMats>0) toast(newMats+' nouvel(aux) article(s) reçu(s)','info');
 
@@ -4162,8 +4167,9 @@ async function silentSync(){
       render();
     }
   }catch(e){
-    console.warn('silentSync error:',e);
+    console.warn('silentSync exception:',e);
     setSyncStatus('offline');
+    toast('Erreur sync : '+e.message,'danger');
   }
 }
 
