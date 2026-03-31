@@ -390,9 +390,8 @@ function tStr(){return new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',min
 function ini(n){return n.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();}
 function getC(id){return S.chantiers.find(c=>c.id===id);}
 function isChefOf(c){
-  // Support both old format (c.chef string) and new format (c.chefs array)
   if(!c)return false;
-  if(c.chefs&&Array.isArray(c.chefs)) return c.chefs.includes(S.agent);
+  if(Array.isArray(c.chefs)&&c.chefs.length>0) return c.chefs.includes(S.agent);
   return c.chef===S.agent;
 }
 function getM(id){return S.mat.find(m=>m.id===id);}
@@ -703,36 +702,13 @@ function renderInscription(){
         <label class="fl">Confirmer le mot de passe *</label>
         <input class="fi" id="in-mdp2" type="password" placeholder="Répète ton mot de passe">
         <label class="fl">Rôle *</label>
-        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:0">
-          <div id="ir-agent" onclick="selIR('agent')" style="border:.5px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .15s;background:var(--bg3)">
-            <div style="width:36px;height:36px;border-radius:10px;background:rgba(29,158,117,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5DCAA5" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            </div>
-            <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--text)">Agent terrain</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Inspection &amp; scan du matériel</div></div>
-            <div id="ir-agent-check" style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0"></div>
-          </div>
-          <div id="ir-chef" onclick="selIR('chef')" style="border:.5px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .15s;background:var(--bg3)">
-            <div style="width:36px;height:36px;border-radius:10px;background:rgba(127,119,221,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#AFA9EC" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </div>
-            <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--text)">Chef d'équipe</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Gestion des chantiers</div></div>
-            <div id="ir-chef-check" style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0"></div>
-          </div>
-          <div id="ir-cte" onclick="selIR('cte')" style="border:.5px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .15s;background:var(--bg3)">
-            <div style="width:36px;height:36px;border-radius:10px;background:rgba(245,166,35,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-            </div>
-            <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--text)">CTE</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Contrôleur terrain &amp; tournées</div></div>
-            <div id="ir-cte-check" style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0"></div>
-          </div>
-          <div id="ir-chef_chantier" onclick="selIR('chef_chantier')" style="border:.5px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .15s;background:var(--bg3)">
-            <div style="width:36px;height:36px;border-radius:10px;background:rgba(55,138,221,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#85B7EB" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-            </div>
-            <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--text)">Chef chantier</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Vue globale tous chantiers</div></div>
-            <div id="ir-chef_chantier-check" style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0"></div>
-          </div>
-        </div>
+        <select class="fi" id="in-role" onchange="selIR(this.value)" style="margin-bottom:0">
+          <option value="">— Choisir un rôle —</option>
+          <option value="agent">Agent terrain — Inspection &amp; scan du matériel</option>
+          <option value="cte">CTE — Contrôleur terrain &amp; tournées</option>
+          <option value="chef">Chef d'équipe — Gestion des chantiers</option>
+          <option value="chef_chantier">Chef chantier — Vue globale tous chantiers</option>
+        </select>
         <!-- Code activation (chef ou chef_chantier) -->
         <div id="chef-code-wrap" style="display:none">
           <label class="fl">Code d'activation *</label>
@@ -756,29 +732,13 @@ function updateAvatar(v){
   else{a.textContent='?';a.style.background='var(--bg3)';a.style.color='var(--text2)';}
 }
 function selIR(r){
-  _ir=r;
-  const colors={agent:'rgba(29,158,117,.3)',chef:'rgba(127,119,221,.4)',cte:'rgba(245,166,35,.4)',chef_chantier:'rgba(55,138,221,.35)'};
-  const bgs={agent:'rgba(29,158,117,.08)',chef:'rgba(127,119,221,.08)',cte:'rgba(245,166,35,.08)',chef_chantier:'rgba(55,138,221,.08)'};
-  const checks={agent:'#5DCAA5',chef:'#AFA9EC',cte:'#f5a623',chef_chantier:'#85B7EB'};
-  ['agent','chef','cte','chef_chantier'].forEach(x=>{
-    const el=document.getElementById('ir-'+x);
-    const ch=document.getElementById('ir-'+x+'-check');
-    if(el){
-      el.style.borderColor=x===r?colors[x]:'var(--border)';
-      el.style.background=x===r?bgs[x]:'var(--bg3)';
-    }
-    if(ch){
-      ch.style.borderColor=x===r?checks[x]:'var(--border)';
-      ch.style.background=x===r?checks[x]:'transparent';
-      ch.innerHTML=x===r?'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':'';
-    }
-  });
+  _ir=r||null;
   const wrap=document.getElementById('chef-code-wrap');
   const hint=document.getElementById('code-hint');
   if(wrap){
     wrap.style.display=(r==='chef'||r==='chef_chantier'||r==='cte')?'block':'none';
     if(hint){
-      if(r==='chef') hint.innerHTML="Code fourni par votre responsable chef d'équipe.";
+      if(r==='chef') hint.innerHTML="Code fourni par votre responsable chef chantier.";
       else if(r==='chef_chantier') hint.innerHTML='Code direction uniquement. Contactez votre responsable.';
       else if(r==='cte') hint.innerHTML="Code fourni par votre chef d'équipe.";
       else hint.innerHTML='';
@@ -791,6 +751,7 @@ function doInscription(){
   const mdp=document.getElementById('in-mdp')?.value;
   const mdp2=document.getElementById('in-mdp2')?.value;
   const code=document.getElementById('in-code')?.value.trim();
+  _ir=document.getElementById('in-role')?.value||_ir;
   if(!nom||!badge||!mdp||!mdp2){toast('Remplis tous les champs','danger');return;}
   if(!_ir){toast('Choisis un rôle','danger');return;}
   if(mdp.length<6){toast('Mot de passe trop court (6 min)','danger');return;}
@@ -1212,10 +1173,12 @@ function pgDashCTE(el){
 // CHANTIERS PAGE (chef)
 // ══════════════════════════════════════
 function pgChantiers(el){
+  const visibleC=(S.role==='chef')?S.chantiers.filter(c=>isChefOf(c)):S.chantiers;
   el.innerHTML=`
-    <div class="topbar"><div class="tbi"><div class="tbt">Chantiers</div><div class="tbs">${S.chantiers.length} chantier(s)</div></div></div>
+    <div class="topbar"><div class="tbi"><div class="tbt">Chantiers</div><div class="tbs">${visibleC.length} chantier(s)</div></div></div>
     <div style="padding:12px 16px 20px">
-      ${(S.role==='chef'?S.chantiers.filter(c=>isChefOf(c)):S.chantiers).map(c=>{
+      ${visibleC.length===0?`<div style="text-align:center;padding:60px 0;color:var(--text3);font-size:13px">Aucun chantier assigné</div>`:''}
+      ${visibleC.map(c=>{
         const mats=matOfC(c.id);const ab=mats.filter(m=>m.presence==='absent').length;const done=mats.filter(m=>m.scan).length;
         return`<div class="cc" onclick="openC('${c.id}')">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
