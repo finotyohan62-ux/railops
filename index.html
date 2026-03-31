@@ -318,7 +318,7 @@ const DEF_USERS=[];
 // STORAGE — Supabase + localStorage fallback
 // ══════════════════════════════════════
 async function save(){
-  // Backup local immédiat
+  // Backup local uniquement — plus d'upsert en masse (évite d'écraser les données des autres)
   try{
     localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));
     localStorage.setItem('ro3_m',JSON.stringify(S.mat));
@@ -326,10 +326,8 @@ async function save(){
     localStorage.setItem('ro3_a',JSON.stringify({agent:S.agent,role:S.role}));
     localStorage.setItem('ro3_u',JSON.stringify(S.users));
   }catch(e){}
-  // Sync Supabase (fire & forget)
+  // Seuls les scans nouveaux + users sont poussés en masse
   try{
-    if(S.chantiers.length) await db.from('chantiers').upsert(S.chantiers,{onConflict:'id'});
-    if(S.mat.length) await db.from('materiels').upsert(S.mat,{onConflict:'id'});
     if(S.scans.length){
       const newScans=S.scans.filter(s=>s._new);
       if(newScans.length){
@@ -339,6 +337,29 @@ async function save(){
     }
     if(S.users.length) await db.from('users').upsert(S.users,{onConflict:'id'});
   }catch(e){console.warn('Supabase save error:',e);}
+}
+
+// ── Sauvegardes ciblées (un seul enregistrement) ──
+async function saveMat(id){
+  const m=S.mat.find(x=>x.id===id);if(!m)return;
+  try{
+    localStorage.setItem('ro3_m',JSON.stringify(S.mat));
+    await db.from('materiels').upsert([m],{onConflict:'id'});
+  }catch(e){console.warn('saveMat error:',e);}
+}
+async function saveChantier(id){
+  const c=S.chantiers.find(x=>x.id===id);if(!c)return;
+  try{
+    localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));
+    await db.from('chantiers').upsert([c],{onConflict:'id'});
+  }catch(e){console.warn('saveChantier error:',e);}
+}
+async function saveUser(id){
+  const u=S.users.find(x=>x.id===id);if(!u)return;
+  try{
+    localStorage.setItem('ro3_u',JSON.stringify(S.users));
+    await db.from('users').upsert([u],{onConflict:'id'});
+  }catch(e){console.warn('saveUser error:',e);}
 }
 
 async function load(){
@@ -1416,7 +1437,7 @@ function setPresence(id,val){
   const idx=S.mat.findIndex(m=>m.id===id);
   if(idx===-1)return;
   S.mat[idx].presence=val;
-  save();
+  saveMat(id);
   renderTab();
   toast(val==='absent'?'Article marqué absent':'Article marqué présent',val==='absent'?'danger':'ok');
 }
@@ -1498,7 +1519,7 @@ function doEditEcheance(id, remove){
   const idx=S.mat.findIndex(m=>m.id===id);if(idx===-1)return;
   if(remove){
     S.mat[idx].echeance='';
-    save();
+    saveMat(id);
     document.getElementById('movl')?.remove();
     renderTab();
     toast('Échéance supprimée','warn');
@@ -1506,11 +1527,10 @@ function doEditEcheance(id, remove){
   }
   const val=document.getElementById('echeance-input')?.value;
   if(!val){toast('Sélectionne une date','danger');return;}
-  // Convertir yyyy-mm-dd → dd/mm/yyyy
   const p=val.split('-');
   const echeance=p[2]+'/'+p[1]+'/'+p[0];
   S.mat[idx].echeance=echeance;
-  save();
+  saveMat(id);
   document.getElementById('movl')?.remove();
   renderTab();
   toast('Échéance mise à jour : '+echeance,'ok');
@@ -1615,7 +1635,14 @@ function processRows(rows){
     added++;
   }
 
-  save(); renderTab();
+  // Sauvegarde localStorage + upsert ciblé uniquement des nouveaux articles
+  try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
+  if(added>0){
+    const newIds=S.mat.slice(-added).map(m=>m.id);
+    const newMats=S.mat.filter(m=>newIds.includes(m.id));
+    db.from('materiels').upsert(newMats,{onConflict:'id'}).catch(e=>console.warn('import save error:',e));
+  }
+  renderTab();
   const info=hasHeader?` (ref col.${iId}, nom col.${iNom})`:'';
   toast(added+' article(s) importé(s)'+(skipped?' · '+skipped+' ignoré(s)':'')+info,'ok');
 }
@@ -1886,18 +1913,19 @@ function submitControle(matId){
     description:desc,
     photo:photo
   };
+  const res=_ctrlResult;
   _ctrlResult=null;
-  save();
+  saveMat(matId);
   document.getElementById('movl')?.remove();
   renderTab();
-  toast(_ctrlResult==='ok'?'Contrôle OK enregistré':'Contrôle HS enregistré — anomalie signalée',_ctrlResult==='ok'?'ok':'warn');
+  toast(res==='ok'?'Contrôle OK enregistré':'Contrôle HS enregistré — anomalie signalée',res==='ok'?'ok':'warn');
 }
 
 function validerControle(id){
   const idx=S.mat.findIndex(m=>m.id===id);
   if(idx===-1) return;
   S.mat[idx].controle2m={date:nowISO(),agentNom:S.agent,resultat:'ok'};
-  save();renderTab();
+  saveMat(id);renderTab();
   toast('Contrôle enregistré — '+S.mat[idx].nom,'ok');
 }
 
@@ -2211,7 +2239,7 @@ function addChefToC(cid){
   if(!S.chantiers[idx].chefs) S.chantiers[idx].chefs=[S.chantiers[idx].chef].filter(Boolean);
   if(S.chantiers[idx].chefs.includes(sel.value)){toast('Déjà assigné','warn');return;}
   S.chantiers[idx].chefs.push(sel.value);
-  save();renderTab();
+  saveChantier(cid);renderTab();
   toast(sel.value+' assigné au chantier','ok');
 }
 
@@ -2220,7 +2248,7 @@ function removeChefFromC(cid,chefNom){
   if(idx===-1)return;
   if(!S.chantiers[idx].chefs) S.chantiers[idx].chefs=[S.chantiers[idx].chef].filter(Boolean);
   S.chantiers[idx].chefs=S.chantiers[idx].chefs.filter(c=>c!==chefNom);
-  save();renderTab();
+  saveChantier(cid);renderTab();
   toast(chefNom+' retiré du chantier','warn');
 }
 
@@ -2232,7 +2260,7 @@ function addAgentToC(cid){
   if(!S.chantiers[idx].agents) S.chantiers[idx].agents=[];
   if(S.chantiers[idx].agents.includes(sel.value)){toast('Déjà assigné','warn');return;}
   S.chantiers[idx].agents.push(sel.value);
-  save();renderTab();
+  saveChantier(cid);renderTab();
   toast(sel.value+' assigné au chantier','ok');
 }
 
@@ -2240,7 +2268,7 @@ function removeAgentFromC(cid,agentNom){
   const idx=S.chantiers.findIndex(c=>c.id===cid);
   if(idx===-1) return;
   S.chantiers[idx].agents=(S.chantiers[idx].agents||[]).filter(a=>a!==agentNom);
-  save();renderTab();
+  saveChantier(cid);renderTab();
   toast(agentNom+' retiré du chantier','warn');
 }
 
@@ -2467,7 +2495,7 @@ function editC(){
     dateFin:document.getElementById('ec-fin')?.value||'',
     statut:document.getElementById('ec-statut')?.value||'actif',
   };
-  save();
+  saveChantier(S.curC);
   S.page='chantier_detail';S.tab='infos';
   render();
   setTimeout(()=>toast('Chantier mis à jour','ok'),80);
@@ -2521,7 +2549,7 @@ function ajouterM(){
   let echeance='';
   if(echeanceRaw){const p=echeanceRaw.split('-');echeance=p[2]+'/'+p[1]+'/'+p[0];}
   S.mat.push({id,nom,cat:document.getElementById('am-cat')?.value,chantierId:S.curC,etat:_ame||'bon',scan:null,presence:_amp||'confirme',echeance});
-  save();go('chantier_detail');
+  saveMat(id);go('chantier_detail');
   setTimeout(()=>toast('Article ajouté au registre','ok'),80);
 }
 
@@ -2796,8 +2824,9 @@ function submitF(){
     else if(S.mat[idx].presence!=='absent')S.mat[idx].presence='confirme';
     recordVerif(idx);
   }
-  // Sauvegarder localement dans tous les cas
-  save();
+  // Sauvegarder localement + scan + materiel ciblé
+  save(); // scans + localStorage
+  if(idx!==-1) saveMat(S.curM); // materiel ciblé seulement
   // Si hors ligne → mettre en file d'attente
   if(!navigator.onLine){
     addToOfflineQueue('scan', {...scan});
@@ -3327,7 +3356,7 @@ function doEditUser(uid){
   if(S.users.find((u,i)=>i!==idx&&u.badge===badge)){toast('Badge déjà utilisé','danger');return;}
   S.users[idx].role=window._editRole||S.users[idx].role;
   S.users[idx].badge=badge;
-  save();
+  saveUser(uid);
   document.getElementById('movl')?.remove();
   openGestionComptes();
   toast('Utilisateur mis à jour','ok');
@@ -3390,7 +3419,8 @@ function doChangePass(uid, isSelf){
     if(idx===-1)return;
     S.users[idx].mdp=mdp;
   }
-  save();
+  const changedUid = isSelf ? S.users.find(u=>u.nom===S.agent)?.id : uid;
+  saveUser(changedUid);
   document.getElementById('movl')?.remove();
   toast('Mot de passe mis à jour','ok');
 }
@@ -3419,9 +3449,8 @@ function confirmDeleteUser(uid){
 
 function doDeleteUser(uid){
   S.users=S.users.filter(u=>u.id!==uid);
-  // Aussi supprimer de Supabase
   db.from('users').delete().eq('id',uid).then(()=>{});
-  save();
+  try{localStorage.setItem('ro3_u',JSON.stringify(S.users));}catch(e){}
   document.getElementById('movl')?.remove();
   setTimeout(()=>openGestionComptes(),50);
   toast('Utilisateur supprimé','warn');
@@ -3744,7 +3773,7 @@ function doChangeRole(uid){
   if(newRole===S.users[idx].role){document.getElementById('movl2')?.remove();return;}
   const roleLabel={agent:'Agent terrain',cte:'CTE',chef:"Chef d'équipe",chef_chantier:'Chef chantier'};
   S.users[idx].role=newRole;
-  save();
+  saveUser(uid);
   document.getElementById('movl2')?.remove();
   openGestionComptes();
   toast(`${S.users[idx].nom} → ${roleLabel[newRole]}`,'ok');
@@ -4067,24 +4096,44 @@ function setupRealtime(){
     });
 }
 
-// Fallback polling 5min (si realtime tombe)
-setInterval(async()=>{
+// ── Sync en arrière-plan ──────────────
+// Fonction de rechargement silencieux des données depuis Supabase
+async function silentSync(){
   if(!S.agent) return;
-  if(S.syncStatus==='connected') return; // realtime actif, inutile
   try{
     const {data:dc}=await db.from('chantiers').select('*');
-    if(dc&&dc.length) S.chantiers=dc;
     const {data:dm}=await db.from('materiels').select('*');
-    if(dm&&dm.length) S.mat=dm;
     const {data:ds}=await db.from('scans').select('*');
-    if(ds) S.scans=ds;
     const {data:du}=await db.from('users').select('*');
+
+    if(dc&&dc.length){
+      // Fusionner : garder les locaux non encore en Supabase
+      const ids=new Set(dc.map(x=>x.id));
+      const extras=S.chantiers.filter(x=>!ids.has(x.id));
+      S.chantiers=[...dc,...extras];
+      if(extras.length) db.from('chantiers').upsert(extras,{onConflict:'id'}).catch(()=>{});
+    }
+    if(dm&&dm.length) S.mat=dm;
+    if(ds) S.scans=ds;
     if(du&&du.length) S.users=du;
-    if(['dashboard','chantiers','historique'].includes(S.page)) render();
+
+    setSyncStatus('connected');
     updateNotifBadge();
-    toast('Sync manuel OK','ok');
+    if(!['form','ajout_mat','nouveau_chantier','edit_chantier','inscription','login'].includes(S.page)){
+      render();
+    }
   }catch(e){ setSyncStatus('offline'); }
-},300000);
+}
+
+// Polling toutes les 60s (Realtime seul n'est pas fiable sur Supabase free)
+setInterval(silentSync, 60000);
+
+// Rechargement au retour au premier plan (mobile : app minimisée puis rouverte)
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible' && S.agent){
+    silentSync();
+  }
+});
 
 
 // ══════════════════════════════════════
