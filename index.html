@@ -2005,80 +2005,118 @@ function tabTournee(el){
           </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-          <div>
-            <label class="fl" style="margin-top:0;margin-bottom:4px">Date *</label>
-            <input class="fi" type="date" id="tv-date" value="${new Date().toISOString().split('T')[0]}" style="font-size:13px;padding:8px 10px">
+        <label class="fl" style="margin-top:0;margin-bottom:4px">Date *</label>
+        <input class="fi" type="date" id="tv-date" value="${new Date().toISOString().split('T')[0]}" style="font-size:13px;padding:8px 10px;margin-bottom:10px">
+
+        <!-- Visites validées -->
+        <div id="visites-summary" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
+
+        <!-- Formulaire d'une visite -->
+        <div style="background:var(--bg4);border-radius:10px;padding:10px;border:.5px solid var(--border)">
+          <div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Visite</div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <div>
+              <label class="fl" style="margin-top:0;margin-bottom:4px">Agent *</label>
+              <select class="fi" id="tv-agent" style="font-size:12px;padding:7px 8px">
+                <option value="">-- Choisir --</option>
+                ${S.users.filter(u=>(u.role==='agent'||u.role==='cte')&&(c.agents||[]).includes(u.nom)).map(u=>`<option value="${u.nom}">${u.nom.split(' ')[0]}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="fl" style="margin-top:0;margin-bottom:4px">Zone</label>
+              <input class="fi" id="tv-zone" placeholder="Ex: Zone A" style="font-size:12px;padding:7px 8px">
+            </div>
           </div>
-          <div>
-            <label class="fl" style="margin-top:0;margin-bottom:4px">Agent *</label>
-            <select class="fi" id="tv-agent" style="font-size:13px;padding:8px 10px">
-              <option value="">-- Choisir --</option>
-              ${S.users.filter(u=>u.role==='agent'&&(c.agents||[]).includes(u.nom)).map(u=>`<option value="${u.nom}">${u.nom.split(' ')[0]}</option>`).join('')}
-            </select>
+
+          <label class="fl" style="margin-top:0;margin-bottom:4px">Observations</label>
+          <textarea class="fi" id="tv-obs" rows="2" placeholder="Remarques…" style="margin-bottom:8px;font-size:12px;padding:7px 8px"></textarea>
+
+          <label class="fl" style="margin-top:0;margin-bottom:4px">📷 Photos</label>
+          <div id="tv-photos-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px"></div>
+          <button onclick="addVisitePhoto()" style="width:100%;background:var(--bg3);border:.5px solid var(--border);border-radius:8px;padding:7px;font-size:11px;color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:10px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            Ajouter une photo
+          </button>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:500">✍️ Agent</div>
+              <canvas id="sig-agent" width="300" height="120" style="border:.5px solid var(--border);border-radius:8px;background:#fff;touch-action:none;width:100%;display:block;cursor:crosshair"></canvas>
+              <button onclick="clearSig('agent')" style="background:none;border:none;color:var(--text3);font-size:10px;cursor:pointer;font-family:inherit;margin-top:2px;padding:0">Effacer</button>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:500">✍️ CTE/Chef</div>
+              <canvas id="sig-cte" width="300" height="120" style="border:.5px solid var(--border);border-radius:8px;background:#fff;touch-action:none;width:100%;display:block;cursor:crosshair"></canvas>
+              <button onclick="clearSig('cte')" style="background:none;border:none;color:var(--text3);font-size:10px;cursor:pointer;font-family:inherit;margin-top:2px;padding:0">Effacer</button>
+            </div>
           </div>
+
+          <button onclick="validerVisite()" style="width:100%;background:rgba(61,181,74,.12);border:.5px solid rgba(61,181,74,.3);border-radius:8px;padding:9px;font-size:12px;font-weight:500;color:var(--accent);cursor:pointer;font-family:inherit">
+            ✓ Valider cette visite
+          </button>
         </div>
 
-        <label class="fl" style="margin-top:0;margin-bottom:4px">Observations</label>
-        <textarea class="fi" id="tv-obs" rows="2" placeholder="Remarques…" style="margin-bottom:8px;font-size:13px;padding:8px 10px"></textarea>
-
-        <label class="fl" style="margin-top:0;margin-bottom:4px">📷 Photos</label>
-        <div id="tv-photos-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px"></div>
-        <button onclick="addTourneePhoto()" style="width:100%;background:var(--bg4);border:.5px solid var(--border);border-radius:8px;padding:8px;font-size:11px;color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:10px">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          Ajouter une photo
+        <button onclick="saveTournee('${c.id}')" class="btn btn-accent" style="font-size:13px;padding:11px;margin-top:10px">
+          Enregistrer la tournée
         </button>
-
-        <!-- Signatures côte à côte, canvas haute résolution -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-          <div>
-            <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:500">✍️ Agent</div>
-            <canvas id="sig-agent" width="300" height="120" style="border:.5px solid var(--border);border-radius:8px;background:#fff;touch-action:none;width:100%;display:block;cursor:crosshair"></canvas>
-            <button onclick="clearSig('agent')" style="background:none;border:none;color:var(--text3);font-size:10px;cursor:pointer;font-family:inherit;margin-top:2px;padding:0">Effacer</button>
-          </div>
-          <div>
-            <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:500">✍️ CTE/Chef</div>
-            <canvas id="sig-cte" width="300" height="120" style="border:.5px solid var(--border);border-radius:8px;background:#fff;touch-action:none;width:100%;display:block;cursor:crosshair"></canvas>
-            <button onclick="clearSig('cte')" style="background:none;border:none;color:var(--text3);font-size:10px;cursor:pointer;font-family:inherit;margin-top:2px;padding:0">Effacer</button>
-          </div>
-        </div>
-        <button onclick="saveTournee('${c.id}')" class="btn btn-accent" style="font-size:13px;padding:11px">Enregistrer la tournée</button>
       </div>`:''}
 
       <!-- Historique tournées -->
       <div style="font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;margin-bottom:8px">Historique</div>
       ${tournees.length===0?`<div style="text-align:center;padding:20px 0;color:var(--text3);font-size:13px">Aucune tournée enregistrée</div>`:''}
-      ${tournees.map(t=>`
-        <div class="card" style="margin-bottom:8px;padding:10px 12px">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+      ${tournees.map(t=>{
+        const visites=t.visites||[];
+        // Compat ancien format (tournée sans visites)
+        const legacyAgent=t.agentPresent;
+        return`<div class="card" style="margin-bottom:8px;padding:10px 12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
             <div style="display:flex;align-items:center;gap:8px">
               <span class="badge" style="background:${t.type==='lundi'?'rgba(61,181,74,.15)':'rgba(55,138,221,.15)'};color:${t.type==='lundi'?'#3db54a':'#85B7EB'};font-size:10px">${t.type==='lundi'?'Lundi':'2ème'}</span>
               <span style="font-size:11px;color:var(--text2)">${t.date}</span>
             </div>
-            <span style="font-size:10px;color:var(--text3)">${t.auteur?.split(' ')[0]||''}</span>
+            <span style="font-size:10px;color:var(--text3)">${t.auteur?.split(' ')[0]||''} · ${visites.length||1} visite(s)</span>
           </div>
-          ${t.agentPresent?`<div style="font-size:11px;color:var(--text3);margin-bottom:4px">Agent : ${t.agentPresent}</div>`:''}
-          ${t.observations?`<div style="font-size:11px;color:var(--text2);margin-bottom:6px">${t.observations}</div>`:''}
-          ${(t.photos||[]).length>0?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">
-            ${t.photos.map((p,pi)=>`<img src="${p.data}" style="width:64px;height:48px;object-fit:cover;border-radius:5px;border:.5px solid var(--border);cursor:pointer" onclick="openPhotoTournee('${t.id}',${pi})" title="${p.legende||''}">`).join('')}
-          </div>`:''}
-          ${(t.sigAgent||t.sigCte)?`<div style="display:flex;gap:8px">
-            ${t.sigAgent?`<div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">Agent</div><img src="${t.sigAgent}" style="height:36px;max-width:100px;border:.5px solid var(--border);border-radius:4px;background:#fff;object-fit:contain"></div>`:''}
-            ${t.sigCte?`<div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">CTE/Chef</div><img src="${t.sigCte}" style="height:36px;max-width:100px;border:.5px solid var(--border);border-radius:4px;background:#fff;object-fit:contain"></div>`:''}
-          </div>`:''}
-        </div>`).join('')}
+          ${visites.length>0?visites.map(v=>`
+            <div style="border-top:.5px solid var(--border);padding-top:6px;margin-top:6px">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
+                <div>
+                  <span style="font-size:12px;font-weight:500;color:var(--text)">${v.agent}</span>
+                  <span style="font-size:11px;color:var(--text3);margin-left:6px">· ${v.zone}</span>
+                </div>
+                <div style="display:flex;gap:4px">
+                  ${v.sigAgent?'<span style="font-size:10px;color:#3db54a">✍️A</span>':''}
+                  ${v.sigCte?'<span style="font-size:10px;color:#3db54a">✍️C</span>':''}
+                </div>
+              </div>
+              ${v.observations?`<div style="font-size:11px;color:var(--text2);margin-top:3px">${v.observations}</div>`:''}
+              ${(v.photos||[]).length>0?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">
+                ${v.photos.map((p,pi)=>`<img src="${p.data}" style="width:56px;height:42px;object-fit:cover;border-radius:5px;border:.5px solid var(--border);cursor:pointer" onclick="openPhotoTournee('${t.id}',${pi})">`).join('')}
+              </div>`:''}
+              ${(v.sigAgent||v.sigCte)?`<div style="display:flex;gap:8px;margin-top:5px">
+                ${v.sigAgent?`<div><div style="font-size:9px;color:var(--text3)">Agent</div><img src="${v.sigAgent}" style="height:32px;max-width:90px;border:.5px solid var(--border);border-radius:4px;background:#fff;object-fit:contain"></div>`:''}
+                ${v.sigCte?`<div><div style="font-size:9px;color:var(--text3)">CTE/Chef</div><img src="${v.sigCte}" style="height:32px;max-width:90px;border:.5px solid var(--border);border-radius:4px;background:#fff;object-fit:contain"></div>`:''}
+              </div>`:''}
+            </div>`).join('')
+          :legacyAgent?`<div style="font-size:11px;color:var(--text2)">Agent : ${legacyAgent}${t.observations?' · '+t.observations:''}</div>`:''}
+        </div>`;}).join('')}
     </div>`;
 
+  // Reset état visites à chaque affichage
+  _visites=[];_visitePhotos=[];_tourneeType=null;
   // Init signature pads
   setTimeout(()=>{
-    initSigPad('sig-agent');
-    initSigPad('sig-cte');
+    if(canCreate){
+      initSigPad('sig-agent');
+      initSigPad('sig-cte');
+    }
   },100);
 }
 
-// Tournée photos state
-let _tourneePhotos=[];
+// ── État tournée multi-visites ──
 let _tourneeType=null;
+let _visites=[];         // visites validées
+let _visitePhotos=[];    // photos de la visite en cours
 
 function selTourneeType(t){
   _tourneeType=t;
@@ -2091,20 +2129,14 @@ function selTourneeType(t){
   const dateInput=document.getElementById('tv-date');
   if(dateInput){
     if(t==='lundi'){
-      dateInput.value=getLundiDate();
-      dateInput.readOnly=true;
-      dateInput.style.opacity='0.5';
-      dateInput.style.cursor='not-allowed';
+      dateInput.value=getLundiDate();dateInput.readOnly=true;dateInput.style.opacity='0.5';
     } else {
-      dateInput.readOnly=false;
-      dateInput.style.opacity='1';
-      dateInput.style.cursor='';
+      dateInput.readOnly=false;dateInput.style.opacity='1';
     }
   }
 }
 
-function addTourneePhoto(){
-  const idx=_tourneePhotos.length;
+function addVisitePhoto(){
   const input=document.createElement('input');
   input.type='file';input.accept='image/*';input.capture='environment';
   input.onchange=function(){
@@ -2117,9 +2149,8 @@ function addTourneePhoto(){
         if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
         const cv=document.createElement('canvas');cv.width=w;cv.height=h;
         cv.getContext('2d').drawImage(img2,0,0,w,h);
-        const b64=cv.toDataURL('image/jpeg',0.75);
-        _tourneePhotos.push({data:b64,legende:''});
-        renderTourneePhotos();
+        _visitePhotos.push({data:cv.toDataURL('image/jpeg',0.75),legende:''});
+        renderVisitePhotos();
       };
       img2.src=e.target.result;
     };
@@ -2128,16 +2159,65 @@ function addTourneePhoto(){
   input.click();
 }
 
-function renderTourneePhotos(){
-  const list=document.getElementById('tv-photos-list');
-  if(!list)return;
-  list.innerHTML=_tourneePhotos.map((p,i)=>`
+function renderVisitePhotos(){
+  const list=document.getElementById('tv-photos-list');if(!list)return;
+  list.innerHTML=_visitePhotos.map((p,i)=>`
     <div style="display:flex;align-items:center;gap:8px;background:var(--bg4);border-radius:8px;padding:8px;border:.5px solid var(--border)">
-      <img src="${p.data}" style="width:50px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0">
-      <input value="${p.legende}" oninput="_tourneePhotos[${i}].legende=this.value" class="fi" placeholder="Légende…" style="flex:1;font-size:12px;padding:6px 10px">
-      <button onclick="_tourneePhotos.splice(${i},1);renderTourneePhotos()" style="background:none;border:none;color:#F09595;cursor:pointer;font-size:16px;flex-shrink:0">✕</button>
+      <img src="${p.data}" style="width:48px;height:38px;object-fit:cover;border-radius:6px;flex-shrink:0">
+      <input value="${p.legende}" oninput="_visitePhotos[${i}].legende=this.value" class="fi" placeholder="Légende…" style="flex:1;font-size:12px;padding:5px 8px">
+      <button onclick="_visitePhotos.splice(${i},1);renderVisitePhotos()" style="background:none;border:none;color:#F09595;cursor:pointer;font-size:16px;flex-shrink:0">✕</button>
     </div>`).join('');
 }
+
+function validerVisite(){
+  const agent=document.getElementById('tv-agent')?.value;
+  const zone=document.getElementById('tv-zone')?.value.trim();
+  if(!agent){toast("Sélectionne l'agent",'danger');return;}
+  const getSig=(id)=>{
+    const c=document.getElementById(id);if(!c||isSigEmpty(id))return null;
+    const tmp=document.createElement('canvas');tmp.width=c.width;tmp.height=c.height;
+    const tctx=tmp.getContext('2d');tctx.fillStyle='#ffffff';tctx.fillRect(0,0,tmp.width,tmp.height);
+    tctx.drawImage(c,0,0);return tmp.toDataURL('image/png');
+  };
+  const visite={
+    id:newId('VIS'),agent,zone:zone||'—',
+    observations:document.getElementById('tv-obs')?.value||'',
+    photos:[..._visitePhotos],
+    sigAgent:getSig('sig-agent'),
+    sigCte:getSig('sig-cte'),
+  };
+  _visites.push(visite);
+  _visitePhotos=[];
+  // Réinitialiser le formulaire visite
+  if(document.getElementById('tv-agent')) document.getElementById('tv-agent').value='';
+  if(document.getElementById('tv-zone')) document.getElementById('tv-zone').value='';
+  if(document.getElementById('tv-obs')) document.getElementById('tv-obs').value='';
+  renderVisitePhotos();
+  clearSig('agent');clearSig('cte');
+  renderVisitesSummary();
+  toast('Visite ajoutée ✓','ok');
+}
+
+function renderVisitesSummary(){
+  const el=document.getElementById('visites-summary');if(!el)return;
+  if(_visites.length===0){el.innerHTML='';return;}
+  el.innerHTML=_visites.map((v,i)=>`
+    <div style="background:rgba(61,181,74,.06);border:.5px solid rgba(61,181,74,.2);border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:10px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:500;color:var(--text)">${v.agent}</div>
+        <div style="font-size:11px;color:var(--text3)">Zone : ${v.zone}${v.photos.length?' · '+v.photos.length+' photo(s)':''}</div>
+      </div>
+      <div style="display:flex;gap:4px">
+        ${v.sigAgent?'<span style="font-size:10px;color:#3db54a">✍️A</span>':''}
+        ${v.sigCte?'<span style="font-size:10px;color:#3db54a">✍️C</span>':''}
+      </div>
+      <button onclick="_visites.splice(${i},1);renderVisitesSummary()" style="background:none;border:none;color:#F09595;cursor:pointer;font-size:14px;flex-shrink:0">✕</button>
+    </div>`).join('');
+}
+
+function addTourneePhoto(){addVisitePhoto();}
+function renderTourneePhotos(){renderVisitePhotos();}
+
 
 // Signature pad
 function initSigPad(id){
@@ -2176,49 +2256,24 @@ function isSigEmpty(id){
 function saveTournee(chantierId){
   if(!_tourneeType){toast('Sélectionne le type de tournée','danger');return;}
   const date=document.getElementById('tv-date')?.value;
-  const agentPresent=document.getElementById('tv-agent')?.value;
-  const obs=document.getElementById('tv-obs')?.value||'';
   if(!date){toast('Indique la date','danger');return;}
-  if(!agentPresent){toast("Sélectionne l'agent présent",'danger');return;}
-  // Récupérer les signatures
-  const getSig=(id)=>{
-    const c=document.getElementById(id);
-    if(!c||isSigEmpty(id))return null;
-    // Composite sur fond blanc pour éviter la transparence en PNG
-    const tmp=document.createElement('canvas');
-    tmp.width=c.width;tmp.height=c.height;
-    const tctx=tmp.getContext('2d');
-    tctx.fillStyle='#ffffff';
-    tctx.fillRect(0,0,tmp.width,tmp.height);
-    tctx.drawImage(c,0,0);
-    return tmp.toDataURL('image/png');
-  };
+  if(_visites.length===0){toast('Ajoute au moins une visite','danger');return;}
   const tournee={
-    id:newId('TRN'),
-    chantierId,
-    weekKey:getWeekKey(),
-    type:_tourneeType,
-    date,
-    auteur:S.agent,
-    agentPresent,
-    observations:obs,
-    photos:[..._tourneePhotos],
-    sigAgent:getSig('sig-agent'),
-    sigCte:getSig('sig-cte'),
+    id:newId('TRN'),chantierId,weekKey:getWeekKey(),
+    type:_tourneeType,date,auteur:S.agent,
+    visites:[..._visites],
     createdAt:nowISO(),
   };
   const idx=S.chantiers.findIndex(c=>c.id===chantierId);
   if(idx===-1)return;
   if(!S.chantiers[idx].tournees) S.chantiers[idx].tournees=[];
   S.chantiers[idx].tournees.push(tournee);
-  // Garder uniquement les 30 derniers jours
   const cutoff=new Date(Date.now()-30*24*60*60*1000);
   S.chantiers[idx].tournees=S.chantiers[idx].tournees.filter(t=>new Date(t.createdAt||t.date)>=cutoff);
-  _tourneePhotos=[];
-  _tourneeType=null;
+  _visitePhotos=[];_tourneeType=null;_visites=[];
   saveChantier(chantierId);
   renderTab();
-  toast('Tournée enregistrée ✓','ok');
+  toast('Tournée enregistrée — '+tournee.visites.length+' visite(s) ✓','ok');
 }
 
 function openPhotoTournee(tourneeId, photoIdx){
