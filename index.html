@@ -1474,7 +1474,7 @@ function processRows(rows){
 
   if(hasHeader){
     const headers = rows[0].map(h=>String(h||'').trim().toLowerCase()
-      .split('').filter(c=>c.charCodeAt(0)<768||c.charCodeAt(0)>879).join('')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')  // supprime les accents
       .replace(/['"]/g,''));
     iNom  = headers.findIndex(h=>h.includes('nom')||h.includes('design')||h.includes('libel')||h.includes('article')||h.includes('materiel')||h.includes('designation'));
     iCat  = headers.findIndex(h=>h.includes('cat')||h.includes('type')||h.includes('famil')||h.includes('group'));
