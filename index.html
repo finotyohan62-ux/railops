@@ -2500,6 +2500,9 @@ function renderAjoutMat(){
         <div class="ro sel-ok" id="ap-confirme" onclick="sAMP('confirme')">✓ Présent</div>
         <div class="ro" id="ap-non-confirme" onclick="sAMP('non-confirme')">? Non confirmé</div>
       </div>
+      <label class="fl">Date d'échéance de vérification</label>
+      <input class="fi" id="am-echeance" type="date" style="margin-bottom:4px">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Optionnel — date limite de vérification de l'article</div>
       <div style="display:flex;gap:10px;margin-top:24px">
         <button class="btn btn-outline" onclick="go('chantier_detail')" style="flex:1">Annuler</button>
         <button class="btn btn-accent" onclick="ajouterM()" style="flex:2">Ajouter au registre</button>
@@ -2514,7 +2517,10 @@ function ajouterM(){
   const nom=document.getElementById('am-nom')?.value.trim();
   if(!nom){toast('Nom requis','danger');return;}
   const id=document.getElementById('am-id')?.value.trim()||newId('MAT');
-  S.mat.push({id,nom,cat:document.getElementById('am-cat')?.value,chantierId:S.curC,etat:_ame||'bon',scan:null,presence:_amp||'confirme'});
+  const echeanceRaw=document.getElementById('am-echeance')?.value;
+  let echeance='';
+  if(echeanceRaw){const p=echeanceRaw.split('-');echeance=p[2]+'/'+p[1]+'/'+p[0];}
+  S.mat.push({id,nom,cat:document.getElementById('am-cat')?.value,chantierId:S.curC,etat:_ame||'bon',scan:null,presence:_amp||'confirme',echeance});
   save();go('chantier_detail');
   setTimeout(()=>toast('Article ajouté au registre','ok'),80);
 }
