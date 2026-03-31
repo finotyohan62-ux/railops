@@ -4101,13 +4101,15 @@ function setupRealtime(){
 async function silentSync(){
   if(!S.agent) return;
   try{
-    const {data:dc}=await db.from('chantiers').select('*');
-    const {data:dm}=await db.from('materiels').select('*');
-    const {data:ds}=await db.from('scans').select('*');
-    const {data:du}=await db.from('users').select('*');
+    const [resC, resM, resS, resU] = await Promise.all([
+      db.from('chantiers').select('*'),
+      db.from('materiels').select('*'),
+      db.from('scans').select('*'),
+      db.from('users').select('*'),
+    ]);
+    const {data:dc}=resC, {data:dm}=resM, {data:ds}=resS, {data:du}=resU;
 
     if(dc&&dc.length){
-      // Fusionner : garder les locaux non encore en Supabase
       const ids=new Set(dc.map(x=>x.id));
       const extras=S.chantiers.filter(x=>!ids.has(x.id));
       S.chantiers=[...dc,...extras];
@@ -4125,12 +4127,15 @@ async function silentSync(){
   }catch(e){ setSyncStatus('offline'); }
 }
 
-// Polling toutes les 60s (Realtime seul n'est pas fiable sur Supabase free)
-setInterval(silentSync, 60000);
+// Polling toutes les 15s (plus réactif)
+setInterval(silentSync, 15000);
 
-// Rechargement au retour au premier plan (mobile : app minimisée puis rouverte)
+// Retour au premier plan : reconnexion Realtime + sync immédiat
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible' && S.agent){
+    // Forcer reconnexion du canal Realtime (coupé en arrière-plan sur mobile)
+    setupRealtime();
+    // Sync immédiat des données
     silentSync();
   }
 });
