@@ -743,13 +743,12 @@ function selIR(r){
   const wrap=document.getElementById('chef-code-wrap');
   const hint=document.getElementById('code-hint');
   if(wrap){
-    wrap.style.display=(r==='chef'||r==='chef_chantier')?'block':'none';
+    wrap.style.display=(r==='chef'||r==='chef_chantier'||r==='cte')?'block':'none';
     if(hint){
-      hint.innerHTML=r==='chef'
-        ?'Code fourni par votre responsable chef d\'équipe.'
-        :r==='chef_chantier'
-        ?'Code direction uniquement. Contactez votre responsable.'
-        :'';
+      if(r==='chef') hint.innerHTML="Code fourni par votre responsable chef d'équipe.";
+      else if(r==='chef_chantier') hint.innerHTML='Code direction uniquement. Contactez votre responsable.';
+      else if(r==='cte') hint.innerHTML="Code fourni par votre chef d'équipe.";
+      else hint.innerHTML='';
     }
   }
 }
