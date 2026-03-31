@@ -1212,12 +1212,10 @@ function pgDashCTE(el){
 // CHANTIERS PAGE (chef)
 // ══════════════════════════════════════
 function pgChantiers(el){
-  const visibleC=(S.role==='chef')?S.chantiers.filter(c=>isChefOf(c)):S.chantiers;
   el.innerHTML=`
-    <div class="topbar"><div class="tbi"><div class="tbt">Chantiers</div><div class="tbs">${visibleC.length} chantier(s)</div></div></div>
+    <div class="topbar"><div class="tbi"><div class="tbt">Chantiers</div><div class="tbs">${S.chantiers.length} chantier(s)</div></div></div>
     <div style="padding:12px 16px 20px">
-      ${visibleC.length===0?`<div style="text-align:center;padding:60px 0;color:var(--text3);font-size:13px">Aucun chantier assigné</div>`:''}
-      ${visibleC.map(c=>{
+      ${(S.role==='chef'?S.chantiers.filter(c=>isChefOf(c)):S.chantiers).map(c=>{
         const mats=matOfC(c.id);const ab=mats.filter(m=>m.presence==='absent').length;const done=mats.filter(m=>m.scan).length;
         return`<div class="cc" onclick="openC('${c.id}')">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
@@ -1337,7 +1335,7 @@ function tabRegistre(el){
         <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="reg-search" class="fi" placeholder="Rechercher un article, ID, catégorie…" value="${S.searchReg}"
           style="padding-left:32px;padding-right:${S.searchReg?'32px':'12px'};font-size:13px"
-          oninput="(function(inp){var v=inp.value;var p=inp.selectionStart;S.searchReg=v;renderTab();var ni=document.getElementById('reg-search');if(ni){ni.focus();try{ni.setSelectionRange(p,p);}catch(e){}}})(this)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          oninput="S.searchReg=this.value;renderTab()" autocomplete="off" autocorrect="off" spellcheck="false">
         ${S.searchReg?`<button onclick="S.searchReg='';renderTab()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;display:flex">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>`:''}
@@ -3189,8 +3187,8 @@ function doProfilChangePass(){
 function _unusedEquipe(el){
   const roleLabel={agent:'Agent terrain',chef:"Chef d'équipe",cte:'CTE',chef_chantier:'Chef chantier'};
   const roleBadge={agent:'b-ok',chef:'b-purple',cte:'b-warn',chef_chantier:'b-info'};
-  const roleColor={agent:'rgba(29,158,117,.15)',cte:'rgba(245,166,35,.12)',chef:'rgba(127,119,221,.2)',chef_chantier:'rgba(55,138,221,.15)'};
-  const roleText={agent:'#5DCAA5',cte:'#f5a623',chef:'#AFA9EC',chef_chantier:'#85B7EB'};
+  const roleColor={agent:'rgba(29,158,117,.15)',chef:'rgba(127,119,221,.2)',chef_chantier:'rgba(55,138,221,.15)'};
+  const roleText={agent:'#5DCAA5',chef:'#AFA9EC',chef_chantier:'#85B7EB'};
 
   el.innerHTML=`
     <div class="topbar">
@@ -3201,12 +3199,12 @@ function _unusedEquipe(el){
     </div>
 
     <!-- Stats rôles -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:12px 16px 0">
-      ${['agent','cte','chef','chef_chantier'].map(r=>{
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 16px 0">
+      ${['agent','chef','chef_chantier'].map(r=>{
         const count=S.users.filter(u=>u.role===r).length;
-        return`<div style="background:${roleColor[r]};border-radius:var(--r);padding:8px 10px;border:.5px solid rgba(255,255,255,.06)">
+        return`<div style="background:${roleColor[r]};border-radius:var(--r);padding:10px 12px;border:.5px solid rgba(255,255,255,.06)">
           <div style="font-size:20px;font-weight:500;color:${roleText[r]}">${count}</div>
-          <div style="font-size:10px;color:var(--text2);margin-top:2px">${{agent:'Agents',cte:'CTE',chef:'Chefs éq.',chef_chantier:'Chefs ch.'}[r]}</div>
+          <div style="font-size:10px;color:var(--text2);margin-top:2px">${r==='agent'?'Agents':r==='chef'?'Chefs éq.':'Chefs ch.'}</div>
         </div>`;
       }).join('')}
     </div>
@@ -3248,11 +3246,10 @@ function openEditUser(uid){
     <div style="font-size:12px;color:var(--text2);margin-bottom:16px">Badge #${u.badge}</div>
     <label class="fl">Rôle</label>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
-      ${['agent','cte','chef','chef_chantier'].map(r=>`
+      ${['agent','chef','chef_chantier'].map(r=>`
         <div onclick="document.querySelectorAll('.role-opt').forEach(x=>x.classList.remove('sel-ok'));this.classList.add('sel-ok');window._editRole='${r}';"
           class="ro role-opt${u.role===r?' sel-ok':''}" style="text-align:left;padding:10px 14px">
-          <div style="font-size:13px;font-weight:500">${roleLabel[r]||r}</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">${{agent:'Inspection terrain',cte:'Contrôleur tournées',chef:"Gestion chantier + registre",chef_chantier:'Vue globale + administration'}[r]||''}</div>
+          <div style="font-size:13px;font-weight:500">${roleLabel[r]}</div>
         </div>`).join('')}
     </div>
     <label class="fl">Numéro de badge</label>
@@ -3484,10 +3481,11 @@ function buildNotifs(){
   const wk=getWeekKey();
   const deuxMoisMs=60*24*60*60*1000;
 
-  // Filtrer selon le rôle : chef voit ses chantiers, chef_chantier voit tout
-  const mesCh=S.role==='chef'
-    ?S.chantiers.filter(c=>isChefOf(c))
-    :S.chantiers;
+  // Filtrer selon le rôle
+  const mesCh=
+    S.role==='chef_chantier'?S.chantiers:
+    S.role==='chef'?S.chantiers.filter(c=>isChefOf(c)):
+    S.chantiers.filter(c=>(c.agents||[]).includes(S.agent));
   const mesIds=new Set(mesCh.map(c=>c.id));
   const mesMat=S.mat.filter(m=>mesIds.has(m.chantierId));
 
@@ -3638,6 +3636,7 @@ function openGestionComptes(){
             <div style="font-size:10px;color:var(--text3)">Badge #${u.badge}</div>
           </div>
           <span class="badge ${roleBadge[u.role]||'b-gray'}" style="font-size:9px">${roleLabel[u.role]||u.role}</span>
+          ${!isSelf&&S.role==='chef_chantier'?`<button onclick="openChangeRole('${u.id}')" style="background:rgba(127,119,221,.1);border:.5px solid rgba(127,119,221,.3);border-radius:8px;padding:5px 8px;font-size:11px;color:#AFA9EC;cursor:pointer;font-family:inherit;flex-shrink:0">Rôle</button>`:''}
           ${!isSelf?`<button onclick="resetUserPassword('${u.id}')" style="background:rgba(55,138,221,.08);border:.5px solid rgba(55,138,221,.25);border-radius:8px;padding:5px 8px;font-size:11px;color:#85B7EB;cursor:pointer;font-family:inherit;flex-shrink:0">🔑</button>`:''}
           ${!isSelf?`<button onclick="confirmDeleteUser('${u.id}')" style="background:rgba(226,75,74,.1);border:.5px solid rgba(226,75,74,.25);border-radius:8px;padding:5px 8px;font-size:11px;color:#F09595;cursor:pointer;font-family:inherit;flex-shrink:0">✕</button>`:''}
         </div>`;
@@ -3647,6 +3646,52 @@ function openGestionComptes(){
   </div>`;
   div.addEventListener('click',e=>{if(e.target===div)div.remove();});
   document.getElementById('app').appendChild(div);
+}
+
+function openChangeRole(uid){
+  const u=S.users.find(x=>x.id===uid);if(!u)return;
+  const roles=[
+    {k:'agent',l:'Agent terrain',s:'Inspection et scan matériel'},
+    {k:'cte',l:'CTE',s:'Contrôleur de tournées'},
+    {k:'chef',l:"Chef d'équipe",s:'Gestion chantier + registre'},
+    {k:'chef_chantier',l:'Chef chantier',s:'Vue globale + administration'},
+  ];
+  const existing=document.getElementById('movl2');if(existing)existing.remove();
+  const div=document.createElement('div');
+  div.id='movl2';div.className='moverlay';
+  div.style.zIndex='300';
+  div.innerHTML=`<div class="msheet">
+    <div class="mhandle"></div>
+    <div style="font-size:16px;font-weight:500;color:var(--text);margin-bottom:4px">Changer le rôle</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:16px">${u.nom} · Badge #${u.badge}</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+      ${roles.map(r=>`
+        <div onclick="document.querySelectorAll('.cr-opt').forEach(x=>x.classList.remove('sel-ok'));this.classList.add('sel-ok');window._crRole='${r.k}';"
+          class="ro cr-opt${u.role===r.k?' sel-ok':''}" style="text-align:left;padding:10px 14px">
+          <div style="font-size:13px;font-weight:500">${r.l}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${r.s}</div>
+        </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-outline" onclick="document.getElementById('movl2').remove()" style="flex:1">Annuler</button>
+      <button class="btn btn-accent" onclick="doChangeRole('${uid}')" style="flex:2">Enregistrer</button>
+    </div>
+  </div>`;
+  window._crRole=u.role;
+  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  document.getElementById('app').appendChild(div);
+}
+
+function doChangeRole(uid){
+  const idx=S.users.findIndex(u=>u.id===uid);if(idx===-1)return;
+  const newRole=window._crRole||S.users[idx].role;
+  if(newRole===S.users[idx].role){document.getElementById('movl2')?.remove();return;}
+  const roleLabel={agent:'Agent terrain',cte:'CTE',chef:"Chef d'équipe",chef_chantier:'Chef chantier'};
+  S.users[idx].role=newRole;
+  save();
+  document.getElementById('movl2')?.remove();
+  openGestionComptes();
+  toast(`${S.users[idx].nom} → ${roleLabel[newRole]}`,'ok');
 }
 
 function openForgotPassword(){
