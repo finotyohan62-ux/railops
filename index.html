@@ -4149,8 +4149,19 @@ function buildPDF(c, mats, scans, titre){
   }
 
   const fname='RailOps_'+c.nom.replace(/[^a-z0-9]/gi,'_').slice(0,30)+'_'+now.replace(/\//g,'-')+'.pdf';
-  doc.save(fname);
-  toast('PDF téléchargé ✓','ok');
+  const blob=doc.output('blob');
+  const url=URL.createObjectURL(blob);
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+  if(isIOS){
+    window.open(url,'_blank');
+    toast('PDF prêt — appuie sur ↗ Partager puis "Enregistrer dans Fichiers"','ok');
+  } else {
+    const a=document.createElement('a');
+    a.href=url;a.download=fname;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+    toast('PDF téléchargé ✓','ok');
+  }
 }
 
 function exportPDF(){
