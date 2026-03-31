@@ -1462,92 +1462,84 @@ function triggerImport(){document.getElementById('csv-input')?.click();}
 function processRows(rows){
   if(!rows||rows.length<1){toast('Fichier vide','danger');return;}
 
-  // ── Détection auto : y a-t-il une ligne d'en-tête ? ──
-  // Si la première cellule de la ligne 1 ressemble à un code matériel
-  // (commence par une lettre et contient des chiffres) → pas d'en-tête
+  // ── Détection en-tête ──
   const firstCell = String(rows[0][0]||'').trim();
-  const looksLikeData = /^[A-Za-z]{1,6}[\-_0-9]/.test(firstCell) || /^\d/.test(firstCell);
+  const looksLikeData = /^[A-Za-z]{1,6}[\-_.][\w\-]+/.test(firstCell) || /^\d{3,}/.test(firstCell);
   const hasHeader = !looksLikeData && rows.length >= 2;
 
-  // ── Index des colonnes ──
+  // ── Normalisation : minuscules + suppression accents ──
+  const norm = s => String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/['"]/g,'');
+
   let iNom=-1, iCat=-1, iId=-1, iEtat=-1, iDate=-1;
 
   if(hasHeader){
-    const headers = rows[0].map(h=>String(h||'').trim().toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')  // supprime les accents
-      .replace(/['"]/g,''));
-    iNom  = headers.findIndex(h=>h.includes('nom')||h.includes('design')||h.includes('libel')||h.includes('article')||h.includes('materiel')||h.includes('designation'));
+    const headers = rows[0].map(h=>norm(h));
+    iId   = headers.findIndex(h=>h==='id'||h==='ref'||h==='reference'||h.includes('ref')||h.includes('code')||h.includes('num')||h.includes('serie'));
+    iNom  = headers.findIndex(h=>h.includes('design')||h.includes('libel')||h.includes('nom')||h.includes('article')||h.includes('materiel'));
     iCat  = headers.findIndex(h=>h.includes('cat')||h.includes('type')||h.includes('famil')||h.includes('group'));
-    iId   = headers.findIndex(h=>h==='id'||h.includes('ref')||h.includes('code')||h.includes('num')||h.includes('serie'));
     iEtat = headers.findIndex(h=>h.includes('etat')||h.includes('statut')||h.includes('condit'));
     iDate = headers.findIndex(h=>h.includes('date')||h.includes('verif')||h.includes('echeance')||h.includes('valid'));
+    // Debug : afficher ce qui a été détecté
+    const dbg='Colonnes : nom='+iNom+' ref='+iId+' cat='+iCat+' date='+iDate;
+    console.log('[Import]',dbg,headers);
   } else {
-    // Pas d'en-tête : colonne A = référence/nom, colonne B = date
-    iNom = 0;   // Colonne A → nom/référence
-    iId  = 0;   // Même colonne → sert aussi d'ID unique
-    iDate= 1;   // Colonne B → date (si présente)
-    iCat = -1;
-    iEtat= -1;
+    iNom=0; iId=0; iDate=1; iCat=-1; iEtat=-1;
   }
 
-  // Si toujours pas de colonne nom trouvée → colonne 0 par défaut
-  if(iNom===-1) iNom=0;
+  // Fallback nom → colonne 0
+  if(iNom===-1) iNom = iId>=0 ? iId : 0;
 
   const startRow = hasHeader ? 1 : 0;
   let added=0, skipped=0;
 
   for(let i=startRow; i<rows.length; i++){
     const row = rows[i];
+    // Nom : colonne désignation OU colonne ref si pas de désignation séparée
     const nom = String(row[iNom]||'').trim();
-    if(!nom || nom==='' ){skipped++;continue;}
+    if(!nom){skipped++;continue;}
 
-    // Catégorie : détecter automatiquement depuis le nom si pas de colonne dédiée
+    // Catégorie
     let cat = 'Outillage';
-    if(iCat>=0 && row[iCat]) {
+    if(iCat>=0 && row[iCat]){
       cat = String(row[iCat]).trim();
     } else {
-      // Auto-détection depuis le préfixe du code
-      const n = nom.toUpperCase();
-      if(n.startsWith('CLR')||n.startsWith('CV9')||n.startsWith('RI')) cat='Caténaire';
+      const n=nom.toUpperCase();
+      if(n.startsWith('CLR')||n.startsWith('CV9')) cat='Caténaire';
       else if(n.startsWith('PI-')||n.startsWith('PI0')) cat='Sécurité élec.';
       else if(n.startsWith('RPIR')||n.startsWith('D15')) cat='Caténaire';
       else if(n.startsWith('DRAP')||n.startsWith('CONE')) cat='EPI';
-      else if(n.startsWith('PULSAR')||n.startsWith('RI0')||n.startsWith('RI-')) cat='Outillage';
-      else cat='Outillage';
     }
 
-    // ID : utiliser la ref comme ID (nettoyée), ou générer
-    let idRaw = iId>=0 && row[iId] && iId!==iNom ? String(row[iId]).trim().replace(/\s/g,'').replace(/[*]/g,'') : '';
-    // Si même colonne que nom ou pas d'ID dédié : générer depuis le nom + index pour éviter les doublons
+    // ID/Référence : toujours utiliser iId quand disponible, peu importe si c'est la même colonne que nom
+    let idRaw = '';
+    if(iId>=0 && row[iId]!==undefined && row[iId]!==''){
+      idRaw = String(row[iId]).trim().replace(/\s/g,'').replace(/[*]/g,'');
+    }
+    // Fallback si pas de référence : générer depuis nom + index
     if(!idRaw) idRaw = nom.replace(/\s/g,'-').replace(/[^a-zA-Z0-9\-]/g,'').substring(0,20)+'-'+i;
     const id = idRaw || newId('MAT');
 
-    // Éviter les vrais doublons (même ID exact déjà présent)
+    // Éviter les vrais doublons
     if(S.mat.find(m=>m.id===id)){skipped++;continue;}
 
     // État
     let etat = 'inconnu';
     if(iEtat>=0 && row[iEtat]){
-      const e = String(row[iEtat]).toLowerCase();
-      etat = e.includes('bon')?'bon':e.includes('accept')?'acceptable':e.includes('degrad')?'degrade':e.includes('hors')?'hors-service':'inconnu';
+      const e=norm(row[iEtat]);
+      etat=e.includes('bon')?'bon':e.includes('accept')?'acceptable':e.includes('degrad')?'degrade':e.includes('hors')?'hors-service':'inconnu';
     }
 
-    // Date de vérification (info stockée dans observations)
-    let echeance = '';
+    // Échéance
+    let echeance='';
     if(iDate>=0 && row[iDate]!==undefined && row[iDate]!==''){
-      const raw = row[iDate];
-      // SheetJS peut renvoyer un nombre série Excel (ex: 46000) ou une chaîne
-      if(typeof raw === 'number' && raw > 1000){
-        // Conversion numéro série Excel → date
-        // Excel date serial: 1 = 01/01/1900, mais avec bug leap year 1900
-        const epoch = new Date(1899,11,30); // 30 déc 1899
-        const ms = raw * 86400000;
-        const d = new Date(epoch.getTime() + ms);
-        echeance = d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+      const raw=row[iDate];
+      if(typeof raw==='number'&&raw>1000){
+        const d=new Date(new Date(1899,11,30).getTime()+raw*86400000);
+        echeance=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
       } else if(raw instanceof Date){
-        echeance = raw.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+        echeance=raw.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
       } else {
-        echeance = String(raw).trim();
+        echeance=String(raw).trim();
       }
     }
 
@@ -1556,7 +1548,8 @@ function processRows(rows){
   }
 
   save(); renderTab();
-  toast(added+' article(s) importé(s)'+(skipped?' · '+skipped+' ignoré(s)':'')+(hasHeader?' (avec en-tête)':' (sans en-tête, détection auto)'),'ok');
+  const info=hasHeader?` (ref col.${iId}, nom col.${iNom})`:'';
+  toast(added+' article(s) importé(s)'+(skipped?' · '+skipped+' ignoré(s)':'')+info,'ok');
 }
 
 
