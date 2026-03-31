@@ -354,11 +354,11 @@ async function save(){
     if(S.scans.length){
       const newScans=S.scans.filter(s=>s._new);
       if(newScans.length){
-        await sbUpsert('scans',newScans.map(s=>{const r={...s};delete r._new;return r;}));
+        await db.from('scans').upsert(newScans.map(s=>{const r={...s};delete r._new;return r;}),{onConflict:'id'});
         S.scans=S.scans.map(s=>{const r={...s};delete r._new;return r;});
       }
     }
-    if(S.users.length) await sbUpsert('users',S.users);
+    if(S.users.length) await db.from('users').upsert(S.users,{onConflict:'id'});
   }catch(e){console.warn('Supabase save error:',e.message);}
 }
 
@@ -367,22 +367,25 @@ async function saveMat(id){
   const m=S.mat.find(x=>x.id===id);if(!m)return;
   try{
     localStorage.setItem('ro3_m',JSON.stringify(S.mat));
-    await sbUpsert('materiels',[m]);
-  }catch(e){console.warn('saveMat:',e.message);toast('Erreur sync article : '+e.message,'danger');}
+    const {error}=await db.from('materiels').upsert([m],{onConflict:'id'});
+    if(error) toast('Erreur sync article : '+error.message,'danger');
+  }catch(e){toast('Erreur réseau article','danger');}
 }
 async function saveChantier(id){
   const c=S.chantiers.find(x=>x.id===id);if(!c)return;
   try{
     localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));
-    await sbUpsert('chantiers',[c]);
-  }catch(e){console.warn('saveChantier:',e.message);toast('Erreur sync chantier : '+e.message,'danger');}
+    const {error}=await db.from('chantiers').upsert([c],{onConflict:'id'});
+    if(error) toast('Erreur sync chantier : '+error.message,'danger');
+  }catch(e){toast('Erreur réseau chantier','danger');}
 }
 async function saveUser(id){
   const u=S.users.find(x=>x.id===id);if(!u)return;
   try{
     localStorage.setItem('ro3_u',JSON.stringify(S.users));
-    await sbUpsert('users',[u]);
-  }catch(e){console.warn('saveUser:',e.message);toast('Erreur sync user : '+e.message,'danger');}
+    const {error}=await db.from('users').upsert([u],{onConflict:'id'});
+    if(error) toast('Erreur sync user : '+error.message,'danger');
+  }catch(e){toast('Erreur réseau user','danger');}
 }
 
 async function load(){
@@ -394,30 +397,30 @@ async function load(){
   if(!document.getElementById('spin-style')){const s=document.createElement('style');s.id='spin-style';s.textContent='@keyframes spin{to{transform:rotate(360deg)}}';document.head.appendChild(s);}
 
   try{
-    const dc=await sbSelect('chantiers');
+    const {data:dc}=await db.from('chantiers').select('*');
     const localC=JSON.parse(localStorage.getItem('ro3_c')||'[]');
     if(dc&&dc.length){
       const ids=new Set(dc.map(x=>x.id));
       const extras=localC.filter(x=>!ids.has(x.id));
       S.chantiers=[...dc,...extras];
-      if(extras.length) sbUpsert('chantiers',extras).catch(()=>{});
+      if(extras.length) db.from('chantiers').upsert(extras,{onConflict:'id'}).catch(()=>{});
     } else { S.chantiers=localC; }
 
-    const dm=await sbSelect('materiels');
+    const {data:dm}=await db.from('materiels').select('*');
     const localM=JSON.parse(localStorage.getItem('ro3_m')||'[]');
     if(dm&&dm.length){
       const ids=new Set(dm.map(x=>x.id));
       const extras=localM.filter(x=>!ids.has(x.id));
       S.mat=[...dm,...extras];
-      if(extras.length) sbUpsert('materiels',extras).catch(()=>{});
+      if(extras.length) db.from('materiels').upsert(extras,{onConflict:'id'}).catch(()=>{});
     } else { S.mat=localM; }
 
-    const ds=await sbSelect('scans');
+    const {data:ds}=await db.from('scans').select('*');
     S.scans=ds||[];
 
-    const du=await sbSelect('users');
+    const {data:du}=await db.from('users').select('*');
     S.users=du&&du.length?du:JSON.parse(JSON.stringify(DEF_USERS));
-    if(!du||!du.length) await sbUpsert('users',S.users);
+    if(!du||!du.length) await db.from('users').upsert(S.users,{onConflict:'id'});
 
   }catch(e){
     console.warn('Supabase load error, fallback local:',e);
@@ -2459,8 +2462,9 @@ async function creerC(){
   try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
   // Upsert Supabase direct et attendu
   try{
-    await sbUpsert('chantiers',[c]);
-  }catch(e){console.warn('creerC:',e.message);toast('Erreur Supabase : '+e.message,'danger');}
+    const {error}=await db.from('chantiers').upsert([c],{onConflict:'id'});
+    if(error) toast('Erreur Supabase : '+error.message,'danger');
+  }catch(e){toast('Erreur réseau création chantier','danger');}
   S.curC=c.id;S.page='chantier_detail';S.tab='registre';render();
   setTimeout(()=>toast('Chantier créé !','ok'),80);
 }
@@ -3467,7 +3471,7 @@ function confirmDeleteUser(uid){
 
 function doDeleteUser(uid){
   S.users=S.users.filter(u=>u.id!==uid);
-  sbDelete('users',uid).catch(()=>{});
+  db.from('users').delete().eq('id',uid).then(()=>{});
   try{localStorage.setItem('ro3_u',JSON.stringify(S.users));}catch(e){}
   document.getElementById('movl')?.remove();
   setTimeout(()=>openGestionComptes(),50);
@@ -4130,13 +4134,10 @@ function setupRealtime(){
 async function silentSync(){
   if(!S.agent) return;
   try{
-    // Utilise fetch natif (sbSelect) au lieu du client Supabase JS → évite DataCloneError
-    const [dc, dm, ds, du] = await Promise.all([
-      sbSelect('chantiers'),
-      sbSelect('materiels'),
-      sbSelect('scans'),
-      sbSelect('users'),
-    ]);
+    const {data:dc}=await db.from('chantiers').select('*');
+    const {data:dm}=await db.from('materiels').select('*');
+    const {data:ds}=await db.from('scans').select('*');
+    const {data:du}=await db.from('users').select('*');
 
     let newChantiers=0, newMats=0;
 
@@ -4145,7 +4146,7 @@ async function silentSync(){
       const extras=S.chantiers.filter(x=>!ids.has(x.id));
       newChantiers=dc.length - S.chantiers.filter(c=>ids.has(c.id)).length;
       S.chantiers=[...dc,...extras];
-      if(extras.length) sbUpsert('chantiers',extras).catch(()=>{});
+      if(extras.length) db.from('chantiers').upsert(extras,{onConflict:'id'}).catch(()=>{});
     }
     if(dm&&dm.length){ newMats=dm.length-S.mat.length; S.mat=dm; }
     if(ds) S.scans=ds;
@@ -4159,7 +4160,6 @@ async function silentSync(){
   }catch(e){
     console.warn('silentSync error:',e.message);
     setSyncStatus('offline');
-    toast('Sync erreur : '+e.message,'danger');
   }
 }
 
