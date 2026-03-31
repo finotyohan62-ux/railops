@@ -352,11 +352,29 @@ async function load(){
   try{
     // Chantiers
     const {data:dc}=await db.from('chantiers').select('*');
-    S.chantiers=dc&&dc.length?dc:[];
+    const localC=JSON.parse(localStorage.getItem('ro3_c')||'[]');
+    if(dc&&dc.length){
+      // Fusionner : prendre Supabase + ajouter ceux du local manquants
+      const ids=new Set(dc.map(x=>x.id));
+      const extras=localC.filter(x=>!ids.has(x.id));
+      S.chantiers=[...dc,...extras];
+      // Remonter les extras vers Supabase
+      if(extras.length) db.from('chantiers').upsert(extras,{onConflict:'id'}).catch(()=>{});
+    } else {
+      S.chantiers=localC;
+    }
 
     // Matériels
     const {data:dm}=await db.from('materiels').select('*');
-    S.mat=dm&&dm.length?dm:[];
+    const localM=JSON.parse(localStorage.getItem('ro3_m')||'[]');
+    if(dm&&dm.length){
+      const ids=new Set(dm.map(x=>x.id));
+      const extras=localM.filter(x=>!ids.has(x.id));
+      S.mat=[...dm,...extras];
+      if(extras.length) db.from('materiels').upsert(extras,{onConflict:'id'}).catch(()=>{});
+    } else {
+      S.mat=localM;
+    }
 
     // Scans
     const {data:ds}=await db.from('scans').select('*');
@@ -2326,12 +2344,17 @@ function renderNouveauChantier(){
       </div>
     </div>`;
 }
-function creerC(){
+async function creerC(){
   const nom=document.getElementById('nc-nom')?.value.trim();
   const lieu=document.getElementById('nc-lieu')?.value.trim();
   if(!nom||!lieu){toast('Nom et localisation requis','danger');return;}
   const c={id:newId('CH'),nom,lieu,chef:S.agent,chefs:[S.agent],statut:document.getElementById('nc-statut')?.value||'actif',desc:document.getElementById('nc-desc')?.value||'',dateDebut:document.getElementById('nc-debut')?.value||'',dateFin:document.getElementById('nc-fin')?.value||''};
-  S.chantiers.push(c);save();S.curC=c.id;S.page='chantier_detail';S.tab='registre';render();
+  S.chantiers.push(c);
+  // Sauvegarde locale immédiate
+  try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
+  // Upsert Supabase direct et attendu
+  try{await db.from('chantiers').upsert([c],{onConflict:'id'});}catch(e){console.warn('Supabase chantier save error:',e);}
+  S.curC=c.id;S.page='chantier_detail';S.tab='registre';render();
   setTimeout(()=>toast('Chantier créé !','ok'),80);
 }
 
