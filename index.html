@@ -344,22 +344,25 @@ async function saveMat(id){
   const m=S.mat.find(x=>x.id===id);if(!m)return;
   try{
     localStorage.setItem('ro3_m',JSON.stringify(S.mat));
-    await db.from('materiels').upsert([m],{onConflict:'id'});
-  }catch(e){console.warn('saveMat error:',e);}
+    const {error}=await db.from('materiels').upsert([m],{onConflict:'id'});
+    if(error){console.error('saveMat error:',error);toast('Erreur sync article : '+error.message,'danger');}
+  }catch(e){console.warn('saveMat exception:',e);toast('Erreur réseau article','danger');}
 }
 async function saveChantier(id){
   const c=S.chantiers.find(x=>x.id===id);if(!c)return;
   try{
     localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));
-    await db.from('chantiers').upsert([c],{onConflict:'id'});
-  }catch(e){console.warn('saveChantier error:',e);}
+    const {error}=await db.from('chantiers').upsert([c],{onConflict:'id'});
+    if(error){console.error('saveChantier error:',error);toast('Erreur sync chantier : '+error.message,'danger');}
+  }catch(e){console.warn('saveChantier exception:',e);toast('Erreur réseau chantier','danger');}
 }
 async function saveUser(id){
   const u=S.users.find(x=>x.id===id);if(!u)return;
   try{
     localStorage.setItem('ro3_u',JSON.stringify(S.users));
-    await db.from('users').upsert([u],{onConflict:'id'});
-  }catch(e){console.warn('saveUser error:',e);}
+    const {error}=await db.from('users').upsert([u],{onConflict:'id'});
+    if(error){console.error('saveUser error:',error);toast('Erreur sync user : '+error.message,'danger');}
+  }catch(e){console.warn('saveUser exception:',e);toast('Erreur réseau user','danger');}
 }
 
 async function load(){
@@ -2445,7 +2448,10 @@ async function creerC(){
   // Sauvegarde locale immédiate
   try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
   // Upsert Supabase direct et attendu
-  try{await db.from('chantiers').upsert([c],{onConflict:'id'});}catch(e){console.warn('Supabase chantier save error:',e);}
+  try{
+    const {error}=await db.from('chantiers').upsert([c],{onConflict:'id'});
+    if(error){console.error('creerC error:',error);toast('Erreur Supabase : '+error.message,'danger');}
+  }catch(e){console.warn('creerC exception:',e);toast('Erreur réseau création chantier','danger');}
   S.curC=c.id;S.page='chantier_detail';S.tab='registre';render();
   setTimeout(()=>toast('Chantier créé !','ok'),80);
 }
