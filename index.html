@@ -1463,8 +1463,15 @@ function processRows(rows){
   if(!rows||rows.length<1){toast('Fichier vide','danger');return;}
 
   // ── Détection en-tête ──
+  // Une référence matériel commence par 1-6 lettres ASCII puis un chiffre (CLR95, RI0, D15)
+  // ou par 1-6 lettres puis tiret+chiffre (PI-0868, RPIR-2404)
+  // ou par des chiffres puis tiret (6011-134)
+  // Un en-tête contient des lettres accentuées (é, è, à...) qui cassent la séquence [A-Za-z]
   const firstCell = String(rows[0][0]||'').trim();
-  const looksLikeData = /^[A-Za-z]{1,6}[\-_.][\w\-]+/.test(firstCell) || /^\d{3,}/.test(firstCell);
+  const looksLikeData =
+    /^\d+[\-\/\.]/.test(firstCell) ||          // 6011-134
+    /^[A-Za-z]{1,6}\d/.test(firstCell) ||      // CLR95, CV95, D15, RI0, Pulsar133
+    /^[A-Za-z]{1,6}-\d/.test(firstCell);       // PI-0868, RPIR-2404
   const hasHeader = !looksLikeData && rows.length >= 2;
 
   // ── Normalisation : minuscules + suppression accents ──
