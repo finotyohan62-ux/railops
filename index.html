@@ -1212,10 +1212,12 @@ function pgDashCTE(el){
 // CHANTIERS PAGE (chef)
 // ══════════════════════════════════════
 function pgChantiers(el){
+  const visibleC=(S.role==='chef')?S.chantiers.filter(c=>isChefOf(c)):S.chantiers;
   el.innerHTML=`
-    <div class="topbar"><div class="tbi"><div class="tbt">Chantiers</div><div class="tbs">${S.chantiers.length} chantier(s)</div></div></div>
+    <div class="topbar"><div class="tbi"><div class="tbt">Chantiers</div><div class="tbs">${visibleC.length} chantier(s)</div></div></div>
     <div style="padding:12px 16px 20px">
-      ${(S.role==='chef'?S.chantiers.filter(c=>isChefOf(c)):S.chantiers).map(c=>{
+      ${visibleC.length===0?`<div style="text-align:center;padding:60px 0;color:var(--text3);font-size:13px">Aucun chantier assigné</div>`:''}
+      ${visibleC.map(c=>{
         const mats=matOfC(c.id);const ab=mats.filter(m=>m.presence==='absent').length;const done=mats.filter(m=>m.scan).length;
         return`<div class="cc" onclick="openC('${c.id}')">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
@@ -1335,7 +1337,7 @@ function tabRegistre(el){
         <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="reg-search" class="fi" placeholder="Rechercher un article, ID, catégorie…" value="${S.searchReg}"
           style="padding-left:32px;padding-right:${S.searchReg?'32px':'12px'};font-size:13px"
-          oninput="S.searchReg=this.value;renderTab()" autocomplete="off" autocorrect="off" spellcheck="false">
+          oninput="(function(inp){var v=inp.value;var p=inp.selectionStart;S.searchReg=v;renderTab();var ni=document.getElementById('reg-search');if(ni){ni.focus();try{ni.setSelectionRange(p,p);}catch(e){}}})(this)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         ${S.searchReg?`<button onclick="S.searchReg='';renderTab()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;display:flex">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>`:''}
