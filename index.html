@@ -4003,9 +4003,8 @@ async function manualSync(){
   await silentSync();
   const after={c:S.chantiers.length, m:S.mat.length};
   if(icon) icon.style.animation='none';
-  if(after.c===before.c && after.m===before.m){
-    toast('Sync OK — aucun changement détecté','ok');
-  }
+  // Toast de diagnostic : montre ce qui a été reçu de Supabase
+  toast('Supabase → '+after.c+' chantier(s), '+after.m+' article(s)'+(after.c!==before.c||after.m!==before.m?' — MÀJ ✓':' — inchangé'),'info');
 }
 
 // Merge intelligent : pour un même article, garde le champ le plus récent
