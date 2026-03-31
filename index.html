@@ -314,6 +314,30 @@ const db = createClient(SUPA_URL, SUPA_KEY);
 
 const DEF_USERS=[];
 
+// ── Helpers REST natifs (contourne le client Supabase JS qui cause DataCloneError) ──
+const SB_H={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
+
+async function sbSelect(table){
+  const r=await fetch(SUPA_URL+'/rest/v1/'+table+'?select=*',{headers:SB_H});
+  if(!r.ok){const t=await r.text();throw new Error(table+': '+t);}
+  return r.json();
+}
+async function sbUpsert(table,data){
+  const body=Array.isArray(data)?data:[data];
+  const r=await fetch(SUPA_URL+'/rest/v1/'+table,{
+    method:'POST',
+    headers:{...SB_H,'Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify(body)
+  });
+  if(!r.ok){const t=await r.text();throw new Error(table+' upsert: '+t);}
+}
+async function sbDelete(table,id){
+  const r=await fetch(SUPA_URL+'/rest/v1/'+table+'?id=eq.'+encodeURIComponent(id),{
+    method:'DELETE',headers:SB_H
+  });
+  if(!r.ok){const t=await r.text();throw new Error(table+' delete: '+t);}
+}
+
 // ══════════════════════════════════════
 // STORAGE — Supabase + localStorage fallback
 // ══════════════════════════════════════
@@ -326,17 +350,16 @@ async function save(){
     localStorage.setItem('ro3_a',JSON.stringify({agent:S.agent,role:S.role}));
     localStorage.setItem('ro3_u',JSON.stringify(S.users));
   }catch(e){}
-  // Seuls les scans nouveaux + users sont poussés en masse
   try{
     if(S.scans.length){
       const newScans=S.scans.filter(s=>s._new);
       if(newScans.length){
-        await db.from('scans').upsert(newScans.map(s=>{const r={...s};delete r._new;return r;}),{onConflict:'id'});
+        await sbUpsert('scans',newScans.map(s=>{const r={...s};delete r._new;return r;}));
         S.scans=S.scans.map(s=>{const r={...s};delete r._new;return r;});
       }
     }
-    if(S.users.length) await db.from('users').upsert(S.users,{onConflict:'id'});
-  }catch(e){console.warn('Supabase save error:',e);}
+    if(S.users.length) await sbUpsert('users',S.users);
+  }catch(e){console.warn('Supabase save error:',e.message);}
 }
 
 // ── Sauvegardes ciblées (un seul enregistrement) ──
@@ -344,25 +367,22 @@ async function saveMat(id){
   const m=S.mat.find(x=>x.id===id);if(!m)return;
   try{
     localStorage.setItem('ro3_m',JSON.stringify(S.mat));
-    const {error}=await db.from('materiels').upsert([m],{onConflict:'id'});
-    if(error){console.error('saveMat error:',error);toast('Erreur sync article : '+error.message,'danger');}
-  }catch(e){console.warn('saveMat exception:',e);toast('Erreur réseau article','danger');}
+    await sbUpsert('materiels',[m]);
+  }catch(e){console.warn('saveMat:',e.message);toast('Erreur sync article : '+e.message,'danger');}
 }
 async function saveChantier(id){
   const c=S.chantiers.find(x=>x.id===id);if(!c)return;
   try{
     localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));
-    const {error}=await db.from('chantiers').upsert([c],{onConflict:'id'});
-    if(error){console.error('saveChantier error:',error);toast('Erreur sync chantier : '+error.message,'danger');}
-  }catch(e){console.warn('saveChantier exception:',e);toast('Erreur réseau chantier','danger');}
+    await sbUpsert('chantiers',[c]);
+  }catch(e){console.warn('saveChantier:',e.message);toast('Erreur sync chantier : '+e.message,'danger');}
 }
 async function saveUser(id){
   const u=S.users.find(x=>x.id===id);if(!u)return;
   try{
     localStorage.setItem('ro3_u',JSON.stringify(S.users));
-    const {error}=await db.from('users').upsert([u],{onConflict:'id'});
-    if(error){console.error('saveUser error:',error);toast('Erreur sync user : '+error.message,'danger');}
-  }catch(e){console.warn('saveUser exception:',e);toast('Erreur réseau user','danger');}
+    await sbUpsert('users',[u]);
+  }catch(e){console.warn('saveUser:',e.message);toast('Erreur sync user : '+e.message,'danger');}
 }
 
 async function load(){
@@ -374,40 +394,30 @@ async function load(){
   if(!document.getElementById('spin-style')){const s=document.createElement('style');s.id='spin-style';s.textContent='@keyframes spin{to{transform:rotate(360deg)}}';document.head.appendChild(s);}
 
   try{
-    // Chantiers
-    const {data:dc}=await db.from('chantiers').select('*');
+    const dc=await sbSelect('chantiers');
     const localC=JSON.parse(localStorage.getItem('ro3_c')||'[]');
     if(dc&&dc.length){
-      // Fusionner : prendre Supabase + ajouter ceux du local manquants
       const ids=new Set(dc.map(x=>x.id));
       const extras=localC.filter(x=>!ids.has(x.id));
       S.chantiers=[...dc,...extras];
-      // Remonter les extras vers Supabase
-      if(extras.length) db.from('chantiers').upsert(extras,{onConflict:'id'}).catch(()=>{});
-    } else {
-      S.chantiers=localC;
-    }
+      if(extras.length) sbUpsert('chantiers',extras).catch(()=>{});
+    } else { S.chantiers=localC; }
 
-    // Matériels
-    const {data:dm}=await db.from('materiels').select('*');
+    const dm=await sbSelect('materiels');
     const localM=JSON.parse(localStorage.getItem('ro3_m')||'[]');
     if(dm&&dm.length){
       const ids=new Set(dm.map(x=>x.id));
       const extras=localM.filter(x=>!ids.has(x.id));
       S.mat=[...dm,...extras];
-      if(extras.length) db.from('materiels').upsert(extras,{onConflict:'id'}).catch(()=>{});
-    } else {
-      S.mat=localM;
-    }
+      if(extras.length) sbUpsert('materiels',extras).catch(()=>{});
+    } else { S.mat=localM; }
 
-    // Scans
-    const {data:ds}=await db.from('scans').select('*');
+    const ds=await sbSelect('scans');
     S.scans=ds||[];
 
-    // Users
-    const {data:du}=await db.from('users').select('*');
+    const du=await sbSelect('users');
     S.users=du&&du.length?du:JSON.parse(JSON.stringify(DEF_USERS));
-    if(!du||!du.length) await db.from('users').upsert(S.users,{onConflict:'id'});
+    if(!du||!du.length) await sbUpsert('users',S.users);
 
   }catch(e){
     console.warn('Supabase load error, fallback local:',e);
@@ -2449,9 +2459,8 @@ async function creerC(){
   try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
   // Upsert Supabase direct et attendu
   try{
-    const {error}=await db.from('chantiers').upsert([c],{onConflict:'id'});
-    if(error){console.error('creerC error:',error);toast('Erreur Supabase : '+error.message,'danger');}
-  }catch(e){console.warn('creerC exception:',e);toast('Erreur réseau création chantier','danger');}
+    await sbUpsert('chantiers',[c]);
+  }catch(e){console.warn('creerC:',e.message);toast('Erreur Supabase : '+e.message,'danger');}
   S.curC=c.id;S.page='chantier_detail';S.tab='registre';render();
   setTimeout(()=>toast('Chantier créé !','ok'),80);
 }
@@ -3458,7 +3467,7 @@ function confirmDeleteUser(uid){
 
 function doDeleteUser(uid){
   S.users=S.users.filter(u=>u.id!==uid);
-  db.from('users').delete().eq('id',uid).then(()=>{});
+  sbDelete('users',uid).catch(()=>{});
   try{localStorage.setItem('ro3_u',JSON.stringify(S.users));}catch(e){}
   document.getElementById('movl')?.remove();
   setTimeout(()=>openGestionComptes(),50);
@@ -4121,48 +4130,36 @@ function setupRealtime(){
 async function silentSync(){
   if(!S.agent) return;
   try{
-    // Séquentiel au lieu de Promise.all — évite le DataCloneError avec supabase-js
-    const {data:dc,error:ec} = await db.from('chantiers').select('*');
-    const {data:dm,error:em} = await db.from('materiels').select('*');
-    const {data:ds,error:es} = await db.from('scans').select('*');
-    const {data:du,error:eu} = await db.from('users').select('*');
-
-    if(ec) console.warn('chantiers fetch error:',ec.message);
-    if(em) console.warn('materiels fetch error:',em.message);
-    if(es) console.warn('scans fetch error:',es.message);
-    if(eu) console.warn('users fetch error:',eu.message);
+    // Utilise fetch natif (sbSelect) au lieu du client Supabase JS → évite DataCloneError
+    const [dc, dm, ds, du] = await Promise.all([
+      sbSelect('chantiers'),
+      sbSelect('materiels'),
+      sbSelect('scans'),
+      sbSelect('users'),
+    ]);
 
     let newChantiers=0, newMats=0;
 
-    if(!ec && dc&&dc.length){
+    if(dc&&dc.length){
       const ids=new Set(dc.map(x=>x.id));
       const extras=S.chantiers.filter(x=>!ids.has(x.id));
       newChantiers=dc.length - S.chantiers.filter(c=>ids.has(c.id)).length;
       S.chantiers=[...dc,...extras];
-      if(extras.length) db.from('chantiers').upsert(extras,{onConflict:'id'}).catch(()=>{});
+      if(extras.length) sbUpsert('chantiers',extras).catch(()=>{});
     }
-    if(!em && dm&&dm.length){
-      newMats=dm.length - S.mat.length;
-      S.mat=dm;
-    }
-    if(!es && ds) S.scans=ds;
-    if(!eu && du&&du.length) S.users=du;
+    if(dm&&dm.length){ newMats=dm.length-S.mat.length; S.mat=dm; }
+    if(ds) S.scans=ds;
+    if(du&&du.length) S.users=du;
 
-    const hasError=ec||em||es||eu;
-    setSyncStatus(hasError?'connecting':'connected');
-    if(hasError) toast('Sync partiel — '+(ec||em||es||eu)?.message,'warn');
-
+    setSyncStatus('connected');
     updateNotifBadge();
     if(newChantiers>0) toast(newChantiers+' nouveau(x) chantier(s) reçu(s)','info');
     else if(newMats>0) toast(newMats+' nouvel(aux) article(s) reçu(s)','info');
-
-    if(!['form','ajout_mat','nouveau_chantier','edit_chantier','inscription','login'].includes(S.page)){
-      render();
-    }
+    if(!['form','ajout_mat','nouveau_chantier','edit_chantier','inscription','login'].includes(S.page)) render();
   }catch(e){
-    console.warn('silentSync exception:',e);
+    console.warn('silentSync error:',e.message);
     setSyncStatus('offline');
-    toast('Erreur sync : '+e.message,'danger');
+    toast('Sync erreur : '+e.message,'danger');
   }
 }
 
