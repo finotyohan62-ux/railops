@@ -3189,8 +3189,8 @@ function doProfilChangePass(){
 function _unusedEquipe(el){
   const roleLabel={agent:'Agent terrain',chef:"Chef d'équipe",cte:'CTE',chef_chantier:'Chef chantier'};
   const roleBadge={agent:'b-ok',chef:'b-purple',cte:'b-warn',chef_chantier:'b-info'};
-  const roleColor={agent:'rgba(29,158,117,.15)',chef:'rgba(127,119,221,.2)',chef_chantier:'rgba(55,138,221,.15)'};
-  const roleText={agent:'#5DCAA5',chef:'#AFA9EC',chef_chantier:'#85B7EB'};
+  const roleColor={agent:'rgba(29,158,117,.15)',cte:'rgba(245,166,35,.12)',chef:'rgba(127,119,221,.2)',chef_chantier:'rgba(55,138,221,.15)'};
+  const roleText={agent:'#5DCAA5',cte:'#f5a623',chef:'#AFA9EC',chef_chantier:'#85B7EB'};
 
   el.innerHTML=`
     <div class="topbar">
@@ -3201,12 +3201,12 @@ function _unusedEquipe(el){
     </div>
 
     <!-- Stats rôles -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 16px 0">
-      ${['agent','chef','chef_chantier'].map(r=>{
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:12px 16px 0">
+      ${['agent','cte','chef','chef_chantier'].map(r=>{
         const count=S.users.filter(u=>u.role===r).length;
-        return`<div style="background:${roleColor[r]};border-radius:var(--r);padding:10px 12px;border:.5px solid rgba(255,255,255,.06)">
+        return`<div style="background:${roleColor[r]};border-radius:var(--r);padding:8px 10px;border:.5px solid rgba(255,255,255,.06)">
           <div style="font-size:20px;font-weight:500;color:${roleText[r]}">${count}</div>
-          <div style="font-size:10px;color:var(--text2);margin-top:2px">${r==='agent'?'Agents':r==='chef'?'Chefs éq.':'Chefs ch.'}</div>
+          <div style="font-size:10px;color:var(--text2);margin-top:2px">${{agent:'Agents',cte:'CTE',chef:'Chefs éq.',chef_chantier:'Chefs ch.'}[r]}</div>
         </div>`;
       }).join('')}
     </div>
@@ -3248,10 +3248,11 @@ function openEditUser(uid){
     <div style="font-size:12px;color:var(--text2);margin-bottom:16px">Badge #${u.badge}</div>
     <label class="fl">Rôle</label>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
-      ${['agent','chef','chef_chantier'].map(r=>`
+      ${['agent','cte','chef','chef_chantier'].map(r=>`
         <div onclick="document.querySelectorAll('.role-opt').forEach(x=>x.classList.remove('sel-ok'));this.classList.add('sel-ok');window._editRole='${r}';"
           class="ro role-opt${u.role===r?' sel-ok':''}" style="text-align:left;padding:10px 14px">
-          <div style="font-size:13px;font-weight:500">${roleLabel[r]}</div>
+          <div style="font-size:13px;font-weight:500">${roleLabel[r]||r}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${{agent:'Inspection terrain',cte:'Contrôleur tournées',chef:"Gestion chantier + registre",chef_chantier:'Vue globale + administration'}[r]||''}</div>
         </div>`).join('')}
     </div>
     <label class="fl">Numéro de badge</label>
@@ -3485,7 +3486,7 @@ function buildNotifs(){
 
   // Filtrer selon le rôle : chef voit ses chantiers, chef_chantier voit tout
   const mesCh=S.role==='chef'
-    ?S.chantiers.filter(c=>c.chef===S.agent)
+    ?S.chantiers.filter(c=>isChefOf(c))
     :S.chantiers;
   const mesIds=new Set(mesCh.map(c=>c.id));
   const mesMat=S.mat.filter(m=>mesIds.has(m.chantierId));
