@@ -2145,7 +2145,8 @@ function initSigPad(id){
   if(!canvas)return;
   const ctx=canvas.getContext('2d');
   canvas.width=canvas.offsetWidth;
-  let drawing=false;
+  ctx.fillStyle='#ffffff';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
   const getPos=(e)=>{
     const r=canvas.getBoundingClientRect();
     const src=e.touches?e.touches[0]:e;
@@ -2183,7 +2184,14 @@ function saveTournee(chantierId){
   const getSig=(id)=>{
     const c=document.getElementById(id);
     if(!c||isSigEmpty(id))return null;
-    return c.toDataURL('image/png');
+    // Composite sur fond blanc pour éviter la transparence en PNG
+    const tmp=document.createElement('canvas');
+    tmp.width=c.width;tmp.height=c.height;
+    const tctx=tmp.getContext('2d');
+    tctx.fillStyle='#ffffff';
+    tctx.fillRect(0,0,tmp.width,tmp.height);
+    tctx.drawImage(c,0,0);
+    return tmp.toDataURL('image/png');
   };
   const tournee={
     id:newId('TRN'),
