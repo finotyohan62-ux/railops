@@ -3752,22 +3752,86 @@ function exportPDF(){
 
 // Export PDF avec données passées directement (pour fin de chantier)
 function exportPDFData(c, mats, scans){
-  // Temporairement placer les données dans S pour réutiliser exportPDF
-  const prevC=S.curC;
-  const prevChantiers=S.chantiers;
-  const prevMat=S.mat;
-  const prevScans=S.scans;
-  // Injecter les données capturées
-  if(!S.chantiers.find(x=>x.id===c.id)) S.chantiers=[...S.chantiers,c];
-  S.mat=[...S.mat,...mats.filter(m=>!S.mat.find(x=>x.id===m.id))];
-  S.scans=[...S.scans,...scans.filter(s=>!S.scans.find(x=>x.id===s.id))];
-  S.curC=c.id;
-  exportPDF();
-  // Restaurer l'état
-  S.curC=prevC;
-  S.chantiers=prevChantiers;
-  S.mat=prevMat;
-  S.scans=prevScans;
+  const now=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const nowFull=new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const eL2=e=>({bon:'Bon état',acceptable:'Acceptable',degrade:'Dégradé','hors-service':'Hors service',inconnu:'Non inspecté'}[e]||e);
+  const eC=e=>({bon:'#1a7a3a',acceptable:'#b36a00',degrade:'#c0392b','hors-service':'#c0392b',inconnu:'#666'}[e]||'#666');
+  const pL=p=>({confirme:'Présent',absent:'Absent','non-confirme':'Non confirmé',retire:'Retiré'}[p]||p);
+  const fd=iso=>{if(!iso)return '—';const d=new Date(iso);return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});};
+  const conf=mats.filter(m=>m.presence==='confirme').length;
+  const absent=mats.filter(m=>m.presence==='absent').length;
+  const hs=mats.filter(m=>m.etat==='hors-service'||m.etat==='degrade').length;
+  const d2m=60*24*60*60*1000;
+  const retard=mats.filter(m=>!m.controle2m||(new Date()-new Date(m.controle2m.date))>d2m).length;
+  let rows='';
+  mats.forEach(m=>{
+    const lastScan=scans.filter(s=>s.materielId===m.id).slice(-1)[0];
+    rows+='<tr>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px">'+m.nom+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#666">'+m.cat+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;font-family:monospace">'+m.id+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:'+eC(m.etat)+';font-weight:500">'+eL2(m.etat)+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px">'+pL(m.presence)+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#666">'+(m.scan?fd(m.scan)+(lastScan?' · '+lastScan.agentNom:''):'—')+'</td>'
+      +'</tr>';
+  });
+  let ctrlRows='';
+  mats.forEach(m=>{
+    const last=m.controle2m;
+    const late=!last||(new Date()-new Date(last.date))>d2m;
+    ctrlRows+='<tr>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px">'+m.nom+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#666">'+(last?fd(last.date):'Jamais')+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#666">'+(last&&last.agentNom?last.agentNom:'—')+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;font-weight:500;color:'+(last&&last.resultat==='ok'?'#1a7a3a':'#c0392b')+'">'+(last?(last.resultat==='ok'?'✓ OK':'✗ Anomalie'):'—')+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;font-weight:500;color:'+(late?'#c0392b':'#1a7a3a')+'">'+(late?'⚠ En retard':'✓ OK')+'</td>'
+      +'</tr>';
+  });
+  const lastScans=[...scans].reverse().slice(0,10);
+  let inspRows='';
+  lastScans.forEach(s=>{
+    const m=mats.find(x=>x.id===s.materielId);
+    inspRows+='<tr>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px">'+(m?m.nom:s.materielId)+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#666">'+fd(s.date)+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#666">'+s.agentNom+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:'+eC(s.etatGeneral)+';font-weight:500">'+eL2(s.etatGeneral)+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#666">'+(s.observations||'—')+'</td>'
+      +'</tr>';
+  });
+  let html='<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">'
+    +'<title>Rapport — '+c.nom+'</title>'
+    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;color:#1a1a1a;padding:24px;font-size:12px}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #f5a623}.logo{font-size:20px;font-weight:700;color:#f5a623}.section{margin-bottom:24px}.section-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #eee}.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}.stat{background:#f8f8f8;border-radius:8px;padding:10px;text-align:center;border:1px solid #eee}.stat-v{font-size:22px;font-weight:700}.stat-l{font-size:10px;color:#666;margin-top:2px}table{width:100%;border-collapse:collapse}th{padding:6px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#666;background:#f8f8f8;border-bottom:2px solid #eee}.footer{margin-top:32px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#999;display:flex;justify-content:space-between}@media print{body{padding:16px}@page{margin:1.5cm}}</style>'
+    +'</head><body>'
+    +'<div class="header"><div><div class="logo">RailOps — SFERIS</div><div style="font-size:16px;font-weight:700;margin-top:4px">'+c.nom+'</div><div style="font-size:11px;color:#666;margin-top:2px">'+c.lieu+'</div>'+(c.desc?'<div style="font-size:11px;color:#666;margin-top:2px;font-style:italic">'+c.desc+'</div>':'')+'</div>'
+    +'<div style="text-align:right;font-size:11px;color:#666"><div style="font-weight:600">Rapport de clôture</div><div>Édité le '+nowFull+'</div><div style="margin-top:4px">Chef : '+c.chef+'</div><div>Début : '+(c.dateDebut||'—')+' · Fin : '+(c.dateFin||'—')+'</div></div></div>'
+    +'<div class="section"><div class="section-title">Synthèse</div><div class="stats">'
+    +'<div class="stat"><div class="stat-v">'+mats.length+'</div><div class="stat-l">Articles total</div></div>'
+    +'<div class="stat"><div class="stat-v" style="color:#1a7a3a">'+conf+'</div><div class="stat-l">Présents</div></div>'
+    +'<div class="stat"><div class="stat-v" style="color:'+(absent?'#c0392b':'#1a7a3a')+'">'+absent+'</div><div class="stat-l">Absents</div></div>'
+    +'<div class="stat"><div class="stat-v" style="color:'+(hs?'#c0392b':'#1a7a3a')+'">'+hs+'</div><div class="stat-l">Dégradés/HS</div></div>'
+    +'<div class="stat"><div class="stat-v" style="color:'+(retard?'#c0392b':'#1a7a3a')+'">'+retard+'</div><div class="stat-l">Contrôles en retard</div></div>'
+    +'</div></div>'
+    +'<div class="section"><div class="section-title">Registre ('+mats.length+' articles)</div><table><thead><tr><th>Désignation</th><th>Catégorie</th><th>Référence</th><th>État</th><th>Présence</th><th>Dernier scan</th></tr></thead><tbody>'+(rows||'<tr><td colspan="6" style="padding:12px;text-align:center;color:#999">Aucun article</td></tr>')+'</tbody></table></div>'
+    +'<div class="section"><div class="section-title">Contrôles visuels 60 jours</div><table><thead><tr><th>Article</th><th>Dernier contrôle</th><th>Agent</th><th>Résultat</th><th>Statut</th></tr></thead><tbody>'+(ctrlRows||'<tr><td colspan="5" style="padding:12px;text-align:center;color:#999">Aucun contrôle</td></tr>')+'</tbody></table></div>'
+    +(lastScans.length?'<div class="section"><div class="section-title">Dernières inspections ('+lastScans.length+')</div><table><thead><tr><th>Article</th><th>Date</th><th>Agent</th><th>État</th><th>Observations</th></tr></thead><tbody>'+inspRows+'</tbody></table></div>':'')
+    +'<div class="footer"><span>RailOps — SFERIS · Rapport généré le '+now+'</span><span>'+c.nom+' · '+c.lieu+'</span></div>'
+    +'</body></html>';
+  const blob=new Blob([html],{type:'text/html'});
+  const url=URL.createObjectURL(blob);
+  const win=window.open(url,'_blank');
+  if(win){
+    win.onload=function(){win.print();setTimeout(function(){URL.revokeObjectURL(url);},2000);};
+  } else {
+    const old2=document.getElementById('print-zone');if(old2)old2.remove();
+    const zone=document.createElement('div');
+    zone.id='print-zone';
+    zone.style.cssText='display:block;position:fixed;inset:0;background:#fff;z-index:9999;overflow:auto';
+    zone.innerHTML=html;
+    document.body.appendChild(zone);
+    setTimeout(function(){window.print();zone.remove();URL.revokeObjectURL(url);},300);
+  }
+  toast('Rapport de clôture généré','ok');
 }
 
 // ══════════════════════════════════════
