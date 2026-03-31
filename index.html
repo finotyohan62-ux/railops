@@ -3993,8 +3993,13 @@ function showSyncInfo(){
 async function manualSync(){
   const icon=document.getElementById('refresh-icon');
   if(icon){icon.style.transition='none';icon.style.animation='spin 1s linear infinite';}
+  const before={c:S.chantiers.length, m:S.mat.length};
   await silentSync();
+  const after={c:S.chantiers.length, m:S.mat.length};
   if(icon) icon.style.animation='none';
+  if(after.c===before.c && after.m===before.m){
+    toast('Sync OK — aucun changement détecté','ok');
+  }
 }
 
 // Merge intelligent : pour un même article, garde le champ le plus récent
@@ -4117,24 +4122,44 @@ async function silentSync(){
       db.from('scans').select('*'),
       db.from('users').select('*'),
     ]);
-    const {data:dc}=resC, {data:dm}=resM, {data:ds}=resS, {data:du}=resU;
+    const {data:dc,error:ec}=resC, {data:dm,error:em}=resM, {data:ds}=resS, {data:du}=resU;
+
+    if(ec||em){
+      console.warn('silentSync Supabase error:',ec||em);
+      setSyncStatus('offline');
+      return;
+    }
+
+    let newChantiers=0, newMats=0;
 
     if(dc&&dc.length){
       const ids=new Set(dc.map(x=>x.id));
       const extras=S.chantiers.filter(x=>!ids.has(x.id));
+      newChantiers=dc.length - S.chantiers.filter(c=>ids.has(c.id)).length;
       S.chantiers=[...dc,...extras];
       if(extras.length) db.from('chantiers').upsert(extras,{onConflict:'id'}).catch(()=>{});
     }
-    if(dm&&dm.length) S.mat=dm;
+    if(dm&&dm.length){
+      newMats=dm.length - S.mat.length;
+      S.mat=dm;
+    }
     if(ds) S.scans=ds;
     if(du&&du.length) S.users=du;
 
     setSyncStatus('connected');
     updateNotifBadge();
+
+    // Toast si nouvelles données détectées
+    if(newChantiers>0) toast(newChantiers+' nouveau(x) chantier(s) reçu(s)','info');
+    else if(newMats>0) toast(newMats+' nouvel(aux) article(s) reçu(s)','info');
+
     if(!['form','ajout_mat','nouveau_chantier','edit_chantier','inscription','login'].includes(S.page)){
       render();
     }
-  }catch(e){ setSyncStatus('offline'); }
+  }catch(e){
+    console.warn('silentSync error:',e);
+    setSyncStatus('offline');
+  }
 }
 
 // Polling toutes les 15s (plus réactif)
