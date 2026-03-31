@@ -657,9 +657,12 @@ function render(){
   app.innerHTML=`
     <div class="sb" style="padding:6px 16px"><div style="background:transparent;border-radius:8px;padding:2px 4px;display:inline-flex"><img src="data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 120 40%22%3E%3Crect width%3D%22120%22 height%3D%2240%22 rx%3D%226%22 fill%3D%22%23f5a623%22%2F%3E%3Ctext x%3D%2260%22 y%3D%2226%22 text-anchor%3D%22middle%22 font-family%3D%22Arial%2Csans-serif%22 font-weight%3D%22700%22 font-size%3D%2216%22 fill%3D%22%23fff%22%3ERailOps%3C%2Ftext%3E%3C%2Fsvg%3E" alt="SFERIS" style="height:22px;display:block;object-fit:contain"></div><div style="display:flex;align-items:center;gap:8px">
       <div style="position:relative;display:flex;align-items:center">
-        <div id="sync-dot" onclick="showSyncInfo()" style="width:8px;height:8px;border-radius:50%;background:#e24b4a;flex-shrink:0;cursor:pointer;transition:background .5s" title="Sync hors ligne"></div>
+        <div id="sync-dot" onclick="manualSync()" style="width:8px;height:8px;border-radius:50%;background:#e24b4a;flex-shrink:0;cursor:pointer;transition:background .5s" title="Sync hors ligne"></div>
         <div id="offline-badge" onclick="flushOfflineQueue()" title="Inspections en attente — appuie pour synchroniser" style="display:none;position:absolute;top:-8px;left:6px;min-width:16px;height:16px;border-radius:8px;background:var(--accent);color:#1a0a00;font-size:9px;font-weight:700;line-height:16px;text-align:center;padding:0 3px;cursor:pointer;z-index:10"></div>
       </div>
+      <button id="refresh-btn" onclick="manualSync()" title="Actualiser les données" style="background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;color:var(--text3)">
+        <svg id="refresh-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
       <button onclick="openNotifs()" style="position:relative;background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;color:var(--text2)" title="Notifications">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span id="notif-badge" style="display:none;position:absolute;top:0;right:0;min-width:16px;height:16px;border-radius:8px;background:#e24b4a;color:#fff;font-size:9px;font-weight:700;line-height:16px;text-align:center;padding:0 3px"></span>
@@ -3983,8 +3986,15 @@ function updateSyncDot(){
 }
 
 function showSyncInfo(){
-  const msgs={connected:'🟢 Sync temps réel actif\nLes modifications des autres appareils apparaissent instantanément.',connecting:'🟡 Connexion Supabase en cours…',offline:'🔴 Mode hors ligne\nLes données sont sauvegardées localement et synchronisées dès la reconnexion.'};
+  const msgs={connected:'🟢 Synchronisé',connecting:'🟡 Connexion en cours…',offline:'🔴 Hors ligne'};
   toast(msgs[S.syncStatus]||'Statut inconnu', S.syncStatus==='connected'?'ok':S.syncStatus==='connecting'?'warn':'danger');
+}
+
+async function manualSync(){
+  const icon=document.getElementById('refresh-icon');
+  if(icon){icon.style.transition='none';icon.style.animation='spin 1s linear infinite';}
+  await silentSync();
+  if(icon) icon.style.animation='none';
 }
 
 // Merge intelligent : pour un même article, garde le champ le plus récent
