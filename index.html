@@ -25,6 +25,13 @@
   --border:rgba(0,0,0,0.1);
   background:#f4f5f7;
 }
+.theme-sferis{
+  --bg:#1a1a1a;--bg2:#242424;--bg3:#2e2e2e;--bg4:#383838;
+  --accent:#F47920;--text:#f0f0f0;--text2:#a0a0a0;--text3:#666666;
+  --danger:#e24b4a;--success:#1D9E75;--info:#378ADD;
+  --border:rgba(255,255,255,0.1);
+  background:#1a1a1a;
+}
 html,body{height:100%;width:100%;background:#000;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:0;}
 #app{position:fixed;inset:0;width:100%;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;margin:0;padding:0;padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
 .screen{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:20px}
@@ -177,14 +184,25 @@ const DEF_MAT=[
 // THEME
 // ══════════════════════════════════════
 function applyTheme(t){
-  document.documentElement.classList.toggle('theme-light', t==='light');
-  document.getElementById('app')?.classList.toggle('theme-light', t==='light');
-  document.body.style.background=t==='light'?'#f4f5f7':'#000';
+  document.documentElement.classList.remove('theme-light','theme-sferis');
+  document.getElementById('app')?.classList.remove('theme-light','theme-sferis');
+  if(t==='light'){
+    document.documentElement.classList.add('theme-light');
+    document.getElementById('app')?.classList.add('theme-light');
+    document.body.style.background='#f4f5f7';
+  } else if(t==='sferis'){
+    document.documentElement.classList.add('theme-sferis');
+    document.getElementById('app')?.classList.add('theme-sferis');
+    document.body.style.background='#1a1a1a';
+  } else {
+    document.body.style.background='#000';
+  }
   try{localStorage.setItem('ro_theme',t);}catch(e){}
 }
 function toggleTheme(){
   const cur=localStorage.getItem('ro_theme')||'dark';
-  applyTheme(cur==='dark'?'light':'dark');
+  const next={dark:'light',light:'sferis',sferis:'dark'}[cur]||'dark';
+  applyTheme(next);
 }
 // Appliquer le thème sauvegardé au chargement
 (function(){
@@ -3128,15 +3146,17 @@ function openProfil(){
       Gestion des comptes
     </button>`:''}
     <!-- Thème -->
-    <div class="tgl-row" style="margin-bottom:8px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:18px">${localStorage.getItem('ro_theme')==='light'?'☀️':'🌙'}</span>
-        <div>
-          <div style="font-size:13px;color:var(--text)">Thème ${localStorage.getItem('ro_theme')==='light'?'Clair':'Sombre'}</div>
-          <div style="font-size:11px;color:var(--text3)">Appuie pour changer</div>
-        </div>
+    <div style="background:var(--bg3);border-radius:10px;padding:12px 14px;border:.5px solid var(--border);margin-bottom:8px">
+      <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:10px">🎨 Thème</div>
+      <div style="display:flex;gap:8px">
+        ${['dark','light','sferis'].map(t=>{
+          const cur=localStorage.getItem('ro_theme')||'dark';
+          const labels={dark:'🌙 Sombre',light:'☀️ Clair',sferis:'🟠 SFERIS'};
+          const colors={dark:'var(--bg4)',light:'rgba(255,255,255,.1)',sferis:'rgba(244,121,32,.15)'};
+          const borders={dark:'var(--border)',light:'rgba(255,255,255,.2)',sferis:'rgba(244,121,32,.4)'};
+          return `<div onclick="applyTheme('${t}');document.getElementById('movl')?.remove();setTimeout(openProfil,50)" style="flex:1;padding:8px 4px;text-align:center;border-radius:8px;cursor:pointer;border:.5px solid ${cur===t?'var(--accent)':'var(--border)'};background:${cur===t?'rgba(61,181,74,.1)':'var(--bg4)'};font-size:11px;color:${cur===t?'var(--accent)':'var(--text2)'};font-weight:${cur===t?'600':'400'}">${labels[t]}</div>`;
+        }).join('')}
       </div>
-      <div class="tgl ${localStorage.getItem('ro_theme')==='light'?'on':''}" onclick="toggleTheme();document.getElementById('movl')?.remove();setTimeout(openProfil,50)"><div class="tgl-th"></div></div>
     </div>
     <!-- Déconnexion -->
     <button onclick="confirmLogout()" class="btn btn-outline" style="display:flex;align-items:center;justify-content:center;gap:8px;color:#F09595;border-color:rgba(226,75,74,.3)">
