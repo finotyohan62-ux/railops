@@ -1942,13 +1942,17 @@ async function doTerminer(){
   }catch(e){console.warn('Erreur suppression Supabase:',e);}
   const existing=document.getElementById('movl');if(existing)existing.remove();
   // Générer le PDF avant de vider S.curC
-  const savedCurC=chantierId;
+  // Capturer les données AVANT suppression
+  const pdfC=S.chantiers.find(x=>x.id===chantierId);
+  const pdfMats=S.mat.filter(m=>m.chantierId===chantierId);
+  const pdfScans=S.scans.filter(s=>s.chantierId===chantierId);
+
   S.curC=null;
   S.page=S.role==='chef'?'chantiers':'dashboard';
   render();
   setTimeout(()=>toast('Chantier terminé — rapport PDF en cours…','ok'),80);
-  // Générer le PDF avec les données encore en mémoire
-  setTimeout(()=>{S.curC=savedCurC;exportPDF();S.curC=null;},600);
+  // Générer le PDF avec les données capturées
+  if(pdfC) setTimeout(()=>exportPDFData(pdfC, pdfMats, pdfScans),600);
 }
 
 // ══════════════════════════════════════
@@ -3745,6 +3749,26 @@ function exportPDF(){
   toast('Rapport généré — enregistre en PDF depuis la boite impression','ok');
 }
 
+
+// Export PDF avec données passées directement (pour fin de chantier)
+function exportPDFData(c, mats, scans){
+  // Temporairement placer les données dans S pour réutiliser exportPDF
+  const prevC=S.curC;
+  const prevChantiers=S.chantiers;
+  const prevMat=S.mat;
+  const prevScans=S.scans;
+  // Injecter les données capturées
+  if(!S.chantiers.find(x=>x.id===c.id)) S.chantiers=[...S.chantiers,c];
+  S.mat=[...S.mat,...mats.filter(m=>!S.mat.find(x=>x.id===m.id))];
+  S.scans=[...S.scans,...scans.filter(s=>!S.scans.find(x=>x.id===s.id))];
+  S.curC=c.id;
+  exportPDF();
+  // Restaurer l'état
+  S.curC=prevC;
+  S.chantiers=prevChantiers;
+  S.mat=prevMat;
+  S.scans=prevScans;
+}
 
 // ══════════════════════════════════════
 // PWA — MANIFEST + SERVICE WORKER
