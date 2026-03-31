@@ -375,13 +375,15 @@ async function saveChantier(id){
   const c=S.chantiers.find(x=>x.id===id);if(!c)return;
   try{
     localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));
-    // Colonnes connues de la table Supabase (jsonb pour tableaux)
+    // Seulement les colonnes qui existent dans la table Supabase
     const row={
-      id:c.id, nom:c.nom, lieu:c.lieu, chef:c.chef||'',
-      chefs:c.chefs||[], agents:c.agents||[],
-      statut:c.statut||'actif', desc:c.desc||'',
-      dateDebut:c.dateDebut||'', dateFin:c.dateFin||'',
-      tournees:c.tournees||[]
+      id:c.id, nom:c.nom||'', lieu:c.lieu||'',
+      chef:c.chefs?.[0]||c.chef||'',
+      statut:c.statut||'actif',
+      desc:c.desc||'',
+      dateDebut:c.dateDebut||'',
+      dateFin:c.dateFin||'',
+      agents:c.agents||[]
     };
     const {error}=await db.from('chantiers').upsert([row],{onConflict:'id'});
     if(error) toast('Erreur sync chantier : '+error.message,'danger');
@@ -1634,8 +1636,12 @@ function processRows(rows){
     if(!idRaw) idRaw = nom.replace(/\s/g,'-').replace(/[^a-zA-Z0-9\-]/g,'').substring(0,20)+'-'+i;
     const id = idRaw || newId('MAT');
 
-    // Éviter les vrais doublons
-    if(S.mat.find(m=>m.id===id)){skipped++;continue;}
+    // Si l'article existe déjà → mettre à jour l'échéance (ré-import)
+    const existingIdx=S.mat.findIndex(m=>m.id===id);
+    if(existingIdx!==-1){
+      if(echeance) S.mat[existingIdx].echeance=echeance;
+      skipped++;continue;
+    }
 
     // État
     let etat = 'inconnu';
@@ -1670,8 +1676,9 @@ function processRows(rows){
     db.from('materiels').upsert(newMats,{onConflict:'id'}).then(()=>{},e=>console.warn('import:',e));
   }
   renderTab();
+  const updated=skipped; // les "skippés" sont en fait mis à jour
   const info=hasHeader?` (ref col.${iId}, nom col.${iNom})`:'';
-  toast(added+' article(s) importé(s)'+(skipped?' · '+skipped+' ignoré(s)':'')+info,'ok');
+  toast(added+' ajouté(s)'+(updated?' · '+updated+' mis à jour':'')+info,'ok');
 }
 
 
@@ -2470,11 +2477,11 @@ async function creerC(){
   try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
   // Upsert Supabase direct et attendu
   const row={
-    id:c.id, nom:c.nom, lieu:c.lieu, chef:c.chef||'',
-    chefs:c.chefs||[], agents:c.agents||[],
+    id:c.id, nom:c.nom, lieu:c.lieu,
+    chef:c.chefs?.[0]||c.chef||'',
     statut:c.statut||'actif', desc:c.desc||'',
     dateDebut:c.dateDebut||'', dateFin:c.dateFin||'',
-    tournees:[]
+    agents:c.agents||[]
   };
   try{
     const {error}=await db.from('chantiers').upsert([row],{onConflict:'id'});
