@@ -3657,11 +3657,15 @@ async function sendRapportMail(destinataire, chantierId){
 
   try{
     if(typeof emailjs==='undefined') throw new Error('EmailJS non chargé');
-    await emailjs.send(EJS_SERVICE, EJS_TEMPLATE, params);
+    // Réinitialiser au cas où
+    emailjs.init(EJS_PUBLIC);
+    const result = await emailjs.send(EJS_SERVICE, EJS_TEMPLATE, params);
+    console.log('EmailJS result:', result);
     toast('Rapport envoyé à '+destinataire+' ✓','ok');
   }catch(e){
-    toast('Erreur envoi mail — vérifie ta connexion','danger');
-    console.error(e);
+    console.error('EmailJS error:', e);
+    const msg = e?.text || e?.message || JSON.stringify(e);
+    toast('Erreur mail : '+msg,'danger');
   }
 }
 
