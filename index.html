@@ -1029,9 +1029,9 @@ function pgDashChefChantier(el){
   const topDegrades=Object.entries(degrades).sort((a,b)=>b[1]-a[1]).slice(0,5);
 
   // Par chef d'équipe
-  const chefs=[...new Set(S.chantiers.flatMap(c=>c.chefs||[c.chef]).filter(Boolean))];
+  const chefs=[...new Set(S.chantiers.flatMap(c=>(c.chefs&&c.chefs.length>0)?c.chefs:[c.chef]).filter(Boolean))];
   const parChef=chefs.map(chef=>{
-    const chs=S.chantiers.filter(c=>(c.chefs||[c.chef]).includes(chef));
+    const chs=S.chantiers.filter(c=>(c.chefs&&c.chefs.length>0)?c.chefs.includes(chef):c.chef===chef);
     const ids=new Set(chs.map(c=>c.id));
     const mats=S.mat.filter(m=>ids.has(m.chantierId));
     const ab=mats.filter(m=>m.presence==='absent').length;
@@ -2152,10 +2152,10 @@ function initSigPad(id){
     return{x:(src.clientX-r.left)*(canvas.width/r.width),y:(src.clientY-r.top)*(canvas.height/r.height)};
   };
   canvas.addEventListener('mousedown',e=>{drawing=true;const p=getPos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);});
-  canvas.addEventListener('mousemove',e=>{if(!drawing)return;const p=getPos(e);ctx.lineTo(p.x,p.y);ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--text')||'#f0f0f0';ctx.lineWidth=2;ctx.lineCap='round';ctx.stroke();});
+  canvas.addEventListener('mousemove',e=>{if(!drawing)return;const p=getPos(e);ctx.lineTo(p.x,p.y);ctx.strokeStyle='#1a1a1a';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();});
   canvas.addEventListener('mouseup',()=>drawing=false);
   canvas.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;const p=getPos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);},{passive:false});
-  canvas.addEventListener('touchmove',e=>{e.preventDefault();if(!drawing)return;const p=getPos(e);ctx.lineTo(p.x,p.y);ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--text')||'#f0f0f0';ctx.lineWidth=2;ctx.lineCap='round';ctx.stroke();},{passive:false});
+  canvas.addEventListener('touchmove',e=>{e.preventDefault();if(!drawing)return;const p=getPos(e);ctx.lineTo(p.x,p.y);ctx.strokeStyle='#1a1a1a';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();},{passive:false});
   canvas.addEventListener('touchend',()=>drawing=false);
 }
 
