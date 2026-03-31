@@ -1910,18 +1910,39 @@ function confirmTerminer(){
       <div style="font-size:16px;font-weight:500;color:var(--text)">Terminer le chantier</div>
       <div style="font-size:13px;color:var(--text2);margin-top:6px">Ce chantier disparaîtra de l'application.<br>L'historique des inspections est conservé.</div>
     </div>
-    <div style="background:var(--bg3);border-radius:10px;padding:10px 14px;margin-bottom:16px">
+    <div style="background:var(--bg3);border-radius:10px;padding:10px 14px;margin-bottom:14px">
       <div style="font-size:11px;color:var(--text3)">Articles dans ce chantier : <strong style="color:var(--text)">${matOfC(S.curC).length} article(s)</strong></div>
       <div style="font-size:11px;color:var(--text3);margin-top:4px">Inspections réalisées : <strong style="color:var(--text)">${S.scans.filter(s=>s.chantierId===S.curC).length} inspection(s)</strong></div>
     </div>
+    <!-- Option envoi mail -->
+    <div style="background:var(--bg3);border-radius:10px;padding:12px 14px;margin-bottom:16px;border:.5px solid var(--border)">
+      <div class="tgl-row" style="background:transparent;border:none;padding:0;margin-bottom:0" id="mail-toggle-row">
+        <div>
+          <div style="font-size:13px;color:var(--text)">📧 Envoyer le rapport par mail</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">Optionnel — consomme 1 mail sur votre quota</div>
+        </div>
+        <div class="tgl" id="mail-tgl" onclick="toggleMailOpt()"><div class="tgl-th"></div></div>
+      </div>
+      <div id="mail-input-wrap" style="display:none;margin-top:10px">
+        <input class="fi" id="mail-dest" type="email" placeholder="adresse@exemple.fr" style="font-size:13px">
+      </div>
+    </div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-outline" onclick="document.getElementById('movl').remove()" style="flex:1">Annuler</button>
-      <button class="btn btn-danger" onclick="doTerminer()" style="flex:1">Terminer et archiver</button>
+      <button class="btn btn-danger" onclick="doTerminer()" style="flex:1">Terminer</button>
     </div>
   </div>`;
   div.addEventListener('click',e=>{if(e.target===div)div.remove();});
   document.getElementById('app').appendChild(div);
 }
+function toggleMailOpt(){
+  const tgl=document.getElementById('mail-tgl');
+  const wrap=document.getElementById('mail-input-wrap');
+  if(!tgl||!wrap)return;
+  const isOn=tgl.classList.toggle('on');
+  wrap.style.display=isOn?'block':'none';
+}
+
 async function doTerminer(){
   const chantierId=S.curC;
   S.chantiers=S.chantiers.filter(c=>c.id!==chantierId);
@@ -1936,11 +1957,17 @@ async function doTerminer(){
     await db.from('chantiers').delete().eq('id',chantierId);
     await db.from('materiels').delete().eq('chantierId',chantierId);
   }catch(e){console.warn('Erreur suppression Supabase:',e);}
+  // Envoi mail si activé
+  const mailOn=document.getElementById('mail-tgl')?.classList.contains('on');
+  const mailDest=document.getElementById('mail-dest')?.value.trim();
   const existing=document.getElementById('movl');if(existing)existing.remove();
   S.curC=null;
   S.page=S.role==='chef'?'chantiers':'dashboard';
   render();
   setTimeout(()=>toast('Chantier terminé','ok'),80);
+  if(mailOn&&mailDest){
+    setTimeout(()=>sendRapportMail(mailDest, chantierId),500);
+  }
 }
 
 // ══════════════════════════════════════
@@ -3588,6 +3615,55 @@ setInterval(async()=>{
   }catch(e){ setSyncStatus('offline'); }
 },300000);
 
+
+// ══════════════════════════════════════
+// EMAILJS
+// ══════════════════════════════════════
+const EJS_PUBLIC='Ms12jXSFA4fMNoDqn';
+const EJS_SERVICE='service_xkke96l';
+const EJS_TEMPLATE='template_6d27dpc';
+
+(function(){
+  if(typeof emailjs!=='undefined') emailjs.init(EJS_PUBLIC);
+})();
+
+async function sendRapportMail(destinataire, chantierId){
+  const c=S.chantiers.find(x=>x.id===chantierId)||{nom:'Chantier',lieu:'',chef:S.agent};
+  const mats=S.mat.filter(m=>m.chantierId===chantierId);
+  const scans=S.scans.filter(s=>s.chantierId===chantierId);
+  const now=new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const d2m=60*24*60*60*1000;
+  const retard=mats.filter(m=>!m.controle2m||(new Date()-new Date(m.controle2m.date))>d2m).length;
+
+  // Résumé texte du registre
+  let lignes='';
+  mats.forEach(m=>{
+    const eL={bon:'Bon état',acceptable:'Acceptable',degrade:'Dégradé','hors-service':'Hors service',inconnu:'Non inspecté'}[m.etat]||m.etat;
+    const pL={confirme:'Présent',absent:'Absent','non-confirme':'Non confirmé',retire:'Retiré'}[m.presence]||m.presence;
+    lignes+=m.nom+' - '+eL+' - '+pL+'\n';
+  });
+
+  const params={
+    chantier_nom: c.nom,
+    chantier_lieu: c.lieu||'—',
+    chantier_chef: c.chef||S.agent,
+    date: now,
+    nb_articles: mats.length,
+    nb_inspections: scans.length,
+    nb_retard: retard,
+    rapport_contenu: lignes||'Aucun article',
+    to_email: destinataire,
+  };
+
+  try{
+    if(typeof emailjs==='undefined') throw new Error('EmailJS non chargé');
+    await emailjs.send(EJS_SERVICE, EJS_TEMPLATE, params);
+    toast('Rapport envoyé à '+destinataire+' ✓','ok');
+  }catch(e){
+    toast('Erreur envoi mail — vérifie ta connexion','danger');
+    console.error(e);
+  }
+}
 
 // ══════════════════════════════════════
 // EXPORT PDF
