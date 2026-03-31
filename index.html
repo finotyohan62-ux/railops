@@ -1928,6 +1928,11 @@ function confirmTerminer(){
 }
 async function doTerminer(){
   const chantierId=S.curC;
+  // Capturer les données AVANT suppression
+  const pdfC=S.chantiers.find(x=>x.id===chantierId);
+  const pdfMats=S.mat.filter(m=>m.chantierId===chantierId);
+  const pdfScans=S.scans.filter(s=>s.chantierId===chantierId);
+
   S.chantiers=S.chantiers.filter(c=>c.id!==chantierId);
   S.mat=S.mat.filter(m=>m.chantierId!==chantierId);
   // Sauvegarder localement
@@ -1935,24 +1940,17 @@ async function doTerminer(){
     localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));
     localStorage.setItem('ro3_m',JSON.stringify(S.mat));
   }catch(e){}
-  // Supprimer dans Supabase (critique pour éviter le retour du chantier)
+  // Supprimer dans Supabase
   try{
     await db.from('chantiers').delete().eq('id',chantierId);
     await db.from('materiels').delete().eq('chantierId',chantierId);
   }catch(e){console.warn('Erreur suppression Supabase:',e);}
   const existing=document.getElementById('movl');if(existing)existing.remove();
-  // Générer le PDF avant de vider S.curC
-  // Capturer les données AVANT suppression
-  const pdfC=S.chantiers.find(x=>x.id===chantierId);
-  const pdfMats=S.mat.filter(m=>m.chantierId===chantierId);
-  const pdfScans=S.scans.filter(s=>s.chantierId===chantierId);
-
   S.curC=null;
   S.page=S.role==='chef'?'chantiers':'dashboard';
   render();
   setTimeout(()=>toast('Chantier terminé — rapport PDF en cours…','ok'),80);
-  // Générer le PDF avec les données capturées
-  if(pdfC) setTimeout(()=>exportPDFData(pdfC, pdfMats, pdfScans),600);
+  if(pdfC) setTimeout(()=>exportPDFData(pdfC, pdfMats, pdfScans),800);
 }
 
 // ══════════════════════════════════════
