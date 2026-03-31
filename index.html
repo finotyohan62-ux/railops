@@ -375,15 +375,16 @@ async function saveChantier(id){
   const c=S.chantiers.find(x=>x.id===id);if(!c)return;
   try{
     localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));
-    // Seulement les colonnes qui existent dans la table Supabase
     const row={
       id:c.id, nom:c.nom||'', lieu:c.lieu||'',
       chef:c.chefs?.[0]||c.chef||'',
+      chefs:c.chefs||[],
       statut:c.statut||'actif',
       desc:c.desc||'',
       dateDebut:c.dateDebut||'',
       dateFin:c.dateFin||'',
-      agents:c.agents||[]
+      agents:c.agents||[],
+      tournees:c.tournees||[]
     };
     const {error}=await db.from('chantiers').upsert([row],{onConflict:'id'});
     if(error) toast('Erreur sync chantier : '+error.message,'danger');
@@ -2205,7 +2206,7 @@ function saveTournee(chantierId){
   S.chantiers[idx].tournees=S.chantiers[idx].tournees.filter(t=>new Date(t.createdAt||t.date)>=cutoff);
   _tourneePhotos=[];
   _tourneeType=null;
-  save();
+  saveChantier(chantierId);
   renderTab();
   toast('Tournée enregistrée ✓','ok');
 }
@@ -2479,9 +2480,10 @@ async function creerC(){
   const row={
     id:c.id, nom:c.nom, lieu:c.lieu,
     chef:c.chefs?.[0]||c.chef||'',
+    chefs:c.chefs||[],
     statut:c.statut||'actif', desc:c.desc||'',
     dateDebut:c.dateDebut||'', dateFin:c.dateFin||'',
-    agents:c.agents||[]
+    agents:c.agents||[], tournees:[]
   };
   try{
     const {error}=await db.from('chantiers').upsert([row],{onConflict:'id'});
