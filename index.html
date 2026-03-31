@@ -1978,91 +1978,93 @@ function tabTournee(el){
   el.innerHTML=`
     <div style="padding:10px 16px 20px">
       <!-- Statut semaine -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-        <div class="stat-card" style="text-align:center;border-color:${lundiFaite?'rgba(61,181,74,.3)':'rgba(226,75,74,.3)'}">
-          <div style="font-size:22px;margin-bottom:4px">${lundiFaite?'✅':'⏳'}</div>
-          <div class="sl" style="color:${lundiFaite?'#3db54a':'#F09595'}">Tournée lundi</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div style="background:var(--bg2);border-radius:10px;padding:10px;text-align:center;border:.5px solid ${lundiFaite?'rgba(61,181,74,.3)':'rgba(226,75,74,.2)'}">
+          <div style="font-size:18px;margin-bottom:2px">${lundiFaite?'✅':'⏳'}</div>
+          <div style="font-size:11px;color:${lundiFaite?'#3db54a':'#F09595'}">Tournée lundi</div>
         </div>
-        <div class="stat-card" style="text-align:center;border-color:${secondeFaite?'rgba(61,181,74,.3)':'rgba(226,75,74,.3)'}">
-          <div style="font-size:22px;margin-bottom:4px">${secondeFaite?'✅':'⏳'}</div>
-          <div class="sl" style="color:${secondeFaite?'#3db54a':'#F09595'}">2ème tournée</div>
+        <div style="background:var(--bg2);border-radius:10px;padding:10px;text-align:center;border:.5px solid ${secondeFaite?'rgba(61,181,74,.3)':'rgba(226,75,74,.2)'}">
+          <div style="font-size:18px;margin-bottom:2px">${secondeFaite?'✅':'⏳'}</div>
+          <div style="font-size:11px;color:${secondeFaite?'#3db54a':'#F09595'}">2ème tournée</div>
         </div>
       </div>
 
       ${canCreate?`
       <!-- Nouvelle tournée -->
-      <div style="background:var(--bg3);border-radius:var(--r);padding:14px;border:.5px solid var(--border);margin-bottom:14px">
-        <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:12px">Nouvelle tournée</div>
-        <label class="fl" style="margin-top:0">Type *</label>
-        <div style="display:flex;gap:8px;margin-bottom:10px">
-          <div id="tv-lundi" onclick="selTourneeType('lundi')" style="flex:1;border:.5px solid var(--border);border-radius:10px;padding:10px;text-align:center;cursor:pointer;background:var(--bg4);transition:all .15s">
+      <div style="background:var(--bg3);border-radius:var(--r);padding:12px;border:.5px solid var(--border);margin-bottom:12px">
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Nouvelle tournée</div>
+
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <div id="tv-lundi" onclick="selTourneeType('lundi')" style="flex:1;border:.5px solid var(--border);border-radius:8px;padding:8px 6px;text-align:center;cursor:pointer;background:var(--bg4);transition:all .15s">
             <div style="font-size:12px;font-weight:500;color:var(--text)">Lundi</div>
-            <div style="font-size:10px;color:var(--text3);margin-top:2px">Tournée obligatoire</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:1px">Obligatoire</div>
           </div>
-          <div id="tv-seconde" onclick="selTourneeType('seconde')" style="flex:1;border:.5px solid var(--border);border-radius:10px;padding:10px;text-align:center;cursor:pointer;background:var(--bg4);transition:all .15s">
+          <div id="tv-seconde" onclick="selTourneeType('seconde')" style="flex:1;border:.5px solid var(--border);border-radius:8px;padding:8px 6px;text-align:center;cursor:pointer;background:var(--bg4);transition:all .15s">
             <div style="font-size:12px;font-weight:500;color:var(--text)">2ème tournée</div>
-            <div style="font-size:10px;color:var(--text3);margin-top:2px">Dans la semaine</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:1px">Dans la semaine</div>
           </div>
         </div>
-        <label class="fl">Date *</label>
-        <input class="fi" type="date" id="tv-date" value="${new Date().toISOString().split('T')[0]}" style="margin-bottom:10px">
-        <label class="fl">Agent présent *</label>
-        <select class="fi" id="tv-agent" style="margin-bottom:10px">
-          <option value="">-- Sélectionner l'agent --</option>
-          ${S.users.filter(u=>u.role==='agent'&&(c.agents||[]).includes(u.nom)).map(u=>`<option value="${u.nom}">${u.nom}</option>`).join('')}
-        </select>
-        <label class="fl">Observations générales</label>
-        <textarea class="fi" id="tv-obs" rows="2" placeholder="Remarques sur la tournée…" style="margin-bottom:10px"></textarea>
-        <!-- Photos -->
-        <label class="fl" style="margin-top:0">📷 Photos avec légende</label>
-        <div id="tv-photos-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
-        <button onclick="addTourneePhoto()" style="width:100%;background:var(--bg4);border:.5px solid var(--border);border-radius:10px;padding:10px;font-size:12px;color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div>
+            <label class="fl" style="margin-top:0;margin-bottom:4px">Date *</label>
+            <input class="fi" type="date" id="tv-date" value="${new Date().toISOString().split('T')[0]}" style="font-size:13px;padding:8px 10px">
+          </div>
+          <div>
+            <label class="fl" style="margin-top:0;margin-bottom:4px">Agent *</label>
+            <select class="fi" id="tv-agent" style="font-size:13px;padding:8px 10px">
+              <option value="">-- Choisir --</option>
+              ${S.users.filter(u=>u.role==='agent'&&(c.agents||[]).includes(u.nom)).map(u=>`<option value="${u.nom}">${u.nom.split(' ')[0]}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+
+        <label class="fl" style="margin-top:0;margin-bottom:4px">Observations</label>
+        <textarea class="fi" id="tv-obs" rows="2" placeholder="Remarques…" style="margin-bottom:8px;font-size:13px;padding:8px 10px"></textarea>
+
+        <label class="fl" style="margin-top:0;margin-bottom:4px">📷 Photos</label>
+        <div id="tv-photos-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px"></div>
+        <button onclick="addTourneePhoto()" style="width:100%;background:var(--bg4);border:.5px solid var(--border);border-radius:8px;padding:8px;font-size:11px;color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:10px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
           Ajouter une photo
         </button>
-        <!-- Signatures -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+
+        <!-- Signatures côte à côte, canvas haute résolution -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
           <div>
-            <div style="font-size:11px;color:var(--text3);margin-bottom:6px">Signature agent</div>
-            <canvas id="sig-agent" width="150" height="80" style="border:.5px solid var(--border);border-radius:8px;background:var(--bg4);touch-action:none;width:100%;cursor:crosshair"></canvas>
-            <button onclick="clearSig('agent')" style="background:none;border:none;color:var(--text3);font-size:10px;cursor:pointer;font-family:inherit;margin-top:2px">Effacer</button>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:500">✍️ Agent</div>
+            <canvas id="sig-agent" width="300" height="120" style="border:.5px solid var(--border);border-radius:8px;background:#fff;touch-action:none;width:100%;display:block;cursor:crosshair"></canvas>
+            <button onclick="clearSig('agent')" style="background:none;border:none;color:var(--text3);font-size:10px;cursor:pointer;font-family:inherit;margin-top:2px;padding:0">Effacer</button>
           </div>
           <div>
-            <div style="font-size:11px;color:var(--text3);margin-bottom:6px">Signature CTE/Chef</div>
-            <canvas id="sig-cte" width="150" height="80" style="border:.5px solid var(--border);border-radius:8px;background:var(--bg4);touch-action:none;width:100%;cursor:crosshair"></canvas>
-            <button onclick="clearSig('cte')" style="background:none;border:none;color:var(--text3);font-size:10px;cursor:pointer;font-family:inherit;margin-top:2px">Effacer</button>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:500">✍️ CTE/Chef</div>
+            <canvas id="sig-cte" width="300" height="120" style="border:.5px solid var(--border);border-radius:8px;background:#fff;touch-action:none;width:100%;display:block;cursor:crosshair"></canvas>
+            <button onclick="clearSig('cte')" style="background:none;border:none;color:var(--text3);font-size:10px;cursor:pointer;font-family:inherit;margin-top:2px;padding:0">Effacer</button>
           </div>
         </div>
-        <button onclick="saveTournee('${c.id}')" class="btn btn-accent">Enregistrer la tournée</button>
+        <button onclick="saveTournee('${c.id}')" class="btn btn-accent" style="font-size:13px;padding:11px">Enregistrer la tournée</button>
       </div>`:''}
 
       <!-- Historique tournées -->
-      <div style="font-size:11px;font-weight:500;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;margin-bottom:10px">Historique</div>
+      <div style="font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;margin-bottom:8px">Historique</div>
       ${tournees.length===0?`<div style="text-align:center;padding:20px 0;color:var(--text3);font-size:13px">Aucune tournée enregistrée</div>`:''}
       ${tournees.map(t=>`
-        <div class="card" style="margin-bottom:8px">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">
-            <div>
-              <span class="badge" style="background:${t.type==='lundi'?'rgba(61,181,74,.15)':'rgba(55,138,221,.15)'};color:${t.type==='lundi'?'#3db54a':'#85B7EB'}">${t.type==='lundi'?'Lundi':'2ème tournée'}</span>
-              <div style="font-size:12px;color:var(--text2);margin-top:4px">${t.date} · ${t.auteur}</div>
-              ${t.agentPresent?`<div style="font-size:11px;color:var(--text3);margin-top:2px">Agent : ${t.agentPresent}</div>`:''}
+        <div class="card" style="margin-bottom:8px;padding:10px 12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="badge" style="background:${t.type==='lundi'?'rgba(61,181,74,.15)':'rgba(55,138,221,.15)'};color:${t.type==='lundi'?'#3db54a':'#85B7EB'};font-size:10px">${t.type==='lundi'?'Lundi':'2ème'}</span>
+              <span style="font-size:11px;color:var(--text2)">${t.date}</span>
             </div>
-            <div style="font-size:10px;color:var(--text3)">${t.weekKey}</div>
+            <span style="font-size:10px;color:var(--text3)">${t.auteur?.split(' ')[0]||''}</span>
           </div>
-          ${t.observations?`<div style="font-size:12px;color:var(--text2);margin-bottom:8px">${t.observations}</div>`:''}
-          ${(t.photos||[]).length>0?`
-            <div style="margin-bottom:8px">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:6px">${t.photos.length} photo(s)</div>
-              <div style="display:flex;flex-wrap:wrap;gap:6px">
-                ${t.photos.map((p,pi)=>`<div style="position:relative">
-                  <img src="${p.data}" style="width:80px;height:60px;object-fit:cover;border-radius:6px;border:.5px solid var(--border);cursor:pointer" onclick="openPhotoTournee('${t.id}',${pi})" title="${p.legende||''}">
-                  ${p.legende?`<div style="font-size:9px;color:var(--text3);text-align:center;max-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.legende}</div>`:''}
-                </div>`).join('')}
-              </div>
-            </div>`:''}
+          ${t.agentPresent?`<div style="font-size:11px;color:var(--text3);margin-bottom:4px">Agent : ${t.agentPresent}</div>`:''}
+          ${t.observations?`<div style="font-size:11px;color:var(--text2);margin-bottom:6px">${t.observations}</div>`:''}
+          ${(t.photos||[]).length>0?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">
+            ${t.photos.map((p,pi)=>`<img src="${p.data}" style="width:64px;height:48px;object-fit:cover;border-radius:5px;border:.5px solid var(--border);cursor:pointer" onclick="openPhotoTournee('${t.id}',${pi})" title="${p.legende||''}">`).join('')}
+          </div>`:''}
           ${(t.sigAgent||t.sigCte)?`<div style="display:flex;gap:8px">
-            ${t.sigAgent?`<div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">Signature agent</div><img src="${t.sigAgent}" style="height:40px;border:.5px solid var(--border);border-radius:4px;background:#fff"></div>`:''}
-            ${t.sigCte?`<div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">Signature CTE/Chef</div><img src="${t.sigCte}" style="height:40px;border:.5px solid var(--border);border-radius:4px;background:#fff"></div>`:''}
+            ${t.sigAgent?`<div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">Agent</div><img src="${t.sigAgent}" style="height:36px;max-width:100px;border:.5px solid var(--border);border-radius:4px;background:#fff;object-fit:contain"></div>`:''}
+            ${t.sigCte?`<div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">CTE/Chef</div><img src="${t.sigCte}" style="height:36px;max-width:100px;border:.5px solid var(--border);border-radius:4px;background:#fff;object-fit:contain"></div>`:''}
           </div>`:''}
         </div>`).join('')}
     </div>`;
