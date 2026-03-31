@@ -4180,7 +4180,8 @@ async function silentSync(){
     updateNotifBadge();
     if(newChantiers>0) toast(newChantiers+' nouveau(x) chantier(s) reçu(s)','info');
     else if(newMats>0) toast(newMats+' nouvel(aux) article(s) reçu(s)','info');
-    if(!['form','ajout_mat','nouveau_chantier','edit_chantier','inscription','login'].includes(S.page)) render();
+    if(!['form','ajout_mat','nouveau_chantier','edit_chantier','inscription','login'].includes(S.page)
+      && !(S.page==='chantier_detail' && S.tab==='tournee')) render();
   }catch(e){
     console.warn('silentSync error:',e.message);
     setSyncStatus('offline');
