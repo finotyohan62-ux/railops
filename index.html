@@ -565,8 +565,8 @@ function echeanceHTML(e){
   if(!e)return '';
   const expired=isDateWarning(e);
   const soon=isDateSoon(e);
-  const color=expired?'#F09595':soon?'var(--accent)':'var(--text3)';
-  const label=expired?' — EXPIRÉE':soon?' — Bientôt':'';
+  const color=expired?'#F09595':soon?'#f5a623':'var(--text3)';
+  const label=expired?' — EXPIRÉE':soon?' — Bientôt ⏰':'';
   return '<div style="grid-column:1/-1"><div style="font-size:10px;color:var(--text3)">Échéance vérification</div>'
     +'<div style="font-size:12px;margin-top:2px;color:'+color+'">'+e+label+'</div></div>';
 }
@@ -1371,8 +1371,8 @@ function regItemHTML(m){
       <div style="display:flex;flex-direction:column;gap:3px">
         ${m.scan?`<span style="font-size:11px;color:var(--text3)">Dernier scan : ${ago(m.scan)} · ${S.scans.filter(s=>s.materielId===m.id).slice(-1)[0]?.agentNom||''}</span>`:
         `<span style="font-size:11px;color:${isAbsent?'#F09595':'var(--text3)'}">Jamais inspecté</span>`}
-        ${m.echeance?`<span style="font-size:11px;color:${isDateWarning(m.echeance)?'#F09595':isDateSoon(m.echeance)?'var(--accent)':'var(--text3)'}">
-          ${isDateWarning(m.echeance)?'⚠ ':''}Échéance : ${m.echeance}${isDateWarning(m.echeance)?' — EXPIRÉE':isDateSoon(m.echeance)?' — Bientôt':''}
+        ${m.echeance?`<span style="font-size:11px;color:${isDateWarning(m.echeance)?'#F09595':isDateSoon(m.echeance)?'#f5a623':'var(--text3)'}">
+          ${isDateWarning(m.echeance)?'⚠ ':''}Échéance : ${m.echeance}${isDateWarning(m.echeance)?' — EXPIRÉE':isDateSoon(m.echeance)?' — Bientôt ⏰':''}
         </span>`:''}
         ${verifBadges(m)}
       </div>
@@ -2578,6 +2578,7 @@ function renderForm(){
         <div style="margin-top:10px;padding-top:10px;border-top:.5px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:6px">
           <div><div style="font-size:10px;color:var(--text3)">Agent</div><div style="font-size:12px;margin-top:2px">${S.agent}</div></div>
           <div><div style="font-size:10px;color:var(--text3)">Date/heure</div><div style="font-size:12px;margin-top:2px">${fmt(nowISO())}</div></div>
+          <div><div style="font-size:10px;color:var(--text3)">Référence</div><div style="font-size:12px;margin-top:2px;font-family:monospace;color:var(--accent)">${m?.id||'—'}</div></div>
           ${echeanceHTML(m?.echeance)}
         </div>
       </div>
@@ -2834,8 +2835,8 @@ function pgQRCodes(el){
               <div class="ib" onclick="${QS.selMode?'':`openQR('${m.id}')`}" style="cursor:${QS.selMode?'default':'pointer'}">
                 <div class="it">${m.nom}</div>
                 <div style="font-size:10px;color:var(--text3);font-family:monospace;margin-top:1px">${m.id}</div>
-                <div style="font-size:11px;margin-top:3px;color:${expired?'#F09595':soon?'var(--accent)':'var(--text3)'}">
-                  ${m.echeance?(expired?'⚠ ':soon?'⏰ ':'')+'Échéance : '+m.echeance:'Pas de date limite'}
+                <div style="font-size:11px;margin-top:3px;color:${expired?'#F09595':soon?'#f5a623':'var(--text3)'}">
+                  ${m.echeance?(expired?'⚠ ':soon?'⏰ ':'')+'Échéance : '+m.echeance+(soon?' — Bientôt':''):'Pas de date limite'}
                 </div>
               </div>
               ${!QS.selMode?`<button onclick="openQR('${m.id}')" style="background:none;border:.5px solid var(--border);border-radius:8px;padding:5px 8px;font-size:11px;color:var(--text2);cursor:pointer;font-family:inherit;flex-shrink:0">QR</button>`:''}
