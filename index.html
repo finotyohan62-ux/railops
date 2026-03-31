@@ -4121,18 +4121,12 @@ function setupRealtime(){
 async function silentSync(){
   if(!S.agent) return;
   try{
-    const [resC, resM, resS, resU] = await Promise.all([
-      db.from('chantiers').select('*'),
-      db.from('materiels').select('*'),
-      db.from('scans').select('*'),
-      db.from('users').select('*'),
-    ]);
-    const {data:dc,error:ec}=resC;
-    const {data:dm,error:em}=resM;
-    const {data:ds,error:es}=resS;
-    const {data:du,error:eu}=resU;
+    // Séquentiel au lieu de Promise.all — évite le DataCloneError avec supabase-js
+    const {data:dc,error:ec} = await db.from('chantiers').select('*');
+    const {data:dm,error:em} = await db.from('materiels').select('*');
+    const {data:ds,error:es} = await db.from('scans').select('*');
+    const {data:du,error:eu} = await db.from('users').select('*');
 
-    // Log les erreurs mais ne pas bail — continuer avec ce qui fonctionne
     if(ec) console.warn('chantiers fetch error:',ec.message);
     if(em) console.warn('materiels fetch error:',em.message);
     if(es) console.warn('scans fetch error:',es.message);
@@ -4154,10 +4148,9 @@ async function silentSync(){
     if(!es && ds) S.scans=ds;
     if(!eu && du&&du.length) S.users=du;
 
-    // Statut selon les erreurs
     const hasError=ec||em||es||eu;
     setSyncStatus(hasError?'connecting':'connected');
-    if(hasError) toast('Sync partiel — erreur: '+(ec||em||es||eu)?.message,'warn');
+    if(hasError) toast('Sync partiel — '+(ec||em||es||eu)?.message,'warn');
 
     updateNotifBadge();
     if(newChantiers>0) toast(newChantiers+' nouveau(x) chantier(s) reçu(s)','info');
