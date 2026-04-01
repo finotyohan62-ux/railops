@@ -1503,7 +1503,7 @@ function confirmRetirer(id){
       <button class="btn btn-danger" onclick="doRetirer('${id}')" style="flex:1">Retirer</button>
     </div>
   </div>`;
-  div.addEventListener('click',e=>{if(e.target===div)closeModal();});
+  // fermeture uniquement via bouton Fermer
   document.getElementById('app').appendChild(div);
 }
 function doRetirer(id){
@@ -1546,7 +1546,7 @@ function openEditEcheance(id){
       <button class="btn btn-accent" onclick="doEditEcheance('${id}',false)" style="flex:2">Enregistrer</button>
     </div>
   </div>`;
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 
@@ -1605,12 +1605,21 @@ function importReplace(input){
     const avant=S.mat.filter(m=>m.chantierId===S.curC).length;
     const suppIds=S.mat.filter(m=>m.chantierId===S.curC&&!newIds.has(m.id)).map(m=>m.id);
     S.mat=S.mat.filter(m=>!(m.chantierId===S.curC&&!newIds.has(m.id)));
-    // Supprimer aussi les scans liés
     S.scans=S.scans.filter(s=>!suppIds.includes(s.materielId));
-    // Lancer l'import additionnel (nouveaux + mise à jour échéances)
-    processRows(rows);
-    const apres=S.mat.filter(m=>m.chantierId===S.curC).length;
-    toast((avant-apres-(avant-apres<0?avant-apres:0))+' supprimé(s) · '+apres+' article(s) au total','warn');
+    try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
+    try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
+    // Supprimer de Supabase via REST natif (plus fiable)
+    const deletePromises=suppIds.map(id=>
+      fetch(`${SUPA_URL}/rest/v1/materiels?id=eq.${encodeURIComponent(id)}`,{method:'DELETE',headers:SB_H})
+        .then(()=>fetch(`${SUPA_URL}/rest/v1/scans?materielId=eq.${encodeURIComponent(id)}`,{method:'DELETE',headers:SB_H}))
+        .catch(e=>console.warn('delete error:',e))
+    );
+    Promise.all(deletePromises).then(()=>{
+      // Lancer l'import additionnel après confirmation des suppressions
+      processRows(rows);
+      const apres=S.mat.filter(m=>m.chantierId===S.curC).length;
+      toast((avant-apres>0?avant-apres+' supprimé(s) · ':'')+apres+' article(s) au total','warn');
+    });
   };
   if(ext==='xlsx'||ext==='xls'){
     if(typeof XLSX==='undefined'){toast('Librairie Excel non chargée','danger');return;}
@@ -1820,7 +1829,7 @@ function confirmLogout(){
       <button class="btn btn-ghost" onclick="doLogout()" style="flex:1">Se déconnecter</button>
     </div>
   </div>`;
-  div.addEventListener('click',e=>{if(e.target===div)closeLogoutModal();});
+  // fermeture uniquement via bouton Fermer
   document.getElementById('app').appendChild(div);
 }
 function closeLogoutModal(){const e=document.getElementById('movl');if(e)e.remove();}
@@ -1958,7 +1967,7 @@ function openControleArticle(matId){
     </div>
   </div>`;
 
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 
@@ -2361,7 +2370,7 @@ function openPhotoTournee(tourneeId, photoIdx){
     ${p.legende?`<div style="margin-top:10px;font-size:13px;color:var(--text2)">${p.legende}</div>`:''}
     <button onclick="document.getElementById('movl').remove()" class="btn btn-outline" style="margin-top:16px">Fermer</button>
   </div>`;
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 
@@ -2392,7 +2401,13 @@ function tabInspections(el){
           </div>
           ${s.observations?`<div style="margin-top:6px;font-size:12px;color:var(--text2)">${s.observations}</div>`:''}
           ${s.actions?`<div style="margin-top:6px;padding:6px 10px;background:rgba(61,181,74,.08);border-radius:8px;font-size:12px;color:var(--accent)">Action : ${s.actions}</div>`:''}
-          ${s.photo?`<div style="margin-top:8px"><img src="${s.photo}" onclick="openPhotoFull('${s.id}')" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;border:.5px solid var(--border);cursor:pointer" title="Voir la photo en plein écran"></div>`:''}
+          ${s.photo?`<div style="margin-top:8px;position:relative">
+            <img src="${s.photo}" onclick="openPhotoFull('${s.id}')" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;border:.5px solid var(--border);cursor:pointer">
+            <div style="position:absolute;top:4px;right:4px;display:flex;gap:3px">
+              <button onclick="openPhotoFull('${s.id}')" style="background:rgba(0,0,0,.6);border:none;border-radius:5px;padding:3px 7px;color:#fff;cursor:pointer;font-size:10px;font-family:inherit">⛶</button>
+              <a href="${s.photo}" download="inspection-${s.id}.jpg" style="background:rgba(0,0,0,.6);border-radius:5px;padding:3px 7px;color:#fff;font-size:10px;text-decoration:none;display:flex;align-items:center">⬇</a>
+            </div>
+          </div>`:''}
           <div style="margin-top:8px">
             <button onclick="startInspect('${s.materielId}')" style="background:none;border:.5px solid var(--border);border-radius:8px;padding:5px 12px;font-size:11px;color:var(--accent);cursor:pointer;font-family:inherit">Réinspecter</button>
           </div>
@@ -2548,7 +2563,7 @@ function confirmTerminer(){
       <button class="btn btn-danger" onclick="doTerminer()" style="flex:1">Terminer</button>
     </div>
   </div>`;
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 async function doTerminer(){
@@ -3047,7 +3062,13 @@ function pgHistorique(el){
           </div>
           ${s.observations?`<div style="margin-top:8px;font-size:12px;color:var(--text2)">${s.observations}</div>`:''}
           ${s.actions?`<div style="margin-top:6px;padding:6px 10px;background:rgba(61,181,74,.08);border-radius:8px;font-size:12px;color:var(--accent)">Action : ${s.actions}</div>`:''}
-          ${s.photo?`<div style="margin-top:8px"><img src="${s.photo}" onclick="openPhotoFull('${s.id}')" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;border:.5px solid var(--border);cursor:pointer" title="Voir la photo"></div>`:''}
+          ${s.photo?`<div style="margin-top:8px;position:relative">
+            <img src="${s.photo}" onclick="openPhotoFull('${s.id}')" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;border:.5px solid var(--border);cursor:pointer">
+            <div style="position:absolute;top:4px;right:4px;display:flex;gap:3px">
+              <button onclick="openPhotoFull('${s.id}')" style="background:rgba(0,0,0,.6);border:none;border-radius:5px;padding:3px 7px;color:#fff;cursor:pointer;font-size:10px;font-family:inherit">⛶</button>
+              <a href="${s.photo}" download="inspection-${s.id}.jpg" style="background:rgba(0,0,0,.6);border-radius:5px;padding:3px 7px;color:#fff;font-size:10px;text-decoration:none;display:flex;align-items:center">⬇</a>
+            </div>
+          </div>`:''}
         </div>`}).join('')}
     </div>`;
 }
@@ -3162,7 +3183,7 @@ function qrUpdateDate(){
       <button class="btn btn-accent" onclick="doQrUpdateDate([${ids.map(id=>`'${id}'`).join(',')}])" style="flex:1">Valider</button>
     </div>
   </div>`;
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 function doQrUpdateDate(ids){
@@ -3320,7 +3341,7 @@ function deleteSelected(){
       <button class="btn btn-danger" onclick="doDeleteSelected()" style="flex:1">Supprimer</button>
     </div>
   </div>`;
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 function doDeleteSelected(){
@@ -3400,7 +3421,7 @@ function openProfil(){
       Se déconnecter
     </button>
   </div>`;
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 
@@ -3496,7 +3517,7 @@ function openEditUser(uid){
     </div>
   </div>`;
   window._editRole=u.role;
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 
@@ -3529,7 +3550,7 @@ function openChangePass(uid){
       <button class="btn btn-accent" onclick="doChangePass('${uid}', false)" style="flex:1">Confirmer</button>
     </div>
   </div>`;
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 
@@ -3550,7 +3571,7 @@ function openChangePassSelf(){
       <button class="btn btn-accent" onclick="doChangePass(null, true)" style="flex:1">Confirmer</button>
     </div>
   </div>`;
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 
@@ -3594,7 +3615,7 @@ function confirmDeleteUser(uid){
       <button class="btn btn-danger" onclick="doDeleteUser('${uid}')" style="flex:1">Supprimer</button>
     </div>
   </div>`;
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 
@@ -3636,7 +3657,7 @@ function openPhotoFull(scanId){
       Télécharger
     </a>
   `;
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 
@@ -3719,7 +3740,7 @@ function openHistoriqueArticle(matId){
     <button onclick="document.getElementById(\'movl\').remove()" class="btn btn-outline" style="margin-top:16px">Fermer</button>
   </div>`;
 
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 
@@ -3861,7 +3882,7 @@ function openNotifs(){
       :`${renderGroup(danger,'🔴 Urgent')}${renderGroup(warn,'🟡 Attention')}${renderGroup(info,'🔵 Info')}`
     }
   </div>`;
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 
@@ -3895,7 +3916,7 @@ function openGestionComptes(){
     </div>
     <button onclick="document.getElementById('movl').remove()" class="btn btn-outline" style="margin-top:16px">Fermer</button>
   </div>`;
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 
@@ -3929,7 +3950,7 @@ function openChangeRole(uid){
     </div>
   </div>`;
   window._crRole=u.role;
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 
@@ -3967,7 +3988,7 @@ function openForgotPassword(){
       <button onclick="doForgotStep1()" class="btn btn-accent" style="flex:2">Vérifier</button>
     </div>
   </div>`;
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 
@@ -3999,7 +4020,7 @@ function doForgotStep1(){
       <button onclick="doForgotStep2('${user.id}')" class="btn btn-accent" style="flex:2">Enregistrer</button>
     </div>
   </div>`;
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 
@@ -4041,7 +4062,7 @@ function resetUserPassword(userId){
       <button onclick="doResetUserPassword('${userId}')" class="btn btn-accent" style="flex:2">Réinitialiser</button>
     </div>
   </div>`;
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
 
@@ -4077,7 +4098,7 @@ function openInstallPage(){
     </div>
     <div style="margin-top:12px;font-size:11px;color:var(--text3)">L'agent scanne → ouvre dans Chrome → "Ajouter à l'écran d'accueil"</div>
   </div>`;
-  div.addEventListener('click',e=>{if(e.target===div)div.remove();});
+  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
   setTimeout(()=>{
     const el=document.getElementById('install-qr');
