@@ -449,31 +449,23 @@ async function load(){
   if(!document.getElementById('spin-style')){const s=document.createElement('style');s.id='spin-style';s.textContent='@keyframes spin{to{transform:rotate(360deg)}}';document.head.appendChild(s);}
 
   try{
-    const {data:dc}=await db.from('chantiers').select('*');
-    if(dc&&dc.length){
-      S.chantiers=dc;
-      try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
-    } else {
-      S.chantiers=JSON.parse(localStorage.getItem('ro3_c')||'[]');
-    }
+    // ── Supabase fait TOUJOURS loi — on ne fusionne plus jamais avec localStorage ──
+    const {data:dc, error:ec}=await db.from('chantiers').select('*');
+    if(!ec){ S.chantiers=dc||[]; localStorage.setItem('ro3_c',JSON.stringify(S.chantiers)); }
+    else S.chantiers=JSON.parse(localStorage.getItem('ro3_c')||'[]');
 
-    const {data:dm}=await db.from('materiels').select('*');
-    if(dm&&dm.length){
-      S.mat=dm;
-      try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-    } else {
-      S.mat=JSON.parse(localStorage.getItem('ro3_m')||'[]');
-    }
+    const {data:dm, error:em}=await db.from('materiels').select('*');
+    if(!em){ S.mat=dm||[]; localStorage.setItem('ro3_m',JSON.stringify(S.mat)); }
+    else S.mat=JSON.parse(localStorage.getItem('ro3_m')||'[]');
 
-    const {data:ds}=await db.from('scans').select('*');
-    // Fusionner : les scans Supabase n'ont pas les photos (stockées en localStorage)
+    // Scans : Supabase sans photo + réattacher photos du localStorage
+    const {data:ds}=await db.from('scans').select('id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions');
     const localScans=JSON.parse(localStorage.getItem('ro3_s')||'[]');
-    if(ds&&ds.length){
-      // Réattacher les photos depuis le localStorage
+    if(ds){
       const localById={};
       localScans.forEach(s=>{if(s.photo)localById[s.id]=s.photo;});
       S.scans=ds.map(s=>localById[s.id]?{...s,photo:localById[s.id]}:s);
-      // Ajouter les scans locaux non encore en Supabase
+      // Scans locaux pas encore en Supabase (créés offline)
       const sIds=new Set(ds.map(x=>x.id));
       localScans.filter(s=>!sIds.has(s.id)).forEach(s=>S.scans.push(s));
     } else {
@@ -483,7 +475,6 @@ async function load(){
     const {data:du}=await db.from('users').select('*');
     S.users=du&&du.length?du:JSON.parse(JSON.stringify(DEF_USERS));
     if(!du||!du.length) await db.from('users').upsert(S.users,{onConflict:'id'});
-    // Catalogue des prix
     await loadPrixCatalogue();
 
   }catch(e){
@@ -4543,26 +4534,24 @@ function setupRealtime(){
 // Fonction de rechargement silencieux des données depuis Supabase
 async function silentSync(){
   if(!S.agent) return;
-  if(window._importing) return; // import en cours, ne pas écraser
+  if(window._importing) return;
   try{
-    const {data:dc}=await db.from('chantiers').select('*');
-    const {data:dm}=await db.from('materiels').select('*');
+    const {data:dc,error:ec}=await db.from('chantiers').select('*');
+    const {data:dm,error:em}=await db.from('materiels').select('*');
     const {data:du}=await db.from('users').select('*');
 
-    let newChantiers=0, newMats=0;
+    // Chantiers : Supabase fait toujours loi
+    if(!ec){ S.chantiers=dc||[]; try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){} }
 
-    if(dc&&dc.length){
-      // Supabase fait loi — on écrase complètement le localStorage
-      S.chantiers=dc;
-      try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
-    }
-    if(dm&&dm.length){
+    // Matériels : fusionner pour préserver les articles locaux pas encore en Supabase
+    if(!em&&dm){
       const remoteIds=new Set(dm.map(x=>x.id));
       const localOnly=S.mat.filter(m=>!remoteIds.has(m.id));
       S.mat=[...dm,...localOnly];
       if(localOnly.length) db.from('materiels').upsert(localOnly,{onConflict:'id'}).then(()=>{},()=>{});
       try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
     }
+
     if(du&&du.length) S.users=du;
 
     // Scans : séparé pour ne pas bloquer si trop lourd
