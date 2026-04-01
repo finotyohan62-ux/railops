@@ -449,18 +449,22 @@ async function load(){
   if(!document.getElementById('spin-style')){const s=document.createElement('style');s.id='spin-style';s.textContent='@keyframes spin{to{transform:rotate(360deg)}}';document.head.appendChild(s);}
 
   try{
-    // ── Supabase fait TOUJOURS loi ──
-    // On vide d'abord le localStorage pour éviter toute réinjection de données périmées
+    // Chantiers : vider le localStorage périmé, Supabase fait loi
     localStorage.removeItem('ro3_c');
-    localStorage.removeItem('ro3_m');
-
     const {data:dc, error:ec}=await db.from('chantiers').select('*');
     if(!ec){ S.chantiers=dc||[]; localStorage.setItem('ro3_c',JSON.stringify(S.chantiers)); }
     else S.chantiers=[];
 
+    // Matériels : Supabase + préserver locaux pas encore confirmés
+    const localM=JSON.parse(localStorage.getItem('ro3_m')||'[]');
     const {data:dm, error:em}=await db.from('materiels').select('*');
-    if(!em){ S.mat=dm||[]; localStorage.setItem('ro3_m',JSON.stringify(S.mat)); }
-    else S.mat=[];
+    if(!em&&dm){
+      const remoteIds=new Set(dm.map(x=>x.id));
+      const localOnly=localM.filter(m=>!remoteIds.has(m.id));
+      S.mat=[...dm,...localOnly];
+      if(localOnly.length) db.from('materiels').upsert(localOnly,{onConflict:'id'}).then(()=>{},()=>{});
+    } else { S.mat=localM; }
+    localStorage.setItem('ro3_m',JSON.stringify(S.mat));
     // Scans : Supabase sans photo + réattacher photos du localStorage
     const {data:ds}=await db.from('scans').select('id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions');
     const localScans=JSON.parse(localStorage.getItem('ro3_s')||'[]');
@@ -4552,9 +4556,12 @@ async function silentSync(){
     // Chantiers : Supabase fait toujours loi
     if(!ec){ S.chantiers=dc||[]; try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){} }
 
-    // Matériels : Supabase fait loi
-    if(!em&&dm){ 
-      S.mat=dm||[];
+    // Matériels : Supabase + préserver locaux pas encore confirmés
+    if(!em&&dm){
+      const remoteIds=new Set(dm.map(x=>x.id));
+      const localOnly=S.mat.filter(m=>!remoteIds.has(m.id));
+      S.mat=[...dm,...localOnly];
+      if(localOnly.length) db.from('materiels').upsert(localOnly,{onConflict:'id'}).then(()=>{},()=>{});
       try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
     }
 
