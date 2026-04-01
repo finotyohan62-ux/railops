@@ -863,7 +863,7 @@ function pgDash(el){
 }
 
 function pgDashChef(el){
-  const mesCh=S.chantiers.filter(c=>isChefOf(c));
+  const mesCh=S.chantiers.filter(c=>isChefOf(c)&&c.statut!=='termine');
   const mesIds=new Set(mesCh.map(c=>c.id));
   const mesMat=S.mat.filter(m=>mesIds.has(m.chantierId));
   const absents=mesMat.filter(m=>m.presence==='absent').length;
@@ -1257,7 +1257,9 @@ function pgDashCTE(el){
 // CHANTIERS PAGE (chef)
 // ══════════════════════════════════════
 function pgChantiers(el){
-  const visibleC=(S.role==='chef')?S.chantiers.filter(c=>isChefOf(c)):S.chantiers;
+  const visibleC=(S.role==='chef')
+    ?S.chantiers.filter(c=>isChefOf(c)&&c.statut!=='termine')
+    :S.chantiers.filter(c=>c.statut!=='termine');
   el.innerHTML=`
     <div class="topbar"><div class="tbi"><div class="tbt">Chantiers</div><div class="tbs">${visibleC.length} chantier(s)</div></div></div>
     <div style="padding:12px 16px 20px">
@@ -2584,11 +2586,10 @@ async function doTerminer(){
   const pdfMats=S.mat.filter(m=>m.chantierId===chantierId);
   const pdfScans=S.scans.filter(s=>s.chantierId===chantierId);
 
-  // Passer le statut à "terminé" (ne pas supprimer)
+  // Passer le statut à "terminé" en Supabase (pour historique)
   const idx=S.chantiers.findIndex(c=>c.id===chantierId);
   if(idx!==-1) S.chantiers[idx].statut='termine';
   try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
-  // Mettre à jour en Supabase
   await saveChantier(chantierId);
 
   const existing=document.getElementById('movl');if(existing)existing.remove();
