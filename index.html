@@ -293,7 +293,7 @@ const S={
   filterPres:new Set(),
   filterCat:new Set(),
   searchReg:'',
-  sortReg:'nom',
+  sortReg:'scan',
   searchGlobal:'',
   filterGlobalC:'tous',
   selMode:false,
@@ -1286,7 +1286,7 @@ function pgChantiers(el){
 // ══════════════════════════════════════
 // CHANTIER DETAIL — avec onglets
 // ══════════════════════════════════════
-function openC(id){S.curC=id;S.page='chantier_detail';S.tab='registre';S.filterPres=new Set();S.filterCat=new Set();S.searchReg='';S.sortReg='nom';S.selMode=false;S.selItems=new Set();render();}
+function openC(id){S.curC=id;S.page='chantier_detail';S.tab='registre';S.filterPres=new Set();S.filterCat=new Set();S.searchReg='';S.sortReg='scan';S.selMode=false;S.selItems=new Set();render();}
 function sLabel(s){return{actif:'Actif',planifie:'Planifié',termine:'Terminé'}[s]||s;}
 function statutLabel(s){return sLabel(s);}
 
@@ -1914,6 +1914,12 @@ function tabControle(el){
     const du=!lastCtrl||(now-lastCtrl)>deuxMoisMs;
     const urgent=!lastCtrl||(now-lastCtrl)>deuxMoisMs*1.2;
     return{m,lastCtrl,joursSansCtrl,du,urgent};
+  }).sort((a,b)=>{
+    // Récemment contrôlé → en haut
+    if(!a.lastCtrl && !b.lastCtrl) return 0;
+    if(!a.lastCtrl) return 1;
+    if(!b.lastCtrl) return -1;
+    return b.lastCtrl - a.lastCtrl;
   });
 
   const enRetard=rows.filter(r=>r.urgent).length;
