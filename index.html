@@ -2580,23 +2580,17 @@ function confirmTerminer(){
 }
 async function doTerminer(){
   const chantierId=S.curC;
-  // Capturer les données AVANT suppression
   const pdfC=S.chantiers.find(x=>x.id===chantierId);
   const pdfMats=S.mat.filter(m=>m.chantierId===chantierId);
   const pdfScans=S.scans.filter(s=>s.chantierId===chantierId);
 
-  S.chantiers=S.chantiers.filter(c=>c.id!==chantierId);
-  S.mat=S.mat.filter(m=>m.chantierId!==chantierId);
-  // Sauvegarder localement
-  try{
-    localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));
-    localStorage.setItem('ro3_m',JSON.stringify(S.mat));
-  }catch(e){}
-  // Supprimer dans Supabase
-  try{
-    await db.from('chantiers').delete().eq('id',chantierId);
-    await db.from('materiels').delete().eq('chantierId',chantierId);
-  }catch(e){console.warn('Erreur suppression Supabase:',e);}
+  // Passer le statut à "terminé" (ne pas supprimer)
+  const idx=S.chantiers.findIndex(c=>c.id===chantierId);
+  if(idx!==-1) S.chantiers[idx].statut='termine';
+  try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
+  // Mettre à jour en Supabase
+  await saveChantier(chantierId);
+
   const existing=document.getElementById('movl');if(existing)existing.remove();
   S.curC=null;
   S.page=S.role==='chef'?'chantiers':'dashboard';
@@ -4201,13 +4195,10 @@ function showSyncInfo(){
 async function manualSync(){
   const icon=document.getElementById('refresh-icon');
   if(icon){icon.style.transition='none';icon.style.animation='spin 1s linear infinite';}
-  const before={c:S.chantiers.length, m:S.mat.length};
   await silentSync();
-  const after={c:S.chantiers.length, m:S.mat.length};
   if(icon) icon.style.animation='none';
-  // Render manuel uniquement si l'utilisateur n'est pas en saisie
-  if(!S.modalOpen && !window._selectingFile &&
-     !['form','ajout_mat','nouveau_chantier','edit_chantier','inscription','login'].includes(S.page)){
+  // Toujours render après sync manuelle (action volontaire de l'utilisateur)
+  if(!['form','ajout_mat','nouveau_chantier','edit_chantier','inscription','login'].includes(S.page)){
     render();
   }
   toast('Données actualisées ✓','ok');
@@ -4329,7 +4320,6 @@ async function silentSync(){
   try{
     const {data:dc}=await db.from('chantiers').select('*');
     const {data:dm}=await db.from('materiels').select('*');
-    const {data:ds}=await db.from('scans').select('*');
     const {data:du}=await db.from('users').select('*');
 
     let newChantiers=0, newMats=0;
@@ -4342,23 +4332,24 @@ async function silentSync(){
       if(extras.length) db.from('chantiers').upsert(extras,{onConflict:'id'}).then(()=>{},()=>{});
     }
     if(dm&&dm.length){ newMats=dm.length-S.mat.length; S.mat=dm; }
-    if(ds){
-      const localScans=JSON.parse(localStorage.getItem('ro3_s')||'[]');
-      const localById={};
-      localScans.forEach(s=>{localById[s.id]=s;});
-      // Supabase scans + réattacher les photos locales
-      const merged=ds.map(s=>localById[s.id]?.photo?{...s,photo:localById[s.id].photo}:s);
-      // Ajouter les scans locaux pas encore en Supabase
-      const sIds=new Set(ds.map(x=>x.id));
-      localScans.filter(s=>!sIds.has(s.id)).forEach(s=>merged.push(s));
-      S.scans=merged;
-    }
     if(du&&du.length) S.users=du;
+
+    // Scans : séparé pour ne pas bloquer si trop lourd
+    try{
+      const {data:ds}=await db.from('scans').select('id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions');
+      if(ds){
+        const localScans=JSON.parse(localStorage.getItem('ro3_s')||'[]');
+        const localById={};
+        localScans.forEach(s=>{localById[s.id]=s;});
+        const merged=ds.map(s=>localById[s.id]?.photo?{...s,photo:localById[s.id].photo}:s);
+        const sIds=new Set(ds.map(x=>x.id));
+        localScans.filter(s=>!sIds.has(s.id)).forEach(s=>merged.push(s));
+        S.scans=merged;
+      }
+    }catch(e){console.warn('scans fetch error:',e.message);}
 
     setSyncStatus('connected');
     updateNotifBadge();
-    // Données mises à jour en mémoire — pas de render() automatique
-    // pour ne jamais interrompre une saisie ou fermer une modal
   }catch(e){
     console.warn('silentSync error:',e.message);
     setSyncStatus('offline');
