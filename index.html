@@ -2695,11 +2695,20 @@ async function doTerminer(){
   const pdfMats=S.mat.filter(m=>m.chantierId===chantierId);
   const pdfScans=S.scans.filter(s=>s.chantierId===chantierId);
 
-  // Passer le statut à "terminé" en Supabase (pour historique)
-  const idx=S.chantiers.findIndex(c=>c.id===chantierId);
-  if(idx!==-1) S.chantiers[idx].statut='termine';
+  // Supprimer de la mémoire
+  S.chantiers=S.chantiers.filter(c=>c.id!==chantierId);
+  S.mat=S.mat.filter(m=>m.chantierId!==chantierId);
+  S.scans=S.scans.filter(s=>s.chantierId!==chantierId);
   try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
-  await saveChantier(chantierId);
+  try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
+  try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
+
+  // Supprimer définitivement de Supabase
+  try{
+    await db.from('scans').delete().eq('chantierId',chantierId);
+    await db.from('materiels').delete().eq('chantierId',chantierId);
+    await db.from('chantiers').delete().eq('id',chantierId);
+  }catch(e){console.warn('Erreur suppression Supabase:',e);}
 
   const existing=document.getElementById('movl');if(existing)existing.remove();
   S.curC=null;
