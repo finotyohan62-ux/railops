@@ -1672,6 +1672,7 @@ function processRows(rows){
 
   const startRow = hasHeader ? 1 : 0;
   let added=0, skipped=0;
+  const updatedIds=new Set();
 
   for(let i=startRow; i<rows.length; i++){
     const row = rows[i];
@@ -1718,6 +1719,7 @@ function processRows(rows){
     const existingIdx=S.mat.findIndex(m=>m.id===id);
     if(existingIdx!==-1){
       if(echeance) S.mat[existingIdx].echeance=echeance;
+      updatedIds.add(id);
       skipped++;continue;
     }
 
@@ -1734,10 +1736,15 @@ function processRows(rows){
 
   // Sauvegarde localStorage + upsert ciblé uniquement des nouveaux articles
   try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
+  // Nouveaux articles → upsert
   if(added>0){
-    const newIds=S.mat.slice(-added).map(m=>m.id);
-    const newMats=S.mat.filter(m=>newIds.includes(m.id));
+    const newMats=S.mat.slice(-added);
     db.from('materiels').upsert(newMats,{onConflict:'id'}).then(()=>{},e=>console.warn('import:',e));
+  }
+  // Articles existants mis à jour (échéance) → upsert aussi
+  if(skipped>0){
+    const updatedMats=S.mat.filter(m=>m.chantierId===S.curC&&updatedIds.has(m.id));
+    if(updatedMats.length) db.from('materiels').upsert(updatedMats,{onConflict:'id'}).then(()=>{},e=>console.warn('import update:',e));
   }
   renderTab();
   const updated=skipped; // les "skippés" sont en fait mis à jour
