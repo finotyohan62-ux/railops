@@ -390,9 +390,19 @@ async function deletePrixCatalogue(ref){
 
 function getPrixForArticle(mat){
   if(!mat) return null;
-  // Cherche par ID exact d'abord, puis par nom normalisé
   const norm=s=>String(s||'').toLowerCase().trim();
-  return S.prixCatalogue.find(p=>norm(p.ref)===norm(mat.id)||norm(p.ref)===norm(mat.nom))?.prix||null;
+  const id=norm(mat.id);
+  const nom=norm(mat.nom);
+  // Cherche d'abord un match exact, puis le préfixe le plus long qui correspond
+  let best=null, bestLen=0;
+  for(const p of S.prixCatalogue){
+    const ref=norm(p.ref);
+    if(ref===id||ref===nom){return p.prix;} // match exact prioritaire
+    if((id.startsWith(ref)||nom.startsWith(ref)) && ref.length>bestLen){
+      best=p.prix; bestLen=ref.length;
+    }
+  }
+  return best;
 }
 async function saveMat(id){
   const m=S.mat.find(x=>x.id===id);if(!m)return;
@@ -3602,8 +3612,9 @@ function openCataloguePrix(){
       <!-- Formulaire ajout -->
       <div style="background:var(--bg3);border-radius:10px;padding:12px;border:.5px solid var(--border);margin-bottom:14px">
         <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Ajouter / mettre à jour</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;line-height:1.5">Saisis un préfixe (ex: <span style="font-family:monospace;color:var(--text2)">CLR</span>, <span style="font-family:monospace;color:var(--text2)">PI-</span>, <span style="font-family:monospace;color:var(--text2)">CV9</span>) — s'applique à tous les articles dont la référence commence par ce préfixe.</div>
         <div style="display:grid;grid-template-columns:1fr 100px;gap:8px;margin-bottom:8px">
-          <input class="fi" id="prix-ref" placeholder="Référence (ex: CLR95-20M)" style="font-size:12px;padding:8px 10px">
+          <input class="fi" id="prix-ref" placeholder="Préfixe (ex: CLR, PI-, CV9)" style="font-size:12px;padding:8px 10px">
           <input class="fi" id="prix-val" type="number" placeholder="Prix €" min="0" style="font-size:12px;padding:8px 10px">
         </div>
         <input class="fi" id="prix-desc" placeholder="Description (optionnel)" style="font-size:12px;padding:8px 10px;margin-bottom:8px">
