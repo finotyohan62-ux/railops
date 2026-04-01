@@ -1700,6 +1700,20 @@ function processRows(rows){
     if(!idRaw) idRaw = nom.replace(/\s/g,'-').replace(/[^a-zA-Z0-9\-]/g,'').substring(0,20)+'-'+i;
     const id = idRaw || newId('MAT');
 
+    // Échéance (déclarée tôt pour être accessible dans le bloc existingIdx)
+    let echeance='';
+    if(iDate>=0 && row[iDate]!==undefined && row[iDate]!==''){
+      const raw=row[iDate];
+      if(typeof raw==='number'&&raw>1000){
+        const d=new Date(new Date(1899,11,30).getTime()+raw*86400000);
+        echeance=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+      } else if(raw instanceof Date){
+        echeance=raw.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+      } else {
+        echeance=String(raw).trim();
+      }
+    }
+
     // Si l'article existe déjà → mettre à jour l'échéance (ré-import)
     const existingIdx=S.mat.findIndex(m=>m.id===id);
     if(existingIdx!==-1){
@@ -1712,20 +1726,6 @@ function processRows(rows){
     if(iEtat>=0 && row[iEtat]){
       const e=norm(row[iEtat]);
       etat=e.includes('bon')?'bon':e.includes('accept')?'acceptable':e.includes('degrad')?'degrade':e.includes('hors')?'hors-service':'inconnu';
-    }
-
-    // Échéance
-    let echeance='';
-    if(iDate>=0 && row[iDate]!==undefined && row[iDate]!==''){
-      const raw=row[iDate];
-      if(typeof raw==='number'&&raw>1000){
-        const d=new Date(new Date(1899,11,30).getTime()+raw*86400000);
-        echeance=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
-      } else if(raw instanceof Date){
-        echeance=raw.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
-      } else {
-        echeance=String(raw).trim();
-      }
     }
 
     S.mat.push({id, nom, cat, chantierId:S.curC, etat, scan:null, presence:'non-confirme', echeance});
