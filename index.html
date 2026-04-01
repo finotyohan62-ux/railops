@@ -4574,6 +4574,25 @@ async function silentSync(){
 // Polling toutes les 15s (plus réactif)
 setInterval(silentSync, 15000);
 
+// ── Déconnexion automatique après 10 min d'inactivité ──
+const INACTIVITY_DELAY = 10 * 60 * 1000; // 10 minutes
+let _lastActivity = Date.now();
+
+function resetActivity(){_lastActivity = Date.now();}
+
+// Réinitialise le timer à chaque interaction
+['touchstart','mousedown','keydown','scroll'].forEach(evt=>{
+  document.addEventListener(evt, resetActivity, {passive:true});
+});
+
+setInterval(()=>{
+  if(!S.agent) return; // pas connecté, rien à faire
+  if(Date.now() - _lastActivity > INACTIVITY_DELAY){
+    doLogout();
+    setTimeout(()=>toast('Déconnecté automatiquement après 10 min d\'inactivité','warn'), 200);
+  }
+}, 60000); // vérifie toutes les minutes
+
 // Retour au premier plan : reconnexion Realtime + sync immédiat
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible' && S.agent){
