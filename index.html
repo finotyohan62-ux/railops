@@ -301,6 +301,7 @@ const S={
   camActive:false,camStream:null,camRaf:null,
   fd:{},
   syncStatus:"offline",
+  modalOpen:false,
   _realtimeChannel:null,
 };
 
@@ -4122,6 +4123,12 @@ function showInstallPublic(){
   },200);
 }
 
+// ── Tracker auto de modal via MutationObserver ──
+const _modalObserver = new MutationObserver(()=>{
+  S.modalOpen = !!document.getElementById('movl') || !!document.getElementById('movl2');
+});
+_modalObserver.observe(document.body, {childList:true, subtree:true});
+
 // ══════════════════════════════════════
 // SYNC REALTIME SUPABASE
 // ══════════════════════════════════════
@@ -4225,7 +4232,7 @@ function setupRealtime(){
       } else if(eventType==='DELETE'){
         S.mat=S.mat.filter(m=>m.id!==prev.id);
       }
-      if(!['form','ajout_mat','nouveau_chantier'].includes(S.page)) renderTab?.();
+      if(!['form','ajout_mat','nouveau_chantier'].includes(S.page) && !S.modalOpen) renderTab?.();
     })
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'scans'}, payload=>{
       if(!S.agent) return;
@@ -4241,7 +4248,7 @@ function setupRealtime(){
       if(scan.agentNom!==S.agent){
         toast('Inspection reçue : '+scan.agentNom+' → '+(S.mat.find(m=>m.id===scan.materielId)?.nom||scan.materielId),'info');
       }
-      if(!['form','ajout_mat','nouveau_chantier'].includes(S.page)) renderTab?.();
+      if(!['form','ajout_mat','nouveau_chantier'].includes(S.page) && !S.modalOpen) renderTab?.();
     })
     .on('postgres_changes',{event:'*',schema:'public',table:'chantiers'}, payload=>{
       if(!S.agent) return;
@@ -4253,7 +4260,7 @@ function setupRealtime(){
       } else if(eventType==='DELETE'){
         S.chantiers=S.chantiers.filter(c=>c.id!==prev.id);
       }
-      if(['dashboard','chantiers'].includes(S.page)) render();
+      if(['dashboard','chantiers'].includes(S.page) && !S.modalOpen) render();
     })
     .on('postgres_changes',{event:'*',schema:'public',table:'users'}, payload=>{
       if(!S.agent) return;
@@ -4302,7 +4309,7 @@ async function silentSync(){
     const pagesProtegees=['form','ajout_mat','nouveau_chantier','edit_chantier','inscription','login'];
     const enSaisie=pagesProtegees.includes(S.page)
       || (S.page==='chantier_detail' && S.tab==='tournee')
-      || document.getElementById('movl')!==null
+      || S.modalOpen
       || window._selectingFile===true;
     if(!enSaisie) render();
   }catch(e){
