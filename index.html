@@ -450,22 +450,20 @@ async function load(){
 
   try{
     const {data:dc}=await db.from('chantiers').select('*');
-    const localC=JSON.parse(localStorage.getItem('ro3_c')||'[]');
     if(dc&&dc.length){
-      const ids=new Set(dc.map(x=>x.id));
-      const extras=localC.filter(x=>!ids.has(x.id));
-      S.chantiers=[...dc,...extras];
-      if(extras.length) db.from('chantiers').upsert(extras,{onConflict:'id'}).then(()=>{},()=>{});
-    } else { S.chantiers=localC; }
+      S.chantiers=dc;
+      try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
+    } else {
+      S.chantiers=JSON.parse(localStorage.getItem('ro3_c')||'[]');
+    }
 
     const {data:dm}=await db.from('materiels').select('*');
-    const localM=JSON.parse(localStorage.getItem('ro3_m')||'[]');
     if(dm&&dm.length){
-      const ids=new Set(dm.map(x=>x.id));
-      const extras=localM.filter(x=>!ids.has(x.id));
-      S.mat=[...dm,...extras];
-      if(extras.length) db.from('materiels').upsert(extras,{onConflict:'id'}).then(()=>{},()=>{});
-    } else { S.mat=localM; }
+      S.mat=dm;
+      try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
+    } else {
+      S.mat=JSON.parse(localStorage.getItem('ro3_m')||'[]');
+    }
 
     const {data:ds}=await db.from('scans').select('*');
     // Fusionner : les scans Supabase n'ont pas les photos (stockées en localStorage)
@@ -4540,13 +4538,14 @@ async function silentSync(){
     let newChantiers=0, newMats=0;
 
     if(dc&&dc.length){
-      const ids=new Set(dc.map(x=>x.id));
-      const extras=S.chantiers.filter(x=>!ids.has(x.id));
-      newChantiers=dc.length - S.chantiers.filter(c=>ids.has(c.id)).length;
-      S.chantiers=[...dc,...extras];
-      if(extras.length) db.from('chantiers').upsert(extras,{onConflict:'id'}).then(()=>{},()=>{});
+      // Supabase fait loi — on écrase complètement le localStorage
+      S.chantiers=dc;
+      try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
     }
-    if(dm&&dm.length){ newMats=dm.length-S.mat.length; S.mat=dm; }
+    if(dm&&dm.length){
+      S.mat=dm;
+      try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
+    }
     if(du&&du.length) S.users=du;
 
     // Scans : séparé pour ne pas bloquer si trop lourd
