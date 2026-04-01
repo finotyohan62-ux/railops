@@ -457,7 +457,6 @@ async function load(){
     const {data:dm, error:em}=await db.from('materiels').select('*');
     if(!em){ S.mat=dm||[]; localStorage.setItem('ro3_m',JSON.stringify(S.mat)); }
     else S.mat=JSON.parse(localStorage.getItem('ro3_m')||'[]');
-
     // Scans : Supabase sans photo + réattacher photos du localStorage
     const {data:ds}=await db.from('scans').select('id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions');
     const localScans=JSON.parse(localStorage.getItem('ro3_s')||'[]');
@@ -4543,12 +4542,9 @@ async function silentSync(){
     // Chantiers : Supabase fait toujours loi
     if(!ec){ S.chantiers=dc||[]; try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){} }
 
-    // Matériels : fusionner pour préserver les articles locaux pas encore en Supabase
-    if(!em&&dm){
-      const remoteIds=new Set(dm.map(x=>x.id));
-      const localOnly=S.mat.filter(m=>!remoteIds.has(m.id));
-      S.mat=[...dm,...localOnly];
-      if(localOnly.length) db.from('materiels').upsert(localOnly,{onConflict:'id'}).then(()=>{},()=>{});
+    // Matériels : Supabase fait loi
+    if(!em&&dm){ 
+      S.mat=dm||[];
       try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
     }
 
