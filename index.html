@@ -1042,9 +1042,10 @@ function pgDashChefChantier(el){
   const topDegrades=Object.entries(degrades).sort((a,b)=>b[1]-a[1]).slice(0,5);
 
   // Par chef d'équipe
-  const chefs=[...new Set(S.chantiers.flatMap(c=>(c.chefs&&c.chefs.length>0)?c.chefs:[c.chef]).filter(Boolean))];
+  const chantierActifs=S.chantiers.filter(c=>c.statut!=='termine');
+  const chefs=[...new Set(chantierActifs.flatMap(c=>(c.chefs&&c.chefs.length>0)?c.chefs:[c.chef]).filter(Boolean))];
   const parChef=chefs.map(chef=>{
-    const chs=S.chantiers.filter(c=>(c.chefs&&c.chefs.length>0)?c.chefs.includes(chef):c.chef===chef);
+    const chs=chantierActifs.filter(c=>(c.chefs&&c.chefs.length>0)?c.chefs.includes(chef):c.chef===chef);
     const ids=new Set(chs.map(c=>c.id));
     const mats=S.mat.filter(m=>ids.has(m.chantierId));
     const ab=mats.filter(m=>m.presence==='absent').length;
