@@ -1602,15 +1602,17 @@ function importReplace(input){
     const norm=s=>String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/['"]/g,'');
 
     // Détecter colonnes
-    let iId=0,iNom=0,iDate=-1;
+    let iId=0,iNom=0,iDate=-1,iPrix=-1;
     if(hasHeader){
       const headers=rows[0].map(h=>norm(h));
       const foundId=headers.findIndex(h=>h==='id'||h==='ref'||h==='reference'||h.includes('ref')||h.includes('code')||h.includes('num')||h.includes('serie'));
       const foundNom=headers.findIndex(h=>h.includes('design')||h.includes('libel')||h.includes('nom')||h.includes('article'));
       const foundDate=headers.findIndex(h=>h.includes('date')||h.includes('verif')||h.includes('echeance')||h.includes('valid'));
+      const foundPrix=headers.findIndex(h=>h.includes('prix')||h.includes('cout')||h.includes('valeur')||h.includes('tarif')||h==='eur'||h==='euro');
       if(foundId!==-1) iId=foundId;
       iNom=foundNom!==-1?foundNom:iId;
       iDate=foundDate;
+      iPrix=foundPrix;
     } else {
       iId=0;iNom=0;iDate=1;
     }
@@ -1646,8 +1648,15 @@ function importReplace(input){
         } else echeance=String(raw).trim();
       }
       const existingIdx=S.mat.findIndex(m=>m.id===id);
+      // Prix
+      let prix=null;
+      if(iPrix>=0&&row[iPrix]!==undefined&&row[iPrix]!==''){
+        const p=parseFloat(String(row[iPrix]).replace(/[^\d.,]/g,'').replace(',','.'));
+        if(!isNaN(p)) prix=p;
+      }
       if(existingIdx!==-1){
         if(echeance) S.mat[existingIdx].echeance=echeance;
+        if(prix!==null) S.mat[existingIdx].prix=prix;
         toUpsert.push(S.mat[existingIdx]);
         updated++;
       } else {
@@ -1658,7 +1667,7 @@ function importReplace(input){
         else if(n.startsWith('PI-')||n.startsWith('PI0')) cat='Sécurité élec.';
         else if(n.startsWith('RPIR')||n.startsWith('D15')) cat='Caténaire';
         else if(n.startsWith('DRAP')||n.startsWith('CONE')) cat='EPI';
-        const newMat={id,nom,cat,chantierId:S.curC,etat:'inconnu',scan:null,presence:'non-confirme',echeance};
+        const newMat={id,nom,cat,chantierId:S.curC,etat:'inconnu',scan:null,presence:'non-confirme',echeance,prix};
         S.mat.push(newMat);
         toUpsert.push(newMat);
         added++;
@@ -1718,7 +1727,7 @@ function processRows(rows){
   // ── Normalisation : minuscules + suppression accents ──
   const norm = s => String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/['"]/g,'');
 
-  let iNom=-1, iCat=-1, iId=-1, iEtat=-1, iDate=-1;
+  let iNom=-1, iCat=-1, iId=-1, iEtat=-1, iDate=-1, iPrix=-1;
 
   if(hasHeader){
     const headers = rows[0].map(h=>norm(h));
@@ -1727,11 +1736,11 @@ function processRows(rows){
     iCat  = headers.findIndex(h=>h.includes('cat')||h.includes('type')||h.includes('famil')||h.includes('group'));
     iEtat = headers.findIndex(h=>h.includes('etat')||h.includes('statut')||h.includes('condit'));
     iDate = headers.findIndex(h=>h.includes('date')||h.includes('verif')||h.includes('echeance')||h.includes('valid'));
-    // Debug : afficher ce qui a été détecté
-    const dbg='Colonnes : nom='+iNom+' ref='+iId+' cat='+iCat+' date='+iDate;
+    iPrix = headers.findIndex(h=>h.includes('prix')||h.includes('cout')||h.includes('valeur')||h.includes('tarif')||h==='eur'||h==='euro');
+    const dbg='Colonnes : nom='+iNom+' ref='+iId+' cat='+iCat+' date='+iDate+' prix='+iPrix;
     console.log('[Import]',dbg,headers);
   } else {
-    iNom=0; iId=0; iDate=1; iCat=-1; iEtat=-1;
+    iNom=0; iId=0; iDate=1; iCat=-1; iEtat=-1; iPrix=-1;
   }
 
   // Fallback nom → colonne 0
@@ -1782,10 +1791,14 @@ function processRows(rows){
       }
     }
 
-    // Si l'article existe déjà → mettre à jour l'échéance (ré-import)
+    // Si l'article existe déjà → mettre à jour l'échéance et le prix (ré-import)
     const existingIdx=S.mat.findIndex(m=>m.id===id);
     if(existingIdx!==-1){
       if(echeance) S.mat[existingIdx].echeance=echeance;
+      if(iPrix>=0&&row[iPrix]!==undefined&&row[iPrix]!==''){
+        const p=parseFloat(String(row[iPrix]).replace(/[^\d.,]/g,'').replace(',','.'));
+        if(!isNaN(p)) S.mat[existingIdx].prix=p;
+      }
       updatedIds.add(id);
       skipped++;continue;
     }
@@ -1797,7 +1810,14 @@ function processRows(rows){
       etat=e.includes('bon')?'bon':e.includes('accept')?'acceptable':e.includes('degrad')?'degrade':e.includes('hors')?'hors-service':'inconnu';
     }
 
-    S.mat.push({id, nom, cat, chantierId:S.curC, etat, scan:null, presence:'non-confirme', echeance});
+    // Prix (invisible dans le registre, affiché uniquement si HS)
+    let prix=null;
+    if(iPrix>=0&&row[iPrix]!==undefined&&row[iPrix]!==''){
+      const p=parseFloat(String(row[iPrix]).replace(/[^\d.,]/g,'').replace(',','.'));
+      if(!isNaN(p)) prix=p;
+    }
+
+    S.mat.push({id, nom, cat, chantierId:S.curC, etat, scan:null, presence:'non-confirme', echeance, prix});
     added++;
   }
 
@@ -3019,6 +3039,30 @@ function sE(v){S.fd.etatGeneral=v;['bon','acceptable','degrade','hors-service'].
   const anomalie=(v==='degrade'||v==='hors-service')||S.fd.dommages;
   if(hint)hint.innerHTML=anomalie?'<span style="color:var(--accent);font-weight:500">⚠ Recommandée</span>':'Optionnel';
   if(btn)btn.style.borderColor=anomalie?'rgba(61,181,74,.4)':'var(--border)';
+  // Alerte pédagogique si Hors service
+  const alertEl=document.getElementById('hs-prix-alert');
+  if(v==='hors-service'){
+    const m=getM(S.curM);
+    if(!alertEl){
+      const div=document.createElement('div');
+      div.id='hs-prix-alert';
+      div.style.cssText='margin:10px 0;padding:12px 14px;background:rgba(226,75,74,.08);border:.5px solid rgba(226,75,74,.3);border-radius:10px';
+      div.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
+        <div style="width:34px;height:34px;border-radius:50%;background:rgba(226,75,74,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F09595" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:500;color:#F09595">Article déclaré hors service</div>
+          ${m?.prix?`<div style="font-size:11px;color:#F09595;margin-top:2px">Valeur estimée : <strong>${m.prix.toLocaleString('fr-FR',{style:'currency',currency:'EUR'})}</strong></div>`:''}
+          <div style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.5">Cet article est inutilisable. Merci de prendre soin du matériel et de signaler toute anomalie dès sa détection.</div>
+        </div>
+      </div>`;
+      const etatSection=document.getElementById('eg-hors-service')?.closest('.rg2');
+      if(etatSection) etatSection.insertAdjacentElement('afterend',div);
+    }
+  } else if(alertEl){
+    alertEl.remove();
+  }
 }
 function sP(v){S.fd.proprete=v;['propre','acceptable','sale'].forEach(e=>{const el=document.getElementById('pr-'+e);if(el){el.className='ro';if(e===v)el.classList.add(v==='propre'?'sel-ok':v==='acceptable'?'sel-warn':'sel-danger');}});}
 function tF(){S.fd.fonctionnement=!S.fd.fonctionnement;document.getElementById('fonc-tgl')?.classList.toggle('on',S.fd.fonctionnement);}
