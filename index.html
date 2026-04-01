@@ -449,14 +449,18 @@ async function load(){
   if(!document.getElementById('spin-style')){const s=document.createElement('style');s.id='spin-style';s.textContent='@keyframes spin{to{transform:rotate(360deg)}}';document.head.appendChild(s);}
 
   try{
-    // ── Supabase fait TOUJOURS loi — on ne fusionne plus jamais avec localStorage ──
+    // ── Supabase fait TOUJOURS loi ──
+    // On vide d'abord le localStorage pour éviter toute réinjection de données périmées
+    localStorage.removeItem('ro3_c');
+    localStorage.removeItem('ro3_m');
+
     const {data:dc, error:ec}=await db.from('chantiers').select('*');
     if(!ec){ S.chantiers=dc||[]; localStorage.setItem('ro3_c',JSON.stringify(S.chantiers)); }
-    else S.chantiers=JSON.parse(localStorage.getItem('ro3_c')||'[]');
+    else S.chantiers=[];
 
     const {data:dm, error:em}=await db.from('materiels').select('*');
     if(!em){ S.mat=dm||[]; localStorage.setItem('ro3_m',JSON.stringify(S.mat)); }
-    else S.mat=JSON.parse(localStorage.getItem('ro3_m')||'[]');
+    else S.mat=[];
     // Scans : Supabase sans photo + réattacher photos du localStorage
     const {data:ds}=await db.from('scans').select('id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions');
     const localScans=JSON.parse(localStorage.getItem('ro3_s')||'[]');
@@ -784,7 +788,13 @@ function doLogin(){
   if(!n||!p){toast('Remplis tous les champs','danger');return;}
   const user=S.users.find(u=>u.nom.toLowerCase()===n.toLowerCase()&&u.mdp===p);
   if(!user){toast('Nom ou mot de passe incorrect','danger');return;}
-  S.agent=user.nom;S.role=user.role;S.page='dashboard';save();render();setupRealtime();setTimeout(flushOfflineQueue,2000);
+  // Vider le localStorage des données métier — Supabase est la seule source de vérité
+  localStorage.removeItem('ro3_c');
+  localStorage.removeItem('ro3_m');
+  localStorage.removeItem('ro3_u');
+  S.agent=user.nom;S.role=user.role;S.page='dashboard';
+  localStorage.setItem('ro3_a',JSON.stringify({agent:S.agent,role:S.role}));
+  load().then(()=>{render();setupRealtime();setTimeout(flushOfflineQueue,2000);});
 }
 
 // ══════════════════════════════════════
