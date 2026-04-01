@@ -408,7 +408,8 @@ async function saveMat(id){
   const m=S.mat.find(x=>x.id===id);if(!m)return;
   try{
     localStorage.setItem('ro3_m',JSON.stringify(S.mat));
-    const {error}=await db.from('materiels').upsert([m],{onConflict:'id'});
+    const {prix:_,...mDB}=m;
+    const {error}=await db.from('materiels').upsert([mDB],{onConflict:'id'});
     if(error) toast('Erreur sync article : '+error.message,'danger');
   }catch(e){toast('Erreur réseau article','danger');}
 }
@@ -1727,7 +1728,7 @@ function importReplace(input){
       db.from('scans').delete().eq('materielId',id).then(()=>{},e=>console.warn('delete scan:',e));
     });
     // Upsert en Supabase
-    if(toUpsert.length) db.from('materiels').upsert(toUpsert,{onConflict:'id'}).then(()=>{window._importing=false;},e=>{console.warn('upsert:',e);window._importing=false;});
+    if(toUpsert.length) db.from('materiels').upsert(toUpsert.map(({prix:_,...m})=>m),{onConflict:'id'}).then(()=>{window._importing=false;},e=>{console.warn('upsert:',e);window._importing=false;});
     else window._importing=false;
 
     renderTab();
@@ -1877,8 +1878,10 @@ async function processRows(rows){
     toUpsertImport.push(...updatedMats);
   }
   if(toUpsertImport.length){
-    try{await db.from('materiels').upsert(toUpsertImport,{onConflict:'id'});}
-    catch(e){console.warn('import upsert:',e);}
+    // Retirer les colonnes inexistantes en Supabase (prix, etc.)
+    const forDB=toUpsertImport.map(({prix:_,...m})=>m);
+    try{await db.from('materiels').upsert(forDB,{onConflict:'id'});}
+    catch(e){console.warn('import upsert error:',e);toast('Erreur sauvegarde : '+e.message,'danger');}
   }
   window._importing=false;
   renderTab();
