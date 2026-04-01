@@ -4557,7 +4557,10 @@ async function silentSync(){
       try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
     }
     if(dm&&dm.length){
-      S.mat=dm;
+      const remoteIds=new Set(dm.map(x=>x.id));
+      const localOnly=S.mat.filter(m=>!remoteIds.has(m.id));
+      S.mat=[...dm,...localOnly];
+      if(localOnly.length) db.from('materiels').upsert(localOnly,{onConflict:'id'}).then(()=>{},()=>{});
       try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
     }
     if(du&&du.length) S.users=du;
