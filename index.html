@@ -1396,9 +1396,13 @@ function tabRegistre(el){
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ajouter
         </button>
         <button onclick="triggerImport()" style="flex:1;background:rgba(55,138,221,.1);border:.5px solid rgba(55,138,221,.3);border-radius:10px;padding:9px 8px;font-size:12px;color:#85B7EB;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Import Excel/CSV
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>+ Import
         </button>
-        <button onclick="toggleSelMode()" style="flex:1;background:${S.selMode?'rgba(61,181,74,.15)':'var(--bg3)'};border:.5px solid ${S.selMode?'rgba(61,181,74,.4)':'var(--border)'};border-radius:10px;padding:9px 8px;font-size:12px;color:${S.selMode?'var(--accent)':'var(--text2)'};cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
+        <button onclick="triggerReplace()" style="flex:1;background:rgba(226,75,74,.08);border:.5px solid rgba(226,75,74,.25);border-radius:10px;padding:9px 8px;font-size:12px;color:#F09595;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Remplacer
+        </button>
+        <input type="file" id="csv-replace-input" accept=".csv,.txt,.xlsx,.xls" style="display:none" onchange="importReplace(this)">
+        <button onclick="toggleSelMode()"  style="flex:1;background:${S.selMode?'rgba(61,181,74,.15)':'var(--bg3)'};border:.5px solid ${S.selMode?'rgba(61,181,74,.4)':'var(--border)'};border-radius:10px;padding:9px 8px;font-size:12px;color:${S.selMode?'var(--accent)':'var(--text2)'};cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>${S.selMode?'Annuler':'Sélectionner'}
         </button>
         <input type="file" id="csv-input" accept=".csv,.txt,.xlsx,.xls,.pdf" style="display:none" onchange="importCSV(this)">
@@ -1569,6 +1573,65 @@ function doEditEcheance(id, remove){
 
 // ─── IMPORT CSV ───────────────────────
 function triggerImport(){document.getElementById('csv-input')?.click();}
+function triggerReplace(){document.getElementById('csv-replace-input')?.click();}
+
+function importReplace(input){
+  const file=input.files[0];if(!file)return;
+  const ext=file.name.split('.').pop().toLowerCase();
+  input.value='';
+  const doReplace=(rows)=>{
+    // Parser les rows pour extraire les IDs du nouveau fichier
+    const firstCell=String(rows[0][0]||'').trim();
+    const looksLikeData=/^\d+[\-\/\.]/.test(firstCell)||/^[A-Za-z]{1,6}\d/.test(firstCell)||/^[A-Za-z]{1,6}-\d/.test(firstCell);
+    const hasHeader=!looksLikeData&&rows.length>=2;
+    const norm=s=>String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/['"]/g,'');
+    let iId=0;
+    if(hasHeader){
+      const headers=rows[0].map(h=>norm(h));
+      const found=headers.findIndex(h=>h==='id'||h==='ref'||h==='reference'||h.includes('ref')||h.includes('code')||h.includes('num')||h.includes('serie'));
+      if(found!==-1) iId=found;
+    }
+    const startRow=hasHeader?1:0;
+    // Extraire les IDs du nouveau fichier
+    const newIds=new Set();
+    for(let i=startRow;i<rows.length;i++){
+      const raw=rows[i][iId];
+      if(!raw)continue;
+      const id=String(raw).trim().replace(/\s/g,'').replace(/[*]/g,'');
+      if(id) newIds.add(id);
+    }
+    // Supprimer du registre les articles absents du nouveau fichier
+    const avant=S.mat.filter(m=>m.chantierId===S.curC).length;
+    const suppIds=S.mat.filter(m=>m.chantierId===S.curC&&!newIds.has(m.id)).map(m=>m.id);
+    S.mat=S.mat.filter(m=>!(m.chantierId===S.curC&&!newIds.has(m.id)));
+    // Supprimer aussi les scans liés
+    S.scans=S.scans.filter(s=>!suppIds.includes(s.materielId));
+    // Lancer l'import additionnel (nouveaux + mise à jour échéances)
+    processRows(rows);
+    const apres=S.mat.filter(m=>m.chantierId===S.curC).length;
+    toast((avant-apres-(avant-apres<0?avant-apres:0))+' supprimé(s) · '+apres+' article(s) au total','warn');
+  };
+  if(ext==='xlsx'||ext==='xls'){
+    if(typeof XLSX==='undefined'){toast('Librairie Excel non chargée','danger');return;}
+    const reader=new FileReader();
+    reader.onload=function(e){
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        doReplace(XLSX.utils.sheet_to_json(ws,{header:1,defval:''}));
+      }catch(err){toast('Erreur lecture Excel : '+err.message,'danger');}
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    const reader=new FileReader();
+    reader.onload=function(e){
+      const lines=e.target.result.split(/\r?\n/).filter(l=>l.trim());
+      const sep=lines[0]?.includes(';')?';':',';
+      doReplace(lines.map(l=>l.split(sep).map(c=>c.replace(/^"|"$/g,'').trim())));
+    };
+    reader.readAsText(file,'utf-8');
+  }
+}
 
 function processRows(rows){
   if(!rows||rows.length<1){toast('Fichier vide','danger');return;}
