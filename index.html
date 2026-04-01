@@ -4166,8 +4166,12 @@ async function manualSync(){
   await silentSync();
   const after={c:S.chantiers.length, m:S.mat.length};
   if(icon) icon.style.animation='none';
-  // Toast de diagnostic : montre ce qui a été reçu de Supabase
-  toast('Supabase → '+after.c+' chantier(s), '+after.m+' article(s)'+(after.c!==before.c||after.m!==before.m?' — MÀJ ✓':' — inchangé'),'info');
+  // Render manuel uniquement si l'utilisateur n'est pas en saisie
+  if(!S.modalOpen && !window._selectingFile &&
+     !['form','ajout_mat','nouveau_chantier','edit_chantier','inscription','login'].includes(S.page)){
+    render();
+  }
+  toast('Données actualisées ✓','ok');
 }
 
 // Merge intelligent : pour un même article, garde le champ le plus récent
@@ -4304,14 +4308,8 @@ async function silentSync(){
 
     setSyncStatus('connected');
     updateNotifBadge();
-    if(newChantiers>0) toast(newChantiers+' nouveau(x) chantier(s) reçu(s)','info');
-    else if(newMats>0) toast(newMats+' nouvel(aux) article(s) reçu(s)','info');
-    const pagesProtegees=['form','ajout_mat','nouveau_chantier','edit_chantier','inscription','login'];
-    const enSaisie=pagesProtegees.includes(S.page)
-      || (S.page==='chantier_detail' && S.tab==='tournee')
-      || S.modalOpen
-      || window._selectingFile===true;
-    if(!enSaisie) render();
+    // Données mises à jour en mémoire — pas de render() automatique
+    // pour ne jamais interrompre une saisie ou fermer une modal
   }catch(e){
     console.warn('silentSync error:',e.message);
     setSyncStatus('offline');
