@@ -3082,25 +3082,29 @@ function sE(v){S.fd.etatGeneral=v;['bon','acceptable','degrade','hors-service'].
   if(hint)hint.innerHTML=anomalie?'<span style="color:var(--accent);font-weight:500">⚠ Recommandée</span>':'Optionnel';
   if(btn)btn.style.borderColor=anomalie?'rgba(61,181,74,.4)':'var(--border)';
   // Alerte pédagogique si Hors service
-  const alertEl=document.getElementById('hs-prix-alert');
+  let alertEl=document.getElementById('hs-prix-alert');
   if(v==='hors-service'){
     const m=getM(S.curM);
+    const prix=m?getPrixForArticle(m):null;
     if(!alertEl){
-      const div=document.createElement('div');
-      div.id='hs-prix-alert';
-      div.style.cssText='margin:10px 0;padding:12px 14px;background:rgba(226,75,74,.08);border:.5px solid rgba(226,75,74,.3);border-radius:10px';
-      div.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
-        <div style="width:34px;height:34px;border-radius:50%;background:rgba(226,75,74,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F09595" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        </div>
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:500;color:#F09595">Article déclaré hors service</div>
-          ${m&&getPrixForArticle(m)!==null?`<div style="font-size:11px;color:#F09595;margin-top:2px">Valeur estimée : <strong>${getPrixForArticle(m).toLocaleString('fr-FR',{style:'currency',currency:'EUR'})}</strong></div>`:''}
-          <div style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.5">Cet article est inutilisable. Merci de prendre soin du matériel et de signaler toute anomalie dès sa détection.</div>
-        </div>
-      </div>`;
-      const etatSection=document.getElementById('eg-hors-service')?.closest('.rg2');
-      if(etatSection) etatSection.insertAdjacentElement('afterend',div);
+      alertEl=document.createElement('div');
+      alertEl.id='hs-prix-alert';
+      alertEl.style.cssText='margin:10px 0;padding:12px 14px;background:rgba(226,75,74,.08);border:.5px solid rgba(226,75,74,.3);border-radius:10px';
+    }
+    alertEl.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
+      <div style="width:34px;height:34px;border-radius:50%;background:rgba(226,75,74,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F09595" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500;color:#F09595">Article déclaré hors service</div>
+        ${prix!==null?`<div style="font-size:11px;color:#F09595;margin-top:2px">Valeur estimée : <strong>${prix.toLocaleString('fr-FR',{style:'currency',currency:'EUR'})}</strong></div>`:''}
+        <div style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.5">Cet article est inutilisable. Merci de prendre soin du matériel et de signaler toute anomalie dès sa détection.</div>
+      </div>
+    </div>`;
+    // Insérer après le groupe de boutons d'état
+    const hsBtn=document.getElementById('eg-hors-service');
+    if(hsBtn&&!document.getElementById('hs-prix-alert')){
+      hsBtn.parentNode.insertAdjacentElement('afterend',alertEl);
     }
   } else if(alertEl){
     alertEl.remove();
