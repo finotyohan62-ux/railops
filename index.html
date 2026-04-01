@@ -1749,7 +1749,7 @@ function importReplace(input){
   }
 }
 
-function processRows(rows){
+async function processRows(rows){
   if(!rows||rows.length<1){toast('Fichier vide','danger');return;}
 
   // ── Détection en-tête ──
@@ -1861,20 +1861,20 @@ function processRows(rows){
     added++;
   }
 
-  // Sauvegarde localStorage + upsert ciblé uniquement des nouveaux articles
+  // Sauvegarde localStorage + upsert Supabase (attendu pour éviter écrasement par silentSync)
   try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-  // Nouveaux articles → upsert
-  if(added>0){
-    const newMats=S.mat.slice(-added);
-    db.from('materiels').upsert(newMats,{onConflict:'id'}).then(()=>{},e=>console.warn('import:',e));
-  }
-  // Articles existants mis à jour (échéance) → upsert aussi
+  const toUpsertImport=[];
+  if(added>0) toUpsertImport.push(...S.mat.slice(-added));
   if(skipped>0){
     const updatedMats=S.mat.filter(m=>m.chantierId===S.curC&&updatedIds.has(m.id));
-    if(updatedMats.length) db.from('materiels').upsert(updatedMats,{onConflict:'id'}).then(()=>{},e=>console.warn('import update:',e));
+    toUpsertImport.push(...updatedMats);
+  }
+  if(toUpsertImport.length){
+    try{await db.from('materiels').upsert(toUpsertImport,{onConflict:'id'});}
+    catch(e){console.warn('import upsert:',e);}
   }
   renderTab();
-  const updated=skipped; // les "skippés" sont en fait mis à jour
+  const updated=skipped;
   const info=hasHeader?` (ref col.${iId}, nom col.${iNom})`:'';
   toast(added+' ajouté(s)'+(updated?' · '+updated+' mis à jour':'')+info,'ok');
 }
