@@ -1892,46 +1892,44 @@ function importCSV(input){
   const file=input.files[0];if(!file){return;}
   const ext=file.name.split('.').pop().toLowerCase();
   input.value='';
-  
-  if(ext==='pdf'){
-    toast('Import PDF non supporté — convertis en Excel ou CSV','warn');
-    return;
-  }
-  
-  if(ext==='xlsx'||ext==='xls'){
-    if(typeof XLSX==='undefined'){toast('Librairie Excel non chargée — réessaie','danger');return;}
+
+  if(ext==='pdf'){toast('Import PDF non supporté — convertis en Excel ou CSV','warn');return;}
+
+  const readFile=()=>new Promise((resolve,reject)=>{
     const reader=new FileReader();
-    reader.onload=function(e){
-      try{
-        const wb=XLSX.read(e.target.result,{type:'array'});
-        // Chercher la première feuille non vide
-        let rows=[];
-        for(const sheetName of wb.SheetNames){
-          const ws=wb.Sheets[sheetName];
-          const r=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-          // Filtrer les lignes vides
-          const nonEmpty=r.filter(row=>row.some(cell=>String(cell||'').trim()!==''));
-          if(nonEmpty.length>0){rows=nonEmpty;break;}
-        }
-        if(!rows.length){toast('Toutes les feuilles sont vides','danger');return;}
-        processRows(rows);
-      }catch(err){toast('Erreur lecture Excel : '+err.message,'danger');}
-    };
-    reader.readAsArrayBuffer(file);
-    return;
-  }
-  
-  // CSV / TXT
-  const reader=new FileReader();
-  reader.onload=function(e){
-    const text=e.target.result;
-    const lines=text.split(/\r?\n/).filter(l=>l.trim());
-    if(!lines.length){toast('Fichier vide','danger');return;}
-    const sep=lines[0].includes(';')?';':',';
-    const rows=lines.map(l=>l.split(sep).map(c=>c.trim().replace(/^["']|["']$/g,'')));
-    processRows(rows);
-  };
-  reader.readAsText(file,'UTF-8');
+    if(ext==='xlsx'||ext==='xls'){
+      if(typeof XLSX==='undefined'){reject(new Error('Librairie Excel non chargée'));return;}
+      reader.onload=e=>{
+        try{
+          const wb=XLSX.read(e.target.result,{type:'array'});
+          let rows=[];
+          for(const sn of wb.SheetNames){
+            const r=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:''});
+            const ne=r.filter(row=>row.some(c=>String(c||'').trim()!==''));
+            if(ne.length>0){rows=ne;break;}
+          }
+          if(!rows.length) reject(new Error('Toutes les feuilles sont vides'));
+          else resolve(rows);
+        }catch(err){reject(err);}
+      };
+      reader.onerror=()=>reject(new Error('Lecture impossible'));
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.onload=e=>{
+        const lines=e.target.result.split(/\r?\n/).filter(l=>l.trim());
+        if(!lines.length){reject(new Error('Fichier vide'));return;}
+        const sep=lines[0].includes(';')?';':',';
+        resolve(lines.map(l=>l.split(sep).map(c=>c.trim().replace(/^["']|["']$/g,''))));
+      };
+      reader.onerror=()=>reject(new Error('Lecture impossible'));
+      reader.readAsText(file,'UTF-8');
+    }
+  });
+
+  toast('Import en cours…','info');
+  readFile()
+    .then(rows=>processRows(rows))
+    .catch(err=>toast('Erreur import : '+err.message,'danger'));
 }
 
 // ─── DÉCONNEXION ─────────────────────
