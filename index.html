@@ -3089,21 +3089,22 @@ function sE(v){S.fd.etatGeneral=v;['bon','acceptable','degrade','hors-service'].
     const alertEl=document.createElement('div');
     alertEl.id='hs-prix-alert';
     alertEl.style.cssText='margin:10px 0;padding:12px 14px;background:rgba(226,75,74,.08);border:.5px solid rgba(226,75,74,.3);border-radius:10px';
+    alertEl.style.cssText='margin:10px 0;padding:14px;background:#FCEBEB;border:.5px solid #F09595;border-radius:12px';
     alertEl.innerHTML=`
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <div style="width:32px;height:32px;border-radius:50%;background:rgba(226,75,74,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F09595" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div style="width:34px;height:34px;border-radius:50%;background:#F7C1C1;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A32D2D" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         </div>
         <div>
-          <div style="font-size:14px;font-weight:600;color:#F09595">Article déclaré hors service</div>
-          <div style="font-size:12px;color:#F09595;opacity:.8;margin-top:1px">Ce matériel est inutilisable</div>
+          <div style="font-size:14px;font-weight:600;color:#A32D2D">Article déclaré hors service</div>
+          <div style="font-size:12px;color:#993C1D;margin-top:1px">Ce matériel est inutilisable</div>
         </div>
       </div>
-      ${prix!==null?`<div style="background:rgba(226,75,74,.12);border-radius:8px;padding:10px 14px;margin-bottom:10px">
-        <div style="font-size:11px;color:#F09595;margin-bottom:2px">Valeur estimée de cet article</div>
-        <div style="font-size:22px;font-weight:600;color:#F09595">${prix.toLocaleString('fr-FR',{style:'currency',currency:'EUR'})}</div>
+      ${prix!==null?`<div style="background:#F7C1C1;border-radius:8px;padding:10px 14px;margin-bottom:10px">
+        <div style="font-size:11px;color:#791F1F;margin-bottom:2px">Valeur estimée de cet article</div>
+        <div style="font-size:24px;font-weight:600;color:#A32D2D">${prix.toLocaleString('fr-FR',{style:'currency',currency:'EUR'})}</div>
       </div>`:''}
-      <div style="font-size:12px;color:var(--text2);line-height:1.6">Un article HS représente un coût direct pour l'entreprise. Merci de manipuler le matériel avec soin et de signaler toute anomalie dès sa détection.</div>`;
+      <div style="font-size:12px;color:#993C1D;line-height:1.6">Un article HS représente un coût direct pour l'entreprise. Merci de manipuler le matériel avec soin et de signaler toute anomalie dès sa détection.</div>`;
     // Insérer après le groupe états ou avant la section photo
     const anchor=document.getElementById('eg-hors-service')?.parentNode
       || document.getElementById('photo-section');
