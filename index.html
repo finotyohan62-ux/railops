@@ -428,7 +428,19 @@ async function load(){
     } else { S.mat=localM; }
 
     const {data:ds}=await db.from('scans').select('*');
-    S.scans=ds||[];
+    // Fusionner : les scans Supabase n'ont pas les photos (stockées en localStorage)
+    const localScans=JSON.parse(localStorage.getItem('ro3_s')||'[]');
+    if(ds&&ds.length){
+      // Réattacher les photos depuis le localStorage
+      const localById={};
+      localScans.forEach(s=>{if(s.photo)localById[s.id]=s.photo;});
+      S.scans=ds.map(s=>localById[s.id]?{...s,photo:localById[s.id]}:s);
+      // Ajouter les scans locaux non encore en Supabase
+      const sIds=new Set(ds.map(x=>x.id));
+      localScans.filter(s=>!sIds.has(s.id)).forEach(s=>S.scans.push(s));
+    } else {
+      S.scans=localScans;
+    }
 
     const {data:du}=await db.from('users').select('*');
     S.users=du&&du.length?du:JSON.parse(JSON.stringify(DEF_USERS));
@@ -3026,9 +3038,12 @@ function submitF(){
     else if(S.mat[idx].presence!=='absent')S.mat[idx].presence='confirme';
     recordVerif(idx);
   }
-  // Sauvegarder localement + scan + materiel ciblé
-  save(); // scans + localStorage
-  if(idx!==-1) saveMat(S.curM); // materiel ciblé seulement
+  // Sauvegarder le scan directement en Supabase (sans la photo qui n'est pas une colonne)
+  const scanForDB={id:scan.id,materielId:scan.materielId,chantierId:scan.chantierId,agentNom:scan.agentNom,date:scan.date,etatGeneral:scan.etatGeneral,proprete:scan.proprete,fonctionnement:scan.fonctionnement,dommages:scan.dommages,dommagesDesc:scan.dommagesDesc,observations:scan.observations,actions:scan.actions};
+  db.from('scans').upsert([scanForDB],{onConflict:'id'}).then(()=>{},e=>console.warn('scan save:',e));
+  // Sauvegarder en localStorage (avec photo)
+  try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
+  if(idx!==-1) saveMat(S.curM);
   // Si hors ligne → mettre en file d'attente
   if(!navigator.onLine){
     addToOfflineQueue('scan', {...scan});
@@ -4324,7 +4339,11 @@ async function silentSync(){
       if(extras.length) db.from('chantiers').upsert(extras,{onConflict:'id'}).then(()=>{},()=>{});
     }
     if(dm&&dm.length){ newMats=dm.length-S.mat.length; S.mat=dm; }
-    if(ds) S.scans=ds;
+    if(ds){
+      const localById={};
+      try{JSON.parse(localStorage.getItem('ro3_s')||'[]').forEach(s=>{if(s.photo)localById[s.id]=s.photo;});}catch(e){}
+      S.scans=ds.map(s=>localById[s.id]?{...s,photo:localById[s.id]}:s);
+    }
     if(du&&du.length) S.users=du;
 
     setSyncStatus('connected');
