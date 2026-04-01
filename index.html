@@ -1636,6 +1636,7 @@ function importReplace(input){
   const ext=file.name.split('.').pop().toLowerCase();
   input.value='';
   const doReplace=(rows)=>{
+    window._importing=true;
     const firstCell=String(rows[0][0]||'').trim();
     const looksLikeData=/^\d+[\-\/\.]/.test(firstCell)||/^[A-Za-z]{1,6}\d/.test(firstCell)||/^[A-Za-z]{1,6}-\d/.test(firstCell);
     const hasHeader=!looksLikeData&&rows.length>=2;
@@ -1722,7 +1723,8 @@ function importReplace(input){
       db.from('scans').delete().eq('materielId',id).then(()=>{},e=>console.warn('delete scan:',e));
     });
     // Upsert en Supabase
-    if(toUpsert.length) db.from('materiels').upsert(toUpsert,{onConflict:'id'}).then(()=>{},e=>console.warn('upsert:',e));
+    if(toUpsert.length) db.from('materiels').upsert(toUpsert,{onConflict:'id'}).then(()=>{window._importing=false;},e=>{console.warn('upsert:',e);window._importing=false;});
+    else window._importing=false;
 
     renderTab();
     toast(suppIds.length+' supprimé(s) · '+added+' ajouté(s) · '+updated+' mis à jour','ok');
@@ -1750,6 +1752,7 @@ function importReplace(input){
 }
 
 async function processRows(rows){
+  window._importing=true; // bloque silentSync pendant l'import
   if(!rows||rows.length<1){toast('Fichier vide','danger');return;}
 
   // ── Détection en-tête ──
@@ -1873,6 +1876,7 @@ async function processRows(rows){
     try{await db.from('materiels').upsert(toUpsertImport,{onConflict:'id'});}
     catch(e){console.warn('import upsert:',e);}
   }
+  window._importing=false; // libère silentSync
   renderTab();
   const updated=skipped;
   const info=hasHeader?` (ref col.${iId}, nom col.${iNom})`:'';
@@ -4539,6 +4543,7 @@ function setupRealtime(){
 // Fonction de rechargement silencieux des données depuis Supabase
 async function silentSync(){
   if(!S.agent) return;
+  if(window._importing) return; // import en cours, ne pas écraser
   try{
     const {data:dc}=await db.from('chantiers').select('*');
     const {data:dm}=await db.from('materiels').select('*');
