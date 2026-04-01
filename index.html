@@ -2914,8 +2914,11 @@ function renderForm(){
         </div>
         <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none" onchange="onPhotoSelected(this)">
         <div id="photo-preview" style="display:none;position:relative;margin-bottom:8px">
-          <img id="photo-img" style="width:100%;border-radius:10px;border:.5px solid var(--border);object-fit:cover;max-height:200px">
-          <button onclick="clearPhoto()" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);border:none;border-radius:50%;width:24px;height:24px;color:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center">✕</button>
+          <img id="photo-img" onclick="openPhotoFull('_current')" style="width:100%;border-radius:10px;border:.5px solid var(--border);object-fit:cover;max-height:120px;cursor:pointer">
+          <div style="position:absolute;top:6px;right:6px;display:flex;gap:4px">
+            <button onclick="openPhotoFull('_current')" style="background:rgba(0,0,0,.6);border:none;border-radius:6px;padding:4px 8px;color:#fff;cursor:pointer;font-size:10px;font-family:inherit">⛶ Voir</button>
+            <button onclick="clearPhoto()" style="background:rgba(0,0,0,.6);border:none;border-radius:50%;width:24px;height:24px;color:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center">✕</button>
+          </div>
         </div>
         <button id="photo-btn" onclick="document.getElementById('photo-input').click()"
           style="width:100%;background:var(--bg3);border:.5px solid var(--border);border-radius:10px;padding:12px;font-size:12px;color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px">
@@ -3639,20 +3642,29 @@ function doDeleteUser(uid){
 
 
 function openPhotoFull(scanId){
-  const s=S.scans.find(x=>x.id===scanId);if(!s||!s.photo)return;
-  const m=getM(s.materielId);
+  // Photo en cours de saisie (formulaire inspection)
+  let photoSrc, titre, sousTitre, dl;
+  if(scanId==='_current'){
+    photoSrc=S.fd?.photo;
+    if(!photoSrc)return;
+    titre='Photo en cours';sousTitre='';dl='railops-photo-current.jpg';
+  } else {
+    const s=S.scans.find(x=>x.id===scanId);if(!s||!s.photo)return;
+    const m=getM(s.materielId);
+    photoSrc=s.photo;titre=m?.nom||s.materielId;sousTitre=s.agentNom+' · '+fmt(s.date);dl='railops-photo-'+scanId+'.jpg';
+  }
   const div=document.createElement('div');
   div.style.cssText='position:absolute;inset:0;background:rgba(0,0,0,.95);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px';
   div.innerHTML=`
     <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div>
-        <div style="font-size:13px;font-weight:500;color:#fff">${m?.nom||s.materielId}</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">${s.agentNom} · ${fmt(s.date)}</div>
+        <div style="font-size:13px;font-weight:500;color:#fff">${titre}</div>
+        ${sousTitre?`<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">${sousTitre}</div>`:''}
       </div>
       <button onclick="this.parentElement.parentElement.remove()" style="background:rgba(255,255,255,.15);border:none;border-radius:50%;width:32px;height:32px;color:#fff;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center">✕</button>
     </div>
-    <img src="${s.photo}" style="max-width:100%;max-height:70vh;border-radius:10px;object-fit:contain">
-    <a href="${s.photo}" download="railops-photo-${scanId}.jpg" style="margin-top:14px;background:var(--accent);color:#1a0a00;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:500;text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+    <img src="${photoSrc}" style="max-width:100%;max-height:70vh;border-radius:10px;object-fit:contain">
+    <a href="${photoSrc}" download="${dl}" style="margin-top:14px;background:var(--accent);color:#1a0a00;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:500;text-decoration:none;display:inline-flex;align-items:center;gap:6px">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Télécharger
     </a>
@@ -4315,8 +4327,11 @@ async function silentSync(){
     updateNotifBadge();
     if(newChantiers>0) toast(newChantiers+' nouveau(x) chantier(s) reçu(s)','info');
     else if(newMats>0) toast(newMats+' nouvel(aux) article(s) reçu(s)','info');
-    if(!['form','ajout_mat','nouveau_chantier','edit_chantier','inscription','login'].includes(S.page)
-      && !(S.page==='chantier_detail' && S.tab==='tournee')) render();
+    const pagesProtegees=['form','ajout_mat','nouveau_chantier','edit_chantier','inscription','login'];
+    const enSaisie=pagesProtegees.includes(S.page)
+      || (S.page==='chantier_detail' && S.tab==='tournee')
+      || document.getElementById('movl')!==null; // modal ouverte (historique, etc.)
+    if(!enSaisie) render();
   }catch(e){
     console.warn('silentSync error:',e.message);
     setSyncStatus('offline');
