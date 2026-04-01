@@ -1596,45 +1596,87 @@ function importReplace(input){
   const ext=file.name.split('.').pop().toLowerCase();
   input.value='';
   const doReplace=(rows)=>{
-    // Parser les rows pour extraire les IDs du nouveau fichier
     const firstCell=String(rows[0][0]||'').trim();
     const looksLikeData=/^\d+[\-\/\.]/.test(firstCell)||/^[A-Za-z]{1,6}\d/.test(firstCell)||/^[A-Za-z]{1,6}-\d/.test(firstCell);
     const hasHeader=!looksLikeData&&rows.length>=2;
     const norm=s=>String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/['"]/g,'');
-    let iId=0;
+
+    // Détecter colonnes
+    let iId=0,iNom=0,iDate=-1;
     if(hasHeader){
       const headers=rows[0].map(h=>norm(h));
-      const found=headers.findIndex(h=>h==='id'||h==='ref'||h==='reference'||h.includes('ref')||h.includes('code')||h.includes('num')||h.includes('serie'));
-      if(found!==-1) iId=found;
+      const foundId=headers.findIndex(h=>h==='id'||h==='ref'||h==='reference'||h.includes('ref')||h.includes('code')||h.includes('num')||h.includes('serie'));
+      const foundNom=headers.findIndex(h=>h.includes('design')||h.includes('libel')||h.includes('nom')||h.includes('article'));
+      const foundDate=headers.findIndex(h=>h.includes('date')||h.includes('verif')||h.includes('echeance')||h.includes('valid'));
+      if(foundId!==-1) iId=foundId;
+      iNom=foundNom!==-1?foundNom:iId;
+      iDate=foundDate;
+    } else {
+      iId=0;iNom=0;iDate=1;
     }
     const startRow=hasHeader?1:0;
+
     // Extraire les IDs du nouveau fichier
     const newIds=new Set();
+    const newRows=[];
     for(let i=startRow;i<rows.length;i++){
-      const raw=rows[i][iId];
-      if(!raw)continue;
+      const raw=rows[i][iId];if(!raw)continue;
       const id=String(raw).trim().replace(/\s/g,'').replace(/[*]/g,'');
-      if(id) newIds.add(id);
+      if(id){newIds.add(id);newRows.push({id,row:rows[i]});}
     }
-    // Supprimer du registre les articles absents du nouveau fichier
+
+    // Supprimer articles absents
     const avant=S.mat.filter(m=>m.chantierId===S.curC).length;
     const suppIds=S.mat.filter(m=>m.chantierId===S.curC&&!newIds.has(m.id)).map(m=>m.id);
     S.mat=S.mat.filter(m=>!(m.chantierId===S.curC&&!newIds.has(m.id)));
     S.scans=S.scans.filter(s=>!suppIds.includes(s.materielId));
+
+    // Traiter chaque ligne : mise à jour ou ajout
+    let added=0,updated=0;
+    const toUpsert=[];
+    for(const {id,row} of newRows){
+      const nom=String(row[iNom]||'').trim()||id;
+      // Échéance
+      let echeance='';
+      if(iDate>=0&&row[iDate]!==undefined&&row[iDate]!==''){
+        const raw=row[iDate];
+        if(typeof raw==='number'&&raw>1000){
+          const d=new Date(new Date(1899,11,30).getTime()+raw*86400000);
+          echeance=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+        } else echeance=String(raw).trim();
+      }
+      const existingIdx=S.mat.findIndex(m=>m.id===id);
+      if(existingIdx!==-1){
+        if(echeance) S.mat[existingIdx].echeance=echeance;
+        toUpsert.push(S.mat[existingIdx]);
+        updated++;
+      } else {
+        // Auto-catégorie
+        let cat='Outillage';
+        const n=nom.toUpperCase();
+        if(n.startsWith('CLR')||n.startsWith('CV9')) cat='Caténaire';
+        else if(n.startsWith('PI-')||n.startsWith('PI0')) cat='Sécurité élec.';
+        else if(n.startsWith('RPIR')||n.startsWith('D15')) cat='Caténaire';
+        else if(n.startsWith('DRAP')||n.startsWith('CONE')) cat='EPI';
+        const newMat={id,nom,cat,chantierId:S.curC,etat:'inconnu',scan:null,presence:'non-confirme',echeance};
+        S.mat.push(newMat);
+        toUpsert.push(newMat);
+        added++;
+      }
+    }
+
+    // Sauvegarder
     try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-    try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
-    // Supprimer de Supabase via REST natif (plus fiable)
-    const deletePromises=suppIds.map(id=>
-      fetch(`${SUPA_URL}/rest/v1/materiels?id=eq.${encodeURIComponent(id)}`,{method:'DELETE',headers:SB_H})
-        .then(()=>fetch(`${SUPA_URL}/rest/v1/scans?materielId=eq.${encodeURIComponent(id)}`,{method:'DELETE',headers:SB_H}))
-        .catch(e=>console.warn('delete error:',e))
-    );
-    Promise.all(deletePromises).then(()=>{
-      // Lancer l'import additionnel après confirmation des suppressions
-      processRows(rows);
-      const apres=S.mat.filter(m=>m.chantierId===S.curC).length;
-      toast((avant-apres>0?avant-apres+' supprimé(s) · ':'')+apres+' article(s) au total','warn');
+    // Supprimer en Supabase
+    suppIds.forEach(id=>{
+      db.from('materiels').delete().eq('id',id).then(()=>{},e=>console.warn('delete mat:',e));
+      db.from('scans').delete().eq('materielId',id).then(()=>{},e=>console.warn('delete scan:',e));
     });
+    // Upsert en Supabase
+    if(toUpsert.length) db.from('materiels').upsert(toUpsert,{onConflict:'id'}).then(()=>{},e=>console.warn('upsert:',e));
+
+    renderTab();
+    toast(suppIds.length+' supprimé(s) · '+added+' ajouté(s) · '+updated+' mis à jour','ok');
   };
   if(ext==='xlsx'||ext==='xls'){
     if(typeof XLSX==='undefined'){toast('Librairie Excel non chargée','danger');return;}
