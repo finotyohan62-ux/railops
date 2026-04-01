@@ -1756,7 +1756,7 @@ function importReplace(input){
 }
 
 async function processRows(rows){
-  window._importing=true; // bloque silentSync pendant l'import
+  window._lastImport = Date.now(); // timestamp du dernier import
   if(!rows||rows.length<1){toast('Fichier vide','danger');return;}
 
   // ── Détection en-tête ──
@@ -1880,7 +1880,7 @@ async function processRows(rows){
     try{await db.from('materiels').upsert(toUpsertImport,{onConflict:'id'});}
     catch(e){console.warn('import upsert:',e);}
   }
-  window._importing=false; // libère silentSync
+  window._importing=false;
   renderTab();
   const updated=skipped;
   const info=hasHeader?` (ref col.${iId}, nom col.${iNom})`:'';
@@ -4557,7 +4557,9 @@ async function silentSync(){
     if(!ec){ S.chantiers=dc||[]; try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){} }
 
     // Matériels : Supabase + préserver locaux pas encore confirmés
-    if(!em&&dm){
+    // Bloquer si import récent (moins de 60s)
+    const importRecent = window._lastImport && (Date.now() - window._lastImport) < 60000;
+    if(!em&&dm&&!importRecent){
       const remoteIds=new Set(dm.map(x=>x.id));
       const localOnly=S.mat.filter(m=>!remoteIds.has(m.id));
       S.mat=[...dm,...localOnly];
