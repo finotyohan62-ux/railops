@@ -3038,11 +3038,14 @@ function submitF(){
     else if(S.mat[idx].presence!=='absent')S.mat[idx].presence='confirme';
     recordVerif(idx);
   }
-  // Sauvegarder le scan directement en Supabase (sans la photo qui n'est pas une colonne)
-  const scanForDB={id:scan.id,materielId:scan.materielId,chantierId:scan.chantierId,agentNom:scan.agentNom,date:scan.date,etatGeneral:scan.etatGeneral,proprete:scan.proprete,fonctionnement:scan.fonctionnement,dommages:scan.dommages,dommagesDesc:scan.dommagesDesc,observations:scan.observations,actions:scan.actions};
-  db.from('scans').upsert([scanForDB],{onConflict:'id'}).then(()=>{},e=>console.warn('scan save:',e));
-  // Sauvegarder en localStorage (avec photo)
+  // Sauvegarder le scan en localStorage immédiatement (avec photo)
   try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
+  // Sauvegarder en Supabase sans la photo (colonne absente de la table)
+  const scanForDB={id:scan.id,materielId:scan.materielId,chantierId:scan.chantierId,agentNom:scan.agentNom,date:scan.date,etatGeneral:scan.etatGeneral,proprete:scan.proprete,fonctionnement:scan.fonctionnement,dommages:scan.dommages,dommagesDesc:scan.dommagesDesc,observations:scan.observations,actions:scan.actions};
+  db.from('scans').upsert([scanForDB],{onConflict:'id'}).then(()=>{
+    // Marquer le scan comme synchronisé dans localStorage
+    try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
+  },e=>console.warn('scan save error:',e));
   if(idx!==-1) saveMat(S.curM);
   // Si hors ligne → mettre en file d'attente
   if(!navigator.onLine){
@@ -4340,9 +4343,15 @@ async function silentSync(){
     }
     if(dm&&dm.length){ newMats=dm.length-S.mat.length; S.mat=dm; }
     if(ds){
+      const localScans=JSON.parse(localStorage.getItem('ro3_s')||'[]');
       const localById={};
-      try{JSON.parse(localStorage.getItem('ro3_s')||'[]').forEach(s=>{if(s.photo)localById[s.id]=s.photo;});}catch(e){}
-      S.scans=ds.map(s=>localById[s.id]?{...s,photo:localById[s.id]}:s);
+      localScans.forEach(s=>{localById[s.id]=s;});
+      // Supabase scans + réattacher les photos locales
+      const merged=ds.map(s=>localById[s.id]?.photo?{...s,photo:localById[s.id].photo}:s);
+      // Ajouter les scans locaux pas encore en Supabase
+      const sIds=new Set(ds.map(x=>x.id));
+      localScans.filter(s=>!sIds.has(s.id)).forEach(s=>merged.push(s));
+      S.scans=merged;
     }
     if(du&&du.length) S.users=du;
 
