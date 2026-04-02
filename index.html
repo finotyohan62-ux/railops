@@ -859,7 +859,7 @@ function doInscription(){
   const newUser={id:newId("USR"),nom,badge,role:_ir,mdp};
   S.users.push(newUser);save();
   // Connexion automatique
-  S.agent=nom;S.role=_ir;S.page='dashboard';save();render();setupRealtime();
+  S.agent=nom;S.role=_ir;S.page='dashboard';save();render();setupRealtime();setTimeout(checkWeeklyArchive,3000);
   setTimeout(()=>toast('Compte créé ! Bienvenue '+nom.split(' ')[0]+' 👋','ok'),80);
 }
 
@@ -4292,7 +4292,7 @@ function openInstallPage(){
 if(window.location.hash==='#install'){
   showInstallPublic();
 } else {
-  load().then(()=>{render();if(S.agent)setupRealtime();});
+  load().then(()=>{render();if(S.agent){setupRealtime();setTimeout(checkWeeklyArchive,3000);}});
 }
 
 function showInstallPublic(){
@@ -4743,8 +4743,73 @@ function exportPDFData(c, mats, scans){
 }
 
 // ══════════════════════════════════════
-// PWA — MANIFEST + SERVICE WORKER
+// ARCHIVE HEBDOMADAIRE
 // ══════════════════════════════════════
+function getPrevWeekKey(){
+  const offsetMs=14*60*60*1000;
+  const dt=new Date(Date.now()-offsetMs-7*24*60*60*1000);
+  const tmp=new Date(Date.UTC(dt.getUTCFullYear(),dt.getUTCMonth(),dt.getUTCDate()));
+  const day=tmp.getUTCDay()||7;
+  tmp.setUTCDate(tmp.getUTCDate()+4-day);
+  const y=tmp.getUTCFullYear();
+  const w=Math.ceil((((tmp-new Date(Date.UTC(y,0,1)))/86400000)+1)/7);
+  return y+'-W'+(w<10?'0'+w:w);
+}
+
+function isInPrevWeek(dateStr){
+  const offsetMs=14*60*60*1000;
+  const now=Date.now()-offsetMs;
+  const dt=new Date(now);
+  const day=dt.getUTCDay()||7;
+  const thisMon=new Date(Date.UTC(dt.getUTCFullYear(),dt.getUTCMonth(),dt.getUTCDate()-(day-1)));
+  const prevMon=new Date(thisMon.getTime()-7*24*60*60*1000);
+  const d=new Date(dateStr);
+  return d>=prevMon&&d<thisMon;
+}
+
+async function checkWeeklyArchive(){
+  if(!S.agent||!['chef','chef_chantier'].includes(S.role)) return;
+  const now=new Date();
+  const day=now.getDay(); // 0=dim, 1=lun, 2=mar...
+
+  // LUNDI : générer les archives PDF de la semaine précédente
+  if(day===1){
+    const prevWk=getPrevWeekKey();
+    const mesCh=S.role==='chef'
+      ?S.chantiers.filter(c=>isChefOf(c)&&c.statut!=='termine')
+      :S.chantiers.filter(c=>c.statut!=='termine');
+
+    let generated=0;
+    for(const c of mesCh){
+      const doneKey=`ro3_archive_${c.id}_${prevWk}`;
+      if(localStorage.getItem(doneKey)) continue;
+      const scans=S.scans.filter(s=>s.chantierId===c.id&&isInPrevWeek(s.date));
+      const mats=S.mat.filter(m=>m.chantierId===c.id);
+      if(scans.length===0){localStorage.setItem(doneKey,'0');continue;}
+      // Générer le PDF archive
+      setTimeout(()=>{
+        toast('📄 Archive semaine '+prevWk+' — '+c.nom,'info');
+        buildPDF(c,mats,scans,'Archive semaine '+prevWk);
+      },generated*1500);
+      localStorage.setItem(doneKey,'1');
+      generated++;
+    }
+    if(generated>0) setTimeout(()=>toast(generated+' archive(s) PDF générée(s) ✓','ok'),generated*1500+500);
+  }
+
+  // MARDI : purger les scans > 7 jours
+  if(day===2){
+    const cutoff=new Date(Date.now()-7*24*60*60*1000).toISOString();
+    const avant=S.scans.length;
+    S.scans=S.scans.filter(s=>s.date>=cutoff);
+    if(S.scans.length<avant){
+      try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
+      try{await db.from('scans').delete().lt('date',cutoff);}catch(e){console.warn('purge scans:',e);}
+      toast((avant-S.scans.length)+' ancien(s) scan(s) purgé(s)','warn');
+    }
+  }
+}
+
 (function(){
   // Manifest inline via blob
   const manifest={
