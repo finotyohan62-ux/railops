@@ -949,44 +949,56 @@ function pgDashChef(el){
       </div>
     </div>
 
-    <!-- Activité agents -->
-    <div style="font-size:11px;font-weight:500;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;padding:8px 16px 6px">Activité agents — cette semaine</div>
-    <div style="padding:0 16px 0">
-      <div class="card">
-        ${topAgents.length===0?`<div style="font-size:12px;color:var(--text3);text-align:center;padding:8px 0">Aucune inspection cette semaine</div>`:''}
-        ${topAgents.map(([nom,count],i)=>`
-          <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:.5px solid var(--border)">
-            <div style="width:20px;text-align:center;font-size:11px;color:var(--text3)">${i+1}</div>
-            <div class="avatar" style="width:28px;height:28px;font-size:10px;flex-shrink:0">${ini(nom)}</div>
-            <div style="flex:1;font-size:12px;color:var(--text)">${nom}</div>
-            <div style="display:flex;align-items:center;gap:6px">
-              <div style="height:4px;width:${Math.round(count/topAgents[0][1]*60)}px;background:var(--accent);border-radius:2px"></div>
-              <span style="font-size:11px;color:var(--accent);font-weight:500">${count} scan${count>1?'s':''}</span>
-            </div>
-          </div>`).join('')}
-        ${agentsSansScans.length>0?`<div style="margin-top:8px;padding:6px 10px;background:rgba(226,75,74,.06);border-radius:8px;border:.5px solid rgba(226,75,74,.15)">
-          <div style="font-size:10px;color:#F09595;margin-bottom:4px">Aucun scan cette semaine :</div>
-          <div style="font-size:11px;color:var(--text3)">${agentsSansScans.map(u=>u.nom).join(', ')}</div>
-        </div>`:''}
+    <!-- Activité agents — accordéon -->
+    <div style="padding:0 16px 8px">
+      <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.acc-arr').style.transform=this.nextElementSibling.style.display==='none'?'rotate(0deg)':'rotate(180deg)'"
+        style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:10px 12px;background:var(--bg3);border-radius:10px;border:.5px solid var(--border)">
+        <span style="font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--text3);text-transform:uppercase">Activité agents — cette semaine</span>
+        <svg class="acc-arr" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" style="transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div style="display:block;margin-top:4px">
+        <div class="card" style="margin:0">
+          ${topAgents.length===0?`<div style="font-size:12px;color:var(--text3);text-align:center;padding:8px 0">Aucune inspection cette semaine</div>`:''}
+          ${topAgents.map(([nom,count],i)=>`
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:.5px solid var(--border)">
+              <div style="width:20px;text-align:center;font-size:11px;color:var(--text3)">${i+1}</div>
+              <div class="avatar" style="width:28px;height:28px;font-size:10px;flex-shrink:0">${ini(nom)}</div>
+              <div style="flex:1;font-size:12px;color:var(--text)">${nom}</div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div style="height:4px;width:${Math.round(count/topAgents[0][1]*60)}px;background:var(--accent);border-radius:2px"></div>
+                <span style="font-size:11px;color:var(--accent);font-weight:500">${count} scan${count>1?'s':''}</span>
+              </div>
+            </div>`).join('')}
+          ${agentsSansScans.length>0?`<div style="margin-top:8px;padding:6px 10px;background:rgba(226,75,74,.06);border-radius:8px;border:.5px solid rgba(226,75,74,.15)">
+            <div style="font-size:10px;color:#F09595;margin-bottom:4px">Aucun scan cette semaine :</div>
+            <div style="font-size:11px;color:var(--text3)">${agentsSansScans.map(u=>u.nom).join(', ')}</div>
+          </div>`:''}
+        </div>
       </div>
     </div>
 
-    <!-- Articles problématiques -->
+    <!-- Articles problématiques — accordéon -->
     ${topDegrades.length>0?`
-    <div style="font-size:11px;font-weight:500;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;padding:8px 16px 6px">Articles problématiques — 30 jours</div>
-    <div style="padding:0 16px 0">
-      <div class="card">
-        ${topDegrades.map(([matId,count])=>{const m=getM(matId);const c=m?getC(m.chantierId):null;return`
-          <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:.5px solid var(--border)">
-            <div style="width:32px;height:32px;border-radius:8px;background:rgba(226,75,74,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F09595" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
-            </div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m?m.nom:matId}</div>
-              <div style="font-size:10px;color:var(--text3);margin-top:1px">${c?c.nom:''}</div>
-            </div>
-            <span style="font-size:11px;color:#F09595;font-weight:500;flex-shrink:0">${count}x dégradé</span>
-          </div>`}).join('')}
+    <div style="padding:0 16px 8px">
+      <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.acc-arr').style.transform=this.nextElementSibling.style.display==='none'?'rotate(0deg)':'rotate(180deg)'"
+        style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:10px 12px;background:var(--bg3);border-radius:10px;border:.5px solid var(--border)">
+        <span style="font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--text3);text-transform:uppercase">Articles problématiques — 30 jours</span>
+        <svg class="acc-arr" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" style="transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div style="display:block;margin-top:4px">
+        <div class="card" style="margin:0">
+          ${topDegrades.map(([matId,count])=>{const m=getM(matId);const c=m?getC(m.chantierId):null;return`
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:.5px solid var(--border)">
+              <div style="width:32px;height:32px;border-radius:8px;background:rgba(226,75,74,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F09595" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m?m.nom:matId}</div>
+                <div style="font-size:10px;color:var(--text3);margin-top:1px">${c?c.nom:''}</div>
+              </div>
+              <span style="font-size:11px;color:#F09595;font-weight:500;flex-shrink:0">${count}x dégradé</span>
+            </div>`}).join('')}
+        </div>
       </div>
     </div>`:''}
 
