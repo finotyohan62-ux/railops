@@ -160,25 +160,6 @@ select.fi{cursor:pointer}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <script>
 // ══════════════════════════════════════
-// DATA PAR DÉFAUT
-// ══════════════════════════════════════
-const DEF_CHANTIERS=[
-  {id:'CH001',nom:'Ligne 4 — Zone Sud',lieu:'Nantes K2+400 → K3+800',chef:'Yohan Bernard',statut:'actif',desc:'Remplacement caténaire',dateDebut:'2026-03-20',dateFin:'2026-03-30',agents:['Emilien Dupont']},
-  {id:'CH002',nom:'Dépôt B — Voie 7',lieu:'Dépôt Nantes Nord',chef:'Yohan Bernard',statut:'actif',desc:'Maintenance préventive',dateDebut:'2026-03-22',dateFin:'2026-04-02',agents:[]},
-];
-const DEF_MAT=[
-  {id:'MAT001',nom:'Nacelle élévatrice #1',cat:'Engins',chantierId:'CH001',etat:'bon',scan:null,presence:'confirme'},
-  {id:'MAT002',nom:'Fil caténaire Cu 150mm²',cat:'Caténaire',chantierId:'CH001',etat:'inconnu',scan:null,presence:'non-confirme'},
-  {id:'MAT003',nom:'Isolateurs de section (x20)',cat:'Caténaire',chantierId:'CH001',etat:'inconnu',scan:null,presence:'non-confirme'},
-  {id:'MAT004',nom:'EPI Casque anti-arc #1',cat:'EPI',chantierId:'CH001',etat:'bon',scan:null,presence:'confirme'},
-  {id:'MAT005',nom:'EPI Casque anti-arc #2',cat:'EPI',chantierId:'CH001',etat:'degrade',scan:null,presence:'confirme'},
-  {id:'MAT006',nom:'Pinces mise à la terre',cat:'Sécurité élec.',chantierId:'CH001',etat:'bon',scan:null,presence:'absent'},
-  {id:'MAT007',nom:'Groupe électrogène 20kVA',cat:'Engins',chantierId:'CH002',etat:'hors-service',scan:null,presence:'confirme'},
-  {id:'MAT008',nom:'Perceuse colonne',cat:'Outillage',chantierId:'CH002',etat:'bon',scan:null,presence:'non-confirme'},
-  {id:'MAT009',nom:'Harnais sécurité (x5)',cat:'EPI',chantierId:'CH002',etat:'acceptable',scan:null,presence:'non-confirme'},
-  {id:'MAT010',nom:'Balisage signalisation',cat:'Signalisation',chantierId:'CH002',etat:'bon',scan:null,presence:'absent'},
-];
-
 // ══════════════════════════════════════
 // STATE
 // ══════════════════════════════════════
