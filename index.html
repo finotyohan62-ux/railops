@@ -297,30 +297,6 @@ const db = createClient(SUPA_URL, SUPA_KEY);
 
 const DEF_USERS=[];
 
-// ── Helpers REST natifs (contourne le client Supabase JS qui cause DataCloneError) ──
-const SB_H={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
-
-async function sbSelect(table){
-  const r=await fetch(SUPA_URL+'/rest/v1/'+table+'?select=*',{headers:SB_H});
-  if(!r.ok){const t=await r.text();throw new Error(table+': '+t);}
-  return r.json();
-}
-async function sbUpsert(table,data){
-  const body=Array.isArray(data)?data:[data];
-  const r=await fetch(SUPA_URL+'/rest/v1/'+table,{
-    method:'POST',
-    headers:{...SB_H,'Prefer':'resolution=merge-duplicates,return=minimal'},
-    body:JSON.stringify(body)
-  });
-  if(!r.ok){const t=await r.text();throw new Error(table+' upsert: '+t);}
-}
-async function sbDelete(table,id){
-  const r=await fetch(SUPA_URL+'/rest/v1/'+table+'?id=eq.'+encodeURIComponent(id),{
-    method:'DELETE',headers:SB_H
-  });
-  if(!r.ok){const t=await r.text();throw new Error(table+' delete: '+t);}
-}
-
 // ══════════════════════════════════════
 // STORAGE — Supabase + localStorage fallback
 // ══════════════════════════════════════
@@ -2904,10 +2880,6 @@ function pgScanner(el){
       </div>
     </div>
     <div style="padding:10px 16px;display:flex;flex-direction:column;gap:8px">
-      <button class="btn btn-outline" onclick="simScan()" style="display:flex;align-items:center;justify-content:center;gap:8px">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        Simuler un scan (démo)
-      </button>
     </div>
   `;
   startCam();
@@ -2994,7 +2966,6 @@ function scanLoop(){
 }
 function stopCam(){S.camActive=false;if(S.camRaf){cancelAnimationFrame(S.camRaf);S.camRaf=null;}if(S.camStream){S.camStream.getTracks().forEach(t=>t.stop());S.camStream=null;}}
 function processQR(data){stopCam();if(data.startsWith('RAILOPS:MAT:')){const id=data.replace('RAILOPS:MAT:','');if(getM(id))startInspect(id);else toast('Matériel introuvable','danger');}else toast('QR non reconnu','danger');}
-function simScan(){if(!S.mat.length)return;startInspect(S.mat[Math.floor(Math.random()*S.mat.length)].id);}
 
 // ══════════════════════════════════════
 // FORM INSPECTION
@@ -3672,57 +3643,6 @@ async function doDeletePrix(ref){
   await deletePrixCatalogue(ref);
   if(window._refreshCatalogue) window._refreshCatalogue();
   toast('Référence supprimée','warn');
-}
-
-function _unusedEquipe(el){
-  const roleLabel={agent:'Agent terrain',chef:"Chef d'équipe",cte:'CTE',chef_chantier:'Chef chantier'};
-  const roleBadge={agent:'b-ok',chef:'b-purple',cte:'b-warn',chef_chantier:'b-info'};
-  const roleColor={agent:'rgba(29,158,117,.15)',chef:'rgba(127,119,221,.2)',chef_chantier:'rgba(55,138,221,.15)'};
-  const roleText={agent:'#5DCAA5',chef:'#AFA9EC',chef_chantier:'#85B7EB'};
-
-  el.innerHTML=`
-    <div class="topbar">
-      <div class="tbi"><div class="tbt">Équipe</div><div class="tbs">${S.users.length} membre(s)</div></div>
-      ${S.role==='chef_chantier'?`<button onclick="go('inscription')" style="background:var(--accent);border:none;border-radius:10px;padding:7px 14px;font-size:12px;font-weight:500;color:#1a0a00;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ajouter
-      </button>`:''}
-    </div>
-
-    <!-- Stats rôles -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 16px 0">
-      ${['agent','chef','chef_chantier'].map(r=>{
-        const count=S.users.filter(u=>u.role===r).length;
-        return`<div style="background:${roleColor[r]};border-radius:var(--r);padding:10px 12px;border:.5px solid rgba(255,255,255,.06)">
-          <div style="font-size:20px;font-weight:500;color:${roleText[r]}">${count}</div>
-          <div style="font-size:10px;color:var(--text2);margin-top:2px">${r==='agent'?'Agents':r==='chef'?'Chefs éq.':'Chefs ch.'}</div>
-        </div>`;
-      }).join('')}
-    </div>
-
-    <div style="padding:12px 16px 20px;display:flex;flex-direction:column;gap:8px">
-      ${S.users.map(u=>{
-        const isSelf=u.nom===S.agent;
-        return`<div style="background:var(--bg2);border-radius:var(--r);padding:13px 14px;border:.5px solid var(--border)">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:40px;height:40px;border-radius:50%;background:${roleColor[u.role]};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:${roleText[u.role]};flex-shrink:0">${ini(u.nom)}</div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:14px;font-weight:500;color:var(--text)">${u.nom}${isSelf?' <span style="font-size:10px;color:var(--text3)">(moi)</span>':''}</div>
-              <div style="font-size:11px;color:var(--text2);margin-top:2px">Badge #${u.badge}</div>
-            </div>
-            <span class="badge ${roleBadge[u.role]}" style="font-size:9px">${roleLabel[u.role]||u.role}</span>
-          </div>
-          ${(S.role==='chef_chantier'&&!isSelf)?`
-          <div style="display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:.5px solid var(--border)">
-            <button onclick="openEditUser('${u.id}')" style="flex:1;background:rgba(55,138,221,.1);border:.5px solid rgba(55,138,221,.25);border-radius:8px;padding:6px 10px;font-size:11px;color:#85B7EB;cursor:pointer;font-family:inherit;font-weight:500">✎ Modifier</button>
-            <button onclick="openChangePass('${u.id}')" style="flex:1;background:rgba(61,181,74,.08);border:.5px solid rgba(61,181,74,.25);border-radius:8px;padding:6px 10px;font-size:11px;color:var(--accent);cursor:pointer;font-family:inherit;font-weight:500">🔑 MDP</button>
-            <button onclick="confirmDeleteUser('${u.id}')" style="flex:1;background:rgba(226,75,74,.08);border:.5px solid rgba(226,75,74,.2);border-radius:8px;padding:6px 10px;font-size:11px;color:#F09595;cursor:pointer;font-family:inherit;font-weight:500">✕ Suppr.</button>
-          </div>`:(isSelf?`
-          <div style="margin-top:10px;padding-top:10px;border-top:.5px solid var(--border)">
-            <button onclick="openChangePassSelf()" style="background:rgba(61,181,74,.08);border:.5px solid rgba(61,181,74,.25);border-radius:8px;padding:6px 14px;font-size:11px;color:var(--accent);cursor:pointer;font-family:inherit;font-weight:500">🔑 Changer mon mot de passe</button>
-          </div>`:'')
-          }
-        </div>`;}).join('')}
-    </div>`;
 }
 
 function openEditUser(uid){
