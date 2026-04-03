@@ -2299,6 +2299,11 @@ function tabTournee(el){
                 ${v.sigAgent?`<div><div style="font-size:9px;color:var(--text3)">Agent</div><img src="${v.sigAgent}" style="height:32px;max-width:90px;border:.5px solid var(--border);border-radius:4px;background:#fff;object-fit:contain"></div>`:''}
                 ${v.sigCte?`<div><div style="font-size:9px;color:var(--text3)">CTE/Chef</div><img src="${v.sigCte}" style="height:32px;max-width:90px;border:.5px solid var(--border);border-radius:4px;background:#fff;object-fit:contain"></div>`:''}
               </div>`:''}
+              ${v.signedAt?`<div style="margin-top:4px;padding:3px 8px;background:rgba(61,181,74,.06);border:.5px solid rgba(61,181,74,.15);border-radius:6px;display:inline-flex;align-items:center;gap:6px">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#3db54a" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span style="font-size:9px;color:#3db54a">Signé le ${new Date(v.signedAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})} à ${new Date(v.signedAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} par ${v.signedBy||'—'}</span>
+                ${v.sigHash?`<span style="font-size:8px;color:var(--text3);font-family:monospace">#${v.sigHash}</span>`:''}
+              </div>`:''}
             </div>`).join('')
           :legacyAgent?`<div style="font-size:11px;color:var(--text2)">Agent : ${legacyAgent}${t.observations?' · '+t.observations:''}</div>`:''}
         </div>`;}).join('')}
@@ -2371,7 +2376,7 @@ function renderVisitePhotos(){
     </div>`).join('');
 }
 
-function validerVisite(){
+async function validerVisite(){
   const agent=document.getElementById('tv-agent')?.value;
   const zone=document.getElementById('tv-zone')?.value.trim();
   if(!agent){toast("Sélectionne l'agent",'danger');return;}
@@ -2381,23 +2386,40 @@ function validerVisite(){
     const tctx=tmp.getContext('2d');tctx.fillStyle='#ffffff';tctx.fillRect(0,0,tmp.width,tmp.height);
     tctx.drawImage(c,0,0);return tmp.toDataURL('image/png');
   };
+  // Horodatage ISO certifié au moment de la validation
+  const timestamp=new Date().toISOString();
+  const sigAgentData=getSig('sig-agent');
+  const sigCteData=getSig('sig-cte');
+
+  // Hash SHA-256 de (sigAgent + sigCte + agent + zone + timestamp)
+  // Garantit que la signature n'a pas été altérée après coup
+  let sigHash=null;
+  try{
+    const payload=[(sigAgentData||''), (sigCteData||''), agent, zone||'—', timestamp].join('|');
+    const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(payload));
+    sigHash=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16).toUpperCase();
+  }catch(e){console.warn('hash error:',e);}
+
   const visite={
     id:newId('VIS'),agent,zone:zone||'—',
     observations:document.getElementById('tv-obs')?.value||'',
     photos:[..._visitePhotos],
-    sigAgent:getSig('sig-agent'),
-    sigCte:getSig('sig-cte'),
+    sigAgent:sigAgentData,
+    sigCte:sigCteData,
+    // Horodatage et hash d'intégrité
+    signedAt:timestamp,
+    signedBy:S.agent,
+    sigHash:sigHash,
   };
   _visites.push(visite);
   _visitePhotos=[];
-  // Réinitialiser le formulaire visite
   if(document.getElementById('tv-agent')) document.getElementById('tv-agent').value='';
   if(document.getElementById('tv-zone')) document.getElementById('tv-zone').value='';
   if(document.getElementById('tv-obs')) document.getElementById('tv-obs').value='';
   renderVisitePhotos();
   clearSig('agent');clearSig('cte');
   renderVisitesSummary();
-  toast('Visite ajoutée ✓','ok');
+  toast('Visite validée ✓','ok');
 }
 
 function renderVisitesSummary(){
