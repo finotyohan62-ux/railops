@@ -3705,7 +3705,15 @@ function openCataloguePrix(){
           <input class="fi" id="prix-val" type="number" placeholder="Prix €" min="0" style="font-size:12px;padding:8px 10px">
         </div>
         <input class="fi" id="prix-desc" placeholder="Description (optionnel)" style="font-size:12px;padding:8px 10px;margin-bottom:8px">
-        <button onclick="doAddPrix()" class="btn btn-accent" style="width:100%;font-size:12px;padding:9px">Ajouter au catalogue</button>
+        <div style="display:flex;gap:8px">
+          <button onclick="doAddPrix()" class="btn btn-accent" style="flex:1;font-size:12px;padding:9px">Ajouter</button>
+          <button onclick="document.getElementById('prix-import-input').click()" style="flex:1;background:rgba(55,138,221,.1);border:.5px solid rgba(55,138,221,.3);border-radius:10px;padding:9px;font-size:12px;color:#85B7EB;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Import Excel
+          </button>
+          <input type="file" id="prix-import-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="importPrixExcel(this)">
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px">Format Excel attendu : colonnes <span style="font-family:monospace">Préfixe</span> et <span style="font-family:monospace">Prix</span> (optionnel : <span style="font-family:monospace">Description</span>)</div>
       </div>
       <!-- Liste -->
       ${S.prixCatalogue.length===0
@@ -3748,6 +3756,59 @@ async function doDeletePrix(ref){
   await deletePrixCatalogue(ref);
   if(window._refreshCatalogue) window._refreshCatalogue();
   toast('Référence supprimée','warn');
+}
+
+async function importPrixExcel(input){
+  const file=input.files[0];if(!file)return;
+  input.value='';
+  const ext=file.name.split('.').pop().toLowerCase();
+  const norm=s=>String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+
+  const processRows=(rows)=>{
+    if(!rows||!rows.length){toast('Fichier vide','danger');return;}
+    const headers=rows[0].map(h=>norm(h));
+    const iRef=headers.findIndex(h=>h.includes('ref')||h.includes('pref')||h.includes('code')||h==='ref');
+    const iPrix=headers.findIndex(h=>h.includes('prix')||h.includes('cout')||h.includes('tarif')||h.includes('valeur')||h==='eur');
+    const iDesc=headers.findIndex(h=>h.includes('desc')||h.includes('libel')||h.includes('nom'));
+    if(iRef===-1||iPrix===-1){toast('Colonnes "Préfixe" et "Prix" introuvables','danger');return;}
+    let added=0,updated=0;
+    for(let i=1;i<rows.length;i++){
+      const row=rows[i];
+      const ref=String(row[iRef]||'').trim();
+      if(!ref)continue;
+      const prix=parseFloat(String(row[iPrix]||'').replace(/[^\d.,]/g,'').replace(',','.'));
+      if(isNaN(prix)||prix<0)continue;
+      const desc=iDesc>=0?String(row[iDesc]||'').trim():'';
+      const existing=S.prixCatalogue.findIndex(p=>p.ref.toLowerCase()===ref.toLowerCase());
+      if(existing!==-1){S.prixCatalogue[existing]={ref,prix,description:desc};updated++;}
+      else{S.prixCatalogue.push({ref,prix,description:desc});added++;}
+    }
+    savePrixCatalogue().then(()=>{
+      if(window._refreshCatalogue)window._refreshCatalogue();
+      toast(added+' ajouté(s) · '+updated+' mis à jour','ok');
+    });
+  };
+
+  if(ext==='xlsx'||ext==='xls'){
+    if(typeof XLSX==='undefined'){toast('Librairie Excel non chargée','danger');return;}
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        processRows(XLSX.utils.sheet_to_json(ws,{header:1,defval:''}));
+      }catch(err){toast('Erreur lecture : '+err.message,'danger');}
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const lines=e.target.result.split(/\r?\n/).filter(l=>l.trim());
+      const sep=lines[0]?.includes(';')?';':',';
+      processRows(lines.map(l=>l.split(sep).map(c=>c.trim().replace(/^["']|["']$/g,''))));
+    };
+    reader.readAsText(file,'utf-8');
+  }
 }
 
 function openEditUser(uid){
