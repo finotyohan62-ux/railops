@@ -425,12 +425,16 @@ async function load(){
     // RÈGLE 2 : Matériels → Supabase + articles locaux non encore confirmés
     const localM=JSON.parse(localStorage.getItem('ro3_m')||'[]');
     const {data:dm, error:em}=await db.from('materiels').select('*');
+    // Récupérer la liste noire des IDs supprimés
+    const {data:deletedData}=await db.from('deleted_ids').select('id');
+    const deletedIds=new Set((deletedData||[]).map(x=>x.id));
     if(!em&&dm){
       const remoteIds=new Set(dm.map(x=>x.id));
-      const localOnly=localM.filter(m=>!remoteIds.has(m.id));
+      // Filtrer le localOnly — exclure les articles supprimés
+      const localOnly=localM.filter(m=>!remoteIds.has(m.id)&&!deletedIds.has(m.id));
       S.mat=[...dm,...localOnly];
       if(localOnly.length) db.from('materiels').upsert(localOnly.map(({prix:_,...m})=>m),{onConflict:'id'}).then(()=>{},()=>{});
-    } else { S.mat=localM; }
+    } else { S.mat=localM.filter(m=>!deletedIds.has(m.id)); }
     localStorage.setItem('ro3_m',JSON.stringify(S.mat));
     // Scans : Supabase sans photo + réattacher photos du localStorage
     const {data:ds}=await db.from('scans').select('id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions');
@@ -3592,6 +3596,8 @@ async function doDeleteSelected(){
     const errs=res.filter(r=>r.error);
     if(errs.length) toast('Erreur suppression Supabase : '+errs[0].error.message,'danger');
     await Promise.all(idsToDelete.map(id=>db.from('scans').delete().eq('materielId',id)));
+    // Ajouter dans la liste noire pour bloquer la réinjection depuis les vieux appareils
+    await db.from('deleted_ids').upsert(idsToDelete.map(id=>({id})),{onConflict:'id'});
   }catch(e){toast('Erreur : '+e.message,'danger');console.warn('delete error:',e);}
   window._importing=false;
   const existing=document.getElementById('movl');if(existing)existing.remove();
@@ -4758,8 +4764,10 @@ async function silentSync(){
     // RÈGLE 2 : Matériels → Supabase + articles locaux pas encore confirmés, bloquer si import récent (60s)
     const importRecent = window._lastImport && (Date.now() - window._lastImport) < 60000;
     if(!em&&dm&&!importRecent){
+      const {data:deletedData}=await db.from('deleted_ids').select('id');
+      const deletedIds=new Set((deletedData||[]).map(x=>x.id));
       const remoteIds=new Set(dm.map(x=>x.id));
-      const localOnly=S.mat.filter(m=>!remoteIds.has(m.id));
+      const localOnly=S.mat.filter(m=>!remoteIds.has(m.id)&&!deletedIds.has(m.id));
       S.mat=[...dm,...localOnly];
       if(localOnly.length) db.from('materiels').upsert(localOnly.map(({prix:_,...m})=>m),{onConflict:'id'}).then(()=>{},()=>{});
       try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
