@@ -226,17 +226,24 @@ async function flushOfflineQueue(){
   if(!navigator.onLine)return;
   let sent=0;
   const remaining=[];
+  // Récupérer la liste noire des IDs supprimés avant de vider la queue
+  const {data:deletedData}=await db.from('deleted_ids').select('id').catch(()=>({data:[]}));
+  const deletedIds=new Set((deletedData||[]).map(x=>x.id));
+
   for(const item of q){
     try{
       if(item.type==='scan'){
+        // Ignorer si le matériel a été supprimé
+        if(deletedIds.has(item.data.materielId)){sent++;continue;}
         await db.from('scans').upsert([item.data],{onConflict:'id'});
-        // Also update materiel
         const mIdx=S.mat.findIndex(m=>m.id===item.data.materielId);
         if(mIdx!==-1){
           await db.from('materiels').upsert([S.mat[mIdx]],{onConflict:'id'});
         }
         sent++;
       } else if(item.type==='materiel'){
+        // Ignorer si l'article a été supprimé
+        if(deletedIds.has(item.data.id)){sent++;continue;}
         await db.from('materiels').upsert([item.data],{onConflict:'id'});
         sent++;
       }
