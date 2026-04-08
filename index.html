@@ -3589,14 +3589,12 @@ async function doDeleteSelected(){
   S.selItems=new Set();
   S.selMode=false;
   try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-  try{
-    const res=await Promise.all(idsToDelete.map(id=>db.from('materiels').delete().eq('id',id)));
-    const errs=res.filter(r=>r.error);
-    if(errs.length) toast('Erreur suppression Supabase : '+errs[0].error.message,'danger');
-    await Promise.all(idsToDelete.map(id=>db.from('scans').delete().eq('materielId',id)));
-    // Ajouter dans la liste noire pour bloquer la réinjection depuis les vieux appareils
-    await db.from('deleted_ids').upsert(idsToDelete.map(id=>({id})),{onConflict:'id'});
-  }catch(e){toast('Erreur : '+e.message,'danger');console.warn('delete error:',e);}
+  // DELETE Supabase en priorité — chaque delete indépendamment
+  for(const id of idsToDelete){
+    try{await db.from('materiels').delete().eq('id',id);}catch(e){console.warn('del mat:',id,e);}
+    try{await db.from('scans').delete().eq('materielId',id);}catch(e){console.warn('del scans:',id,e);}
+    try{await db.from('deleted_mat_ids').insert({id}).catch(()=>{});}catch(e){}
+  }
   window._importing=false;
   const existing=document.getElementById('movl');if(existing)existing.remove();
   renderTab();
