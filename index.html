@@ -1669,6 +1669,16 @@ function importReplace(input){
       if(id){newIds.add(id);newRows.push({id,row:rows[i]});}
     }
 
+    // Sauvegarder les vérifs de la semaine courante avant suppression
+    const wkNow=getWeekKey();
+    const verifsToKeep={};
+    S.mat.filter(m=>m.chantierId===S.curC&&newIds.has(m.id)).forEach(m=>{
+      // Article qui reste dans le nouveau registre → conserver ses vérifs
+      if(m.verifLundi?.weekKey===wkNow||m.verifSemaine?.weekKey===wkNow){
+        verifsToKeep[m.id]={verifLundi:m.verifLundi,verifSemaine:m.verifSemaine};
+      }
+    });
+
     // Supprimer articles absents
     const avant=S.mat.filter(m=>m.chantierId===S.curC).length;
     const suppIds=S.mat.filter(m=>m.chantierId===S.curC&&!newIds.has(m.id)).map(m=>m.id);
@@ -1714,6 +1724,17 @@ function importReplace(input){
         toUpsert.push(newMat);
         added++;
       }
+    }
+
+    // Réappliquer les vérifs conservées sur les articles qui existent toujours
+    if(Object.keys(verifsToKeep).length){
+      Object.entries(verifsToKeep).forEach(([id,v])=>{
+        const idx=S.mat.findIndex(m=>m.id===id);
+        if(idx!==-1){
+          S.mat[idx].verifLundi=v.verifLundi;
+          S.mat[idx].verifSemaine=v.verifSemaine;
+        }
+      });
     }
 
     // Sauvegarder
@@ -4933,20 +4954,36 @@ function isInPrevWeek(dateStr){
   return d>=prevMon&&d<thisMon;
 }
 
-async function cleanStaleVerifs(){  // Nettoyer les verifLundi/verifSemaine qui datent d'une ancienne semaine
+async function cleanStaleVerifs(){
   const wk=getWeekKey();
   let changed=false;
+  const scanIdsThisWeek=new Set();
+  S.scans.forEach(s=>{
+    const offsetMs=14*60*60*1000;
+    const dt=new Date(new Date(s.date).getTime()-offsetMs);
+    const tmp=new Date(Date.UTC(dt.getUTCFullYear(),dt.getUTCMonth(),dt.getUTCDate()));
+    const day=tmp.getUTCDay()||7;tmp.setUTCDate(tmp.getUTCDate()+4-day);
+    const y=tmp.getUTCFullYear();
+    const w=Math.ceil((((tmp-new Date(Date.UTC(y,0,1)))/86400000)+1)/7);
+    if(y+'-W'+(w<10?'0'+w:w)===wk) scanIdsThisWeek.add(s.materielId);
+  });
   S.mat.forEach((m,i)=>{
+    // Ancienne semaine
     if(m.verifLundi?.weekKey && m.verifLundi.weekKey!==wk){
-      S.mat[i].verifLundi=null; changed=true;
+      S.mat[i].verifLundi=null;changed=true;
       db.from('materiels').update({verifLundi:null}).eq('id',m.id).then(()=>{},()=>{});
     }
     if(m.verifSemaine?.weekKey && m.verifSemaine.weekKey!==wk){
-      S.mat[i].verifSemaine=null; changed=true;
+      S.mat[i].verifSemaine=null;changed=true;
       db.from('materiels').update({verifSemaine:null}).eq('id',m.id).then(()=>{},()=>{});
     }
+    // Verif orpheline : verif présente mais aucun scan cette semaine
+    if((m.verifLundi?.weekKey===wk||m.verifSemaine?.weekKey===wk)&&!scanIdsThisWeek.has(m.id)){
+      S.mat[i].verifLundi=null;S.mat[i].verifSemaine=null;changed=true;
+      db.from('materiels').update({verifLundi:null,verifSemaine:null}).eq('id',m.id).then(()=>{},()=>{});
+    }
   });
-  if(changed) try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
+  if(changed){try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}renderTab?.();}
 }
 
 async function checkWeeklyArchive(){
