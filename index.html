@@ -290,6 +290,8 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
+const APP_VERSION='75';
+
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
 const { createClient } = supabase;
@@ -4543,6 +4545,8 @@ if(window.location.hash==='#install'){
   showInstallPublic();
 } else {
   load().then(()=>{render();if(S.agent){setupRealtime();setTimeout(()=>{cleanStaleVerifs();checkWeeklyArchive();},3000);}});
+  // Vérification de version au démarrage — force le rechargement sur tous les appareils
+  checkAppVersion();
 }
 
 function showInstallPublic(){
@@ -5012,6 +5016,28 @@ function isInPrevWeek(dateStr){
   const prevMon=new Date(thisMon.getTime()-7*24*60*60*1000);
   const d=new Date(dateStr);
   return d>=prevMon&&d<thisMon;
+}
+
+async function checkAppVersion(){
+  try{
+    const {data}=await db.from('app_config').select('value').eq('key','version').single();
+    if(data&&data.value!==APP_VERSION){
+      // Nouvelle version disponible — vider le cache et recharger
+      toast('Mise à jour disponible, rechargement…','ok');
+      setTimeout(async()=>{
+        // Vider localStorage sauf les données critiques
+        localStorage.removeItem('ro3_c');
+        localStorage.removeItem('ro3_m');
+        localStorage.removeItem('ro3_s');
+        // Forcer rechargement sans cache
+        if('caches' in window){
+          const keys=await caches.keys();
+          await Promise.all(keys.map(k=>caches.delete(k)));
+        }
+        window.location.reload(true);
+      },1500);
+    }
+  }catch(e){console.warn('version check:',e);}
 }
 
 async function cleanStaleVerifs(){
