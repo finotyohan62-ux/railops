@@ -420,17 +420,9 @@ async function load(){
     if(!ec){ S.chantiers=dc||[]; localStorage.setItem('ro3_c',JSON.stringify(S.chantiers)); }
     else S.chantiers=[];
 
-    // RÈGLE 2 : Matériels → Supabase + articles locaux non encore confirmés
-    // Le localOnly permet de survivre au silentSync pendant un import
-    // Ne JAMAIS envoyer des colonnes inexistantes en Supabase (ex: prix)
-    const localM=JSON.parse(localStorage.getItem('ro3_m')||'[]');
+    // RÈGLE 2 : Matériels → Supabase fait loi
     const {data:dm, error:em}=await db.from('materiels').select('*');
-    if(!em&&dm){
-      const remoteIds=new Set(dm.map(x=>x.id));
-      const localOnly=localM.filter(m=>!remoteIds.has(m.id));
-      S.mat=[...dm,...localOnly];
-      if(localOnly.length) db.from('materiels').upsert(localOnly.map(({prix:_,...m})=>m),{onConflict:'id'}).then(()=>{},()=>{});
-    } else { S.mat=localM; }
+    if(!em&&dm){ S.mat=dm; } else { S.mat=JSON.parse(localStorage.getItem('ro3_m')||'[]'); }
     localStorage.setItem('ro3_m',JSON.stringify(S.mat));
     // Scans : Supabase sans photo + réattacher photos du localStorage
     const {data:ds}=await db.from('scans').select('id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions');
@@ -4751,13 +4743,10 @@ async function silentSync(){
     // RÈGLE 1 : Chantiers → Supabase fait TOUJOURS loi
     if(!ec){ S.chantiers=dc||[]; try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){} }
 
-    // RÈGLE 2 : Matériels → fusionner, bloquer si import récent (60s)
+    // RÈGLE 2 : Matériels → Supabase fait loi, bloquer si import récent (60s)
     const importRecent = window._lastImport && (Date.now() - window._lastImport) < 60000;
     if(!em&&dm&&!importRecent){
-      const remoteIds=new Set(dm.map(x=>x.id));
-      const localOnly=S.mat.filter(m=>!remoteIds.has(m.id));
-      S.mat=[...dm,...localOnly];
-      if(localOnly.length) db.from('materiels').upsert(localOnly.map(({prix:_,...m})=>m),{onConflict:'id'}).then(()=>{},()=>{});
+      S.mat=dm;
       try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
     }
 
