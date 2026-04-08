@@ -422,9 +422,15 @@ async function load(){
     if(!ec){ S.chantiers=dc||[]; localStorage.setItem('ro3_c',JSON.stringify(S.chantiers)); }
     else S.chantiers=[];
 
-    // RÈGLE 2 : Matériels → Supabase fait loi
+    // RÈGLE 2 : Matériels → Supabase + articles locaux non encore confirmés
+    const localM=JSON.parse(localStorage.getItem('ro3_m')||'[]');
     const {data:dm, error:em}=await db.from('materiels').select('*');
-    if(!em&&dm){ S.mat=dm; } else { S.mat=JSON.parse(localStorage.getItem('ro3_m')||'[]'); }
+    if(!em&&dm){
+      const remoteIds=new Set(dm.map(x=>x.id));
+      const localOnly=localM.filter(m=>!remoteIds.has(m.id));
+      S.mat=[...dm,...localOnly];
+      if(localOnly.length) db.from('materiels').upsert(localOnly.map(({prix:_,...m})=>m),{onConflict:'id'}).then(()=>{},()=>{});
+    } else { S.mat=localM; }
     localStorage.setItem('ro3_m',JSON.stringify(S.mat));
     // Scans : Supabase sans photo + réattacher photos du localStorage
     const {data:ds}=await db.from('scans').select('id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions');
@@ -3576,12 +3582,11 @@ function deleteSelected(){
 async function doDeleteSelected(){
   const count=S.selItems.size;
   const idsToDelete=[...S.selItems];
-  window._importing=true; // bloquer silentSync pendant la suppression
+  window._importing=true;
   S.mat=S.mat.filter(m=>!S.selItems.has(m.id));
   S.selItems=new Set();
   S.selMode=false;
   try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-  // Attendre que Supabase confirme les suppressions
   try{
     const res=await Promise.all(idsToDelete.map(id=>db.from('materiels').delete().eq('id',id)));
     const errs=res.filter(r=>r.error);
@@ -4750,10 +4755,13 @@ async function silentSync(){
     // RÈGLE 1 : Chantiers → Supabase fait TOUJOURS loi
     if(!ec){ S.chantiers=dc||[]; try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){} }
 
-    // RÈGLE 2 : Matériels → Supabase fait loi, bloquer si import récent (60s)
+    // RÈGLE 2 : Matériels → Supabase + articles locaux pas encore confirmés, bloquer si import récent (60s)
     const importRecent = window._lastImport && (Date.now() - window._lastImport) < 60000;
     if(!em&&dm&&!importRecent){
-      S.mat=dm;
+      const remoteIds=new Set(dm.map(x=>x.id));
+      const localOnly=S.mat.filter(m=>!remoteIds.has(m.id));
+      S.mat=[...dm,...localOnly];
+      if(localOnly.length) db.from('materiels').upsert(localOnly.map(({prix:_,...m})=>m),{onConflict:'id'}).then(()=>{},()=>{});
       try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
     }
 
