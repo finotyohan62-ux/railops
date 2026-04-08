@@ -3581,10 +3581,17 @@ function deleteSelected(){
 }
 function doDeleteSelected(){
   const count=S.selItems.size;
+  const idsToDelete=[...S.selItems];
   S.mat=S.mat.filter(m=>!S.selItems.has(m.id));
   S.selItems=new Set();
   S.selMode=false;
-  save();
+  // Mettre à jour localStorage immédiatement
+  try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
+  // Supprimer de Supabase
+  idsToDelete.forEach(id=>{
+    db.from('materiels').delete().eq('id',id).then(()=>{},e=>console.warn('delete mat:',e));
+    db.from('scans').delete().eq('materielId',id).then(()=>{},e=>console.warn('delete scan:',e));
+  });
   const existing=document.getElementById('movl');if(existing)existing.remove();
   renderTab();
   toast(count+' article(s) supprimé(s)','warn');
