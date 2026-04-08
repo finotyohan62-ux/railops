@@ -3571,19 +3571,20 @@ function deleteSelected(){
   // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
-function doDeleteSelected(){
+async function doDeleteSelected(){
   const count=S.selItems.size;
   const idsToDelete=[...S.selItems];
+  window._importing=true; // bloquer silentSync pendant la suppression
   S.mat=S.mat.filter(m=>!S.selItems.has(m.id));
   S.selItems=new Set();
   S.selMode=false;
-  // Mettre à jour localStorage immédiatement
   try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-  // Supprimer de Supabase
-  idsToDelete.forEach(id=>{
-    db.from('materiels').delete().eq('id',id).then(()=>{},e=>console.warn('delete mat:',e));
-    db.from('scans').delete().eq('materielId',id).then(()=>{},e=>console.warn('delete scan:',e));
-  });
+  // Attendre que Supabase confirme les suppressions
+  try{
+    await Promise.all(idsToDelete.map(id=>db.from('materiels').delete().eq('id',id)));
+    await Promise.all(idsToDelete.map(id=>db.from('scans').delete().eq('materielId',id)));
+  }catch(e){console.warn('delete error:',e);}
+  window._importing=false;
   const existing=document.getElementById('movl');if(existing)existing.remove();
   renderTab();
   toast(count+' article(s) supprimé(s)','warn');
