@@ -859,7 +859,7 @@ function doInscription(){
   const newUser={id:newId("USR"),nom,badge,role:_ir,mdp};
   S.users.push(newUser);save();
   // Connexion automatique
-  S.agent=nom;S.role=_ir;S.page='dashboard';save();render();setupRealtime();setTimeout(checkWeeklyArchive,3000);
+  S.agent=nom;S.role=_ir;S.page='dashboard';save();render();setupRealtime();setTimeout(()=>{cleanStaleVerifs();checkWeeklyArchive();},3000);
   setTimeout(()=>toast('Compte créé ! Bienvenue '+nom.split(' ')[0]+' 👋','ok'),80);
 }
 
@@ -1010,7 +1010,8 @@ function pgDashChef(el){
         const mats=matOfC(c.id);
         const ab=mats.filter(m=>m.presence==='absent').length;
         const nc=mats.filter(m=>m.presence==='non-confirme').length;
-        const done=mats.filter(m=>m.scan).length;
+        const wkNow=getWeekKey();
+        const done=mats.filter(m=>m.verifLundi?.weekKey===wkNow||m.verifSemaine?.weekKey===wkNow).length;
         return`<div class="cc" onclick="openC('${c.id}')">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
             <div><div style="font-size:15px;font-weight:500;color:var(--text)">${c.nom}</div><div style="font-size:12px;color:var(--text2);margin-top:2px">${c.lieu}</div></div>
@@ -1301,7 +1302,9 @@ function pgChantiers(el){
     <div style="padding:12px 16px 20px">
       ${visibleC.length===0?`<div style="text-align:center;padding:60px 0;color:var(--text3);font-size:13px">Aucun chantier assigné</div>`:''}
       ${visibleC.map(c=>{
-        const mats=matOfC(c.id);const ab=mats.filter(m=>m.presence==='absent').length;const done=mats.filter(m=>m.scan).length;
+        const mats=matOfC(c.id);const ab=mats.filter(m=>m.presence==='absent').length;
+        const wkNow=getWeekKey();
+        const done=mats.filter(m=>m.verifLundi?.weekKey===wkNow||m.verifSemaine?.weekKey===wkNow).length;
         return`<div class="cc" onclick="openC('${c.id}')">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
             <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:500;color:var(--text)">${c.nom}</div><div style="font-size:12px;color:var(--text2);margin-top:2px">${c.lieu}</div></div>
@@ -4455,7 +4458,7 @@ function openInstallPage(){
 if(window.location.hash==='#install'){
   showInstallPublic();
 } else {
-  load().then(()=>{render();if(S.agent){setupRealtime();setTimeout(checkWeeklyArchive,3000);}});
+  load().then(()=>{render();if(S.agent){setupRealtime();setTimeout(()=>{cleanStaleVerifs();checkWeeklyArchive();},3000);}});
 }
 
 function showInstallPublic(){
@@ -4928,6 +4931,22 @@ function isInPrevWeek(dateStr){
   const prevMon=new Date(thisMon.getTime()-7*24*60*60*1000);
   const d=new Date(dateStr);
   return d>=prevMon&&d<thisMon;
+}
+
+async function cleanStaleVerifs(){  // Nettoyer les verifLundi/verifSemaine qui datent d'une ancienne semaine
+  const wk=getWeekKey();
+  let changed=false;
+  S.mat.forEach((m,i)=>{
+    if(m.verifLundi?.weekKey && m.verifLundi.weekKey!==wk){
+      S.mat[i].verifLundi=null; changed=true;
+      db.from('materiels').update({verifLundi:null}).eq('id',m.id).then(()=>{},()=>{});
+    }
+    if(m.verifSemaine?.weekKey && m.verifSemaine.weekKey!==wk){
+      S.mat[i].verifSemaine=null; changed=true;
+      db.from('materiels').update({verifSemaine:null}).eq('id',m.id).then(()=>{},()=>{});
+    }
+  });
+  if(changed) try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
 }
 
 async function checkWeeklyArchive(){
