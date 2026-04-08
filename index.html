@@ -3924,8 +3924,10 @@ async function deleteScan(scanId, matId){
     if(scansThisWeek.length===0){
       S.mat[idx].verifLundi=null;
       S.mat[idx].verifSemaine=null;
+    } else if(scansThisWeek.length===1){
+      S.mat[idx].verifSemaine=null;
     }
-    saveMat(matId);
+    await saveMat(matId); // await pour garantir la sauvegarde avant renderTab
   }
   document.getElementById('movl')?.remove();
   toast('Scan supprimé','warn');
