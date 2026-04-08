@@ -1456,6 +1456,9 @@ function tabRegistre(el){
         <button onclick="toggleSelMode()"  style="flex:1;background:${S.selMode?'rgba(61,181,74,.15)':'var(--bg3)'};border:.5px solid ${S.selMode?'rgba(61,181,74,.4)':'var(--border)'};border-radius:10px;padding:9px 8px;font-size:12px;color:${S.selMode?'var(--accent)':'var(--text2)'};cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>${S.selMode?'Annuler':'Sélectionner'}
         </button>
+        ${['chef','chef_chantier'].includes(S.role)?`<button onclick="exportNonVerifies()" style="flex:1;background:rgba(226,75,74,.08);border:.5px solid rgba(226,75,74,.2);border-radius:10px;padding:9px 8px;font-size:12px;color:#F09595;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F09595" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Non vérifiés
+        </button>`:''}
         <input type="file" id="csv-input" accept=".csv,.txt,.xlsx,.xls,.pdf" style="display:none" onchange="importCSV(this)">
       </div>
       <!-- Barre de sélection multiple -->
@@ -3182,9 +3185,41 @@ function clearPhoto(){
 }
 
 
-function submitF(){
+function submitF(forceDouble=false){
   if(!S.fd.etatGeneral){toast('Sélectionne l\'état général','danger');return;}
   if(!S.fd.proprete){toast('Sélectionne la propreté','danger');return;}
+  // Vérifier si cet article a déjà été inspecté aujourd'hui par cet agent
+  if(!forceDouble){
+    const today=new Date().toDateString();
+    const dejaVu=S.scans.find(s=>s.materielId===S.curM&&s.agentNom===S.agent&&new Date(s.date).toDateString()===today);
+    if(dejaVu){
+      // Afficher modal de confirmation
+      const existing=document.getElementById('movl');if(existing)existing.remove();
+      const div=document.createElement('div');div.id='movl';div.className='moverlay';
+      const m=getM(S.curM);
+      div.innerHTML=`<div class="msheet">
+        <div class="mhandle"></div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <div style="width:40px;height:40px;border-radius:50%;background:rgba(245,166,35,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div>
+            <div style="font-size:15px;font-weight:500;color:var(--text)">Déjà vérifié aujourd'hui</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">${m?.nom||S.curM}</div>
+          </div>
+        </div>
+        <div style="background:rgba(245,166,35,.08);border:.5px solid rgba(245,166,35,.3);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--text2)">
+          Cet article a déjà été inspecté ce jour à ${new Date(dejaVu.date).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}. Es-tu sûr de vouloir ajouter une seconde inspection ?
+        </div>
+        <div style="display:flex;gap:10px">
+          <button onclick="document.getElementById('movl').remove()" class="btn btn-outline" style="flex:1">Annuler</button>
+          <button onclick="document.getElementById('movl').remove();submitF(true)" class="btn btn-accent" style="flex:1">Oui, valider quand même</button>
+        </div>
+      </div>`;
+      document.getElementById('app').appendChild(div);
+      return;
+    }
+  }
   const m=getM(S.curM);
   const scan={id:newId('SCAN'),materielId:S.curM,chantierId:m?.chantierId||'',agentNom:S.agent,date:nowISO(),etatGeneral:S.fd.etatGeneral,proprete:S.fd.proprete,fonctionnement:S.fd.fonctionnement,dommages:S.fd.dommages,dommagesDesc:document.getElementById('dmg-desc')?.value||'',observations:document.getElementById('obs')?.value||'',actions:document.getElementById('act')?.value||'',photo:S.fd.photo||null};
   S.scans.push(scan);
@@ -3861,10 +3896,49 @@ function openPhotoFull(scanId){
 }
 
 // ══════════════════════════════════════
+// SUPPRESSION SCAN + EXPORT NON VERIFIES
+// ══════════════════════════════════════
+async function deleteScan(scanId, matId){
+  if(!confirm('Supprimer ce scan ?')) return;
+  S.scans=S.scans.filter(s=>s.id!==scanId);
+  try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
+  try{await db.from('scans').delete().eq('id',scanId);}catch(e){console.warn('deleteScan:',e);}
+  const lastScan=S.scans.filter(s=>s.materielId===matId).sort((a,b)=>b.date.localeCompare(a.date))[0];
+  const idx=S.mat.findIndex(m=>m.id===matId);
+  if(idx!==-1){
+    S.mat[idx].scan=lastScan?.date||null;
+    S.mat[idx].etat=lastScan?.etatGeneral||'inconnu';
+    saveMat(matId);
+  }
+  document.getElementById('movl')?.remove();
+  toast('Scan supprimé','warn');
+  renderTab();
+}
+
+function exportNonVerifies(){
+  const c=getC(S.curC);if(!c)return;
+  const wk=getWeekKey();
+  const mats=matOfC(S.curC);
+  const scansWeek=new Set(S.scans.filter(s=>s.chantierId===S.curC).map(s=>s.materielId));
+  const nonVerifies=mats.filter(m=>!scansWeek.has(m.id));
+  if(!nonVerifies.length){toast('Tous les articles ont été vérifiés cette semaine ✓','ok');return;}
+  const lines=['Référence;Désignation;Catégorie;Dernier scan;État'];
+  nonVerifies.forEach(m=>{
+    lines.push([m.id,m.nom,m.cat,m.scan?new Date(m.scan).toLocaleDateString('fr-FR'):'Jamais',m.etat].join(';'));
+  });
+  const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='NonVerifies_'+c.nom.replace(/[^a-z0-9]/gi,'_')+'_'+wk+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+  toast(nonVerifies.length+' article(s) non vérifiés exportés','warn');
+}
+
+// ══════════════════════════════════════
 // HISTORIQUE PAR ARTICLE
 // ══════════════════════════════════════
-function openHistoriqueArticle(matId){
-  const m=getM(matId);if(!m)return;
+function openHistoriqueArticle(matId){  const m=getM(matId);if(!m)return;
   const c=getC(m.chantierId);
   const scans=[...S.scans].filter(s=>s.materielId===matId).reverse();
   const existing=document.getElementById('movl');if(existing)existing.remove();
@@ -3895,6 +3969,9 @@ function openHistoriqueArticle(matId){
           <button onclick="openPhotoFull('${s.id}')" style="background:rgba(0,0,0,.6);border:none;border-radius:5px;padding:3px 7px;color:#fff;cursor:pointer;font-size:10px;font-family:inherit">⛶</button>
           <a href="${s.photo}" download="inspection-${s.id}.jpg" style="background:rgba(0,0,0,.6);border:none;border-radius:5px;padding:3px 7px;color:#fff;font-size:10px;text-decoration:none;display:flex;align-items:center">⬇</a>
         </div>
+      </div>`:''}
+      ${['chef','chef_chantier'].includes(S.role)?`<div style="margin-top:6px;text-align:right">
+        <button onclick="deleteScan('${s.id}','${matId}')" style="background:rgba(226,75,74,.08);border:.5px solid rgba(226,75,74,.2);border-radius:6px;padding:3px 10px;font-size:10px;color:#F09595;cursor:pointer;font-family:inherit">✕ Supprimer ce scan</button>
       </div>`:''}
     </div>`;
   }).join('');
