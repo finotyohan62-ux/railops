@@ -3903,11 +3903,28 @@ async function deleteScan(scanId, matId){
   S.scans=S.scans.filter(s=>s.id!==scanId);
   try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
   try{await db.from('scans').delete().eq('id',scanId);}catch(e){console.warn('deleteScan:',e);}
-  const lastScan=S.scans.filter(s=>s.materielId===matId).sort((a,b)=>b.date.localeCompare(a.date))[0];
+  // Remettre à jour l'état et les vérifs hebdomadaires du matériel
   const idx=S.mat.findIndex(m=>m.id===matId);
   if(idx!==-1){
+    const remaining=S.scans.filter(s=>s.materielId===matId).sort((a,b)=>b.date.localeCompare(a.date));
+    const lastScan=remaining[0];
     S.mat[idx].scan=lastScan?.date||null;
     S.mat[idx].etat=lastScan?.etatGeneral||'inconnu';
+    // Remettre à zéro verifLundi/verifSemaine si plus aucun scan cette semaine
+    const wk=getWeekKey();
+    const scansThisWeek=remaining.filter(s=>{
+      const offsetMs=14*60*60*1000;
+      const dt=new Date(new Date(s.date).getTime()-offsetMs);
+      const tmp=new Date(Date.UTC(dt.getUTCFullYear(),dt.getUTCMonth(),dt.getUTCDate()));
+      const day=tmp.getUTCDay()||7;tmp.setUTCDate(tmp.getUTCDate()+4-day);
+      const y=tmp.getUTCFullYear();
+      const w=Math.ceil((((tmp-new Date(Date.UTC(y,0,1)))/86400000)+1)/7);
+      return y+'-W'+(w<10?'0'+w:w)===wk;
+    });
+    if(scansThisWeek.length===0){
+      S.mat[idx].verifLundi=null;
+      S.mat[idx].verifSemaine=null;
+    }
     saveMat(matId);
   }
   document.getElementById('movl')?.remove();
@@ -3922,17 +3939,62 @@ function exportNonVerifies(){
   const scansWeek=new Set(S.scans.filter(s=>s.chantierId===S.curC).map(s=>s.materielId));
   const nonVerifies=mats.filter(m=>!scansWeek.has(m.id));
   if(!nonVerifies.length){toast('Tous les articles ont été vérifiés cette semaine ✓','ok');return;}
-  const lines=['Référence;Désignation;Catégorie;Dernier scan;État'];
-  nonVerifies.forEach(m=>{
-    lines.push([m.id,m.nom,m.cat,m.scan?new Date(m.scan).toLocaleDateString('fr-FR'):'Jamais',m.etat].join(';'));
+
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const pw=doc.internal.pageSize.getWidth();
+  const now=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+  // Header
+  doc.setFillColor(245,166,35);doc.rect(0,0,pw,16,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(13);doc.setFont('helvetica','bold');
+  doc.text('RailOps — SFERIS',14,10);
+  doc.setFontSize(8);doc.setFont('helvetica','normal');
+  doc.text('Articles non vérifiés',pw-14,10,{align:'right'});
+
+  // Infos
+  doc.setTextColor(30,30,30);doc.setFontSize(14);doc.setFont('helvetica','bold');
+  doc.text(c.nom,14,24);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(100,100,100);
+  doc.text(c.lieu,14,30);
+  doc.text('Semaine : '+wk+' · Généré le '+now,pw-14,24,{align:'right'});
+  doc.setFontSize(11);doc.setFont('helvetica','bold');doc.setTextColor(192,57,43);
+  doc.text(nonVerifies.length+' article(s) non vérifiés cette semaine',14,38);
+
+  doc.autoTable({
+    startY:44,
+    head:[['Référence','Désignation','Catégorie','Dernier scan','État']],
+    body:nonVerifies.map(m=>[
+      m.id,
+      m.nom,
+      m.cat,
+      m.scan?new Date(m.scan).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}):'Jamais inspecté',
+      {bon:'Bon état',acceptable:'Acceptable',degrade:'Dégradé','hors-service':'Hors service',inconnu:'Non inspecté'}[m.etat]||m.etat
+    ]),
+    styles:{fontSize:8,cellPadding:2},
+    headStyles:{fillColor:[192,57,43],textColor:255,fontStyle:'bold',fontSize:8},
+    didParseCell:(data)=>{
+      if(data.section==='body'&&data.column.index===4){
+        const etat=nonVerifies[data.row.index]?.etat;
+        data.cell.styles.textColor=etat==='bon'?[26,122,58]:etat==='acceptable'?[179,106,0]:etat==='degrade'||etat==='hors-service'?[192,57,43]:[100,100,100];
+        data.cell.styles.fontStyle='bold';
+      }
+    },
+    margin:{left:14,right:14},
   });
-  const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'});
+
+  // Footer
+  doc.setFontSize(7);doc.setTextColor(150,150,150);
+  doc.text('RailOps — SFERIS · '+now,14,doc.internal.pageSize.getHeight()-6);
+  doc.text(c.nom+' · Non vérifiés '+wk,pw-14,doc.internal.pageSize.getHeight()-6,{align:'right'});
+
+  const fname='NonVerifies_'+c.nom.replace(/[^a-z0-9]/gi,'_')+'_'+wk+'.pdf';
+  const blob=doc.output('blob');
   const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.download='NonVerifies_'+c.nom.replace(/[^a-z0-9]/gi,'_')+'_'+wk+'.csv';
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url),5000);
-  toast(nonVerifies.length+' article(s) non vérifiés exportés','warn');
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+  if(isIOS){window.open(url,'_blank');toast('PDF prêt — Partager → Enregistrer dans Fichiers','ok');}
+  else{const a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),10000);}
+  toast(nonVerifies.length+' article(s) non vérifiés exportés en PDF','warn');
 }
 
 // ══════════════════════════════════════
