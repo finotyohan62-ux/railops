@@ -3052,6 +3052,16 @@ function startInspect(id){stopCam();S.curM=id;S.fd={etatGeneral:'',proprete:'',f
 
 function renderForm(){
   const m=getM(S.curM);const c=getC(m?.chantierId);
+  // Calcul section kit
+  const nom=(m?.nom||'').toLowerCase();
+  let kitHTML='';
+  if(nom.includes('pulsar')){
+    kitHTML=buildKitHTML('Pulsars',6,6);
+  } else if(nom.includes('drap')){
+    kitHTML=buildKitHTML('Drapeaux',10,10);
+  } else if(nom.includes('cone')||nom.includes('cône')){
+    kitHTML=buildKitHTML('Cônes',6,0);
+  }
   app.innerHTML=`
     <div class="sb"><span class="t">${tStr()}</span></div>
     <div class="topbar">
@@ -3072,6 +3082,9 @@ function renderForm(){
           ${echeanceHTML(m?.echeance)}
         </div>
       </div>
+
+      <!-- Vérification kit si applicable -->
+      ${kitHTML}
 
       <!-- Présence sur chantier -->
       <label class="fl" style="margin-top:0">Présence sur le chantier</label>
@@ -3133,39 +3146,106 @@ function fSetPres(v){
 }
 function sE(v){S.fd.etatGeneral=v;['bon','acceptable','degrade','hors-service'].forEach(e=>{const el=document.getElementById('eg-'+e);if(el){el.className='ro';if(e===v)el.classList.add(v==='bon'?'sel-ok':v==='acceptable'?'sel-warn':'sel-danger');}});
   const hint=document.getElementById('photo-hint');const btn=document.getElementById('photo-btn');
-  const anomalie=(v==='degrade'||v==='hors-service')||S.fd.dommages;
+  const anomalie=S.fd.dommages||(v==='degrade'||v==='hors-service');
   if(hint)hint.innerHTML=anomalie?'<span style="color:var(--accent);font-weight:500">⚠ Recommandée</span>':'Optionnel';
   if(btn)btn.style.borderColor=anomalie?'rgba(61,181,74,.4)':'var(--border)';
-  // Alerte pédagogique si Hors service
-  document.getElementById('hs-prix-alert')?.remove();
+  // Alerte HS prix
+  const existingAlert=document.getElementById('hs-prix-alert');
+  if(existingAlert)existingAlert.remove();
   if(v==='hors-service'){
     const m=getM(S.curM);
-    const prix=m?getPrixForArticle(m):null;
+    const prix=getPrixForArticle(m);
     const alertEl=document.createElement('div');
     alertEl.id='hs-prix-alert';
-    alertEl.style.cssText='margin:10px 0;padding:12px 14px;background:rgba(226,75,74,.08);border:.5px solid rgba(226,75,74,.3);border-radius:10px';
     alertEl.style.cssText='margin:10px 0;padding:14px;background:#FCEBEB;border:.5px solid #F09595;border-radius:12px';
-    alertEl.innerHTML=`
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <div style="width:34px;height:34px;border-radius:50%;background:#F7C1C1;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A32D2D" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        </div>
-        <div>
-          <div style="font-size:14px;font-weight:600;color:#A32D2D">Article déclaré hors service</div>
-          <div style="font-size:12px;color:#993C1D;margin-top:1px">Ce matériel est inutilisable</div>
-        </div>
-      </div>
-      ${prix!==null?`<div style="background:#F7C1C1;border-radius:8px;padding:10px 14px;margin-bottom:10px">
-        <div style="font-size:11px;color:#791F1F;margin-bottom:2px">Valeur estimée de cet article</div>
-        <div style="font-size:24px;font-weight:600;color:#A32D2D">${prix.toLocaleString('fr-FR',{style:'currency',currency:'EUR'})}</div>
-      </div>`:''}
-      <div style="font-size:12px;color:#993C1D;line-height:1.6">Un article HS représente un coût direct pour l'entreprise. Merci de manipuler le matériel avec soin et de signaler toute anomalie dès sa détection.</div>`;
-    // Insérer après le groupe états ou avant la section photo
-    const anchor=document.getElementById('eg-hors-service')?.parentNode
-      || document.getElementById('photo-section');
+    const prixHTML=prix!==null
+      ?'<div style="background:#F7C1C1;border-radius:8px;padding:10px 14px;margin-bottom:10px">'
+        +'<div style="font-size:11px;color:#791F1F;margin-bottom:2px">Valeur estimée de cet article</div>'
+        +'<div style="font-size:24px;font-weight:600;color:#A32D2D">'+prix.toLocaleString('fr-FR',{style:'currency',currency:'EUR'})+'</div>'
+        +'</div>'
+      :'';
+    alertEl.innerHTML='<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
+      +'<div style="width:34px;height:34px;border-radius:50%;background:#F7C1C1;display:flex;align-items:center;justify-content:center;flex-shrink:0">'
+      +'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A32D2D" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+      +'</div><div>'
+      +'<div style="font-size:14px;font-weight:600;color:#A32D2D">Article déclaré hors service</div>'
+      +'<div style="font-size:12px;color:#993C1D;margin-top:1px">Ce matériel est inutilisable</div>'
+      +'</div></div>'+prixHTML
+      +'<div style="font-size:12px;color:#993C1D;line-height:1.6">Un article HS représente un coût direct pour l\'entreprise. Merci de manipuler le matériel avec soin et de signaler toute anomalie dès sa détection.</div>';
+    const anchor=document.getElementById('eg-hors-service')?.parentNode || document.getElementById('photo-section');
     if(anchor) anchor.insertAdjacentElement('afterend',alertEl);
   }
 }
+
+function buildKitHTML(label, total, attache){
+  const attCol=attache?'1fr 1fr':'1fr';
+  const attHTML=attache?`<div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Attaches présentes</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button onclick="kitAdj('kit-attache',-1)" style="width:32px;height:32px;border-radius:50%;background:var(--bg3);border:.5px solid var(--border);color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit">−</button>
+      <div style="flex:1;text-align:center;font-size:20px;font-weight:600;color:var(--text)" id="kit-attache-val">0</div>
+      <button onclick="kitAdj('kit-attache',1)" style="width:32px;height:32px;border-radius:50%;background:var(--bg3);border:.5px solid var(--border);color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit">+</button>
+    </div>
+    <div style="text-align:center;font-size:10px;color:var(--text3);margin-top:2px">sur ${attache}</div>
+    <input type="hidden" id="kit-attache" value="0" data-total="${attache}">
+  </div>`:'';
+  return`<div style="background:rgba(55,138,221,.06);border:.5px solid rgba(55,138,221,.2);border-radius:10px;padding:12px;margin-bottom:14px">
+    <div style="font-size:12px;font-weight:600;color:#85B7EB;margin-bottom:10px">📦 Vérification kit — ${label}</div>
+    <div style="display:grid;grid-template-columns:${attCol};gap:10px">
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">${label} présents</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button onclick="kitAdj('kit-elem',-1)" style="width:32px;height:32px;border-radius:50%;background:var(--bg3);border:.5px solid var(--border);color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit">−</button>
+          <div style="flex:1;text-align:center;font-size:20px;font-weight:600;color:var(--text)" id="kit-elem-val">0</div>
+          <button onclick="kitAdj('kit-elem',1)" style="width:32px;height:32px;border-radius:50%;background:var(--bg3);border:.5px solid var(--border);color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit">+</button>
+        </div>
+        <div style="text-align:center;font-size:10px;color:var(--text3);margin-top:2px">sur ${total}</div>
+        <input type="hidden" id="kit-elem" value="0" data-total="${total}">
+      </div>
+      ${attHTML}
+    </div>
+    <div id="kit-alerte" style="display:none;margin-top:8px;padding:6px 10px;background:rgba(226,75,74,.08);border:.5px solid rgba(226,75,74,.2);border-radius:8px;font-size:11px;color:#F09595"></div>
+  </div>`;
+}
+
+function kitAdj(fieldId, delta){
+  const input=document.getElementById(fieldId);if(!input)return;
+  const total=parseInt(input.dataset.total)||0;
+  let val=parseInt(input.value)||0;
+  val=Math.max(0,Math.min(total,val+delta));
+  input.value=val;
+  document.getElementById(fieldId+'-val').textContent=val;
+  // Vérifier si kit incomplet
+  const elemInput=document.getElementById('kit-elem');
+  const attInput=document.getElementById('kit-attache');
+  const alerte=document.getElementById('kit-alerte');
+  if(!alerte)return;
+  const msgs=[];
+  if(elemInput&&parseInt(elemInput.value)<parseInt(elemInput.dataset.total))
+    msgs.push(elemInput.dataset.total-parseInt(elemInput.value)+' élément(s) manquant(s)');
+  if(attInput&&parseInt(attInput.value)<parseInt(attInput.dataset.total))
+    msgs.push(attInput.dataset.total-parseInt(attInput.value)+' attache(s) manquante(s)');
+  if(msgs.length){alerte.style.display='block';alerte.textContent='⚠ Kit incomplet : '+msgs.join(', ');}
+  else{alerte.style.display='none';}
+}
+
+function getKitObs(){
+  const elemInput=document.getElementById('kit-elem');
+  const attInput=document.getElementById('kit-attache');
+  if(!elemInput) return '';
+  const msgs=[];
+  const elemVal=parseInt(elemInput.value)||0;
+  const elemTotal=parseInt(elemInput.dataset.total)||0;
+  if(elemVal<elemTotal) msgs.push(elemVal+'/'+elemTotal+' éléments');
+  if(attInput){
+    const attVal=parseInt(attInput.value)||0;
+    const attTotal=parseInt(attInput.dataset.total)||0;
+    if(attVal<attTotal) msgs.push(attVal+'/'+attTotal+' attaches');
+  }
+  if(msgs.length) return '[Kit incomplet : '+msgs.join(', ')+']';
+  return '';
+}
+
 function sP(v){S.fd.proprete=v;['propre','acceptable','sale'].forEach(e=>{const el=document.getElementById('pr-'+e);if(el){el.className='ro';if(e===v)el.classList.add(v==='propre'?'sel-ok':v==='acceptable'?'sel-warn':'sel-danger');}});}
 function tF(){S.fd.fonctionnement=!S.fd.fonctionnement;document.getElementById('fonc-tgl')?.classList.toggle('on',S.fd.fonctionnement);}
 function tD(){S.fd.dommages=!S.fd.dommages;document.getElementById('dmg-tgl')?.classList.toggle('on',S.fd.dommages);const w=document.getElementById('dmg-wrap');if(w)w.style.display=S.fd.dommages?'block':'none';
@@ -3250,7 +3330,10 @@ function submitF(forceDouble=false){
     }
   }
   const m=getM(S.curM);
-  const scan={id:newId('SCAN'),materielId:S.curM,chantierId:m?.chantierId||'',agentNom:S.agent,date:nowISO(),etatGeneral:S.fd.etatGeneral,proprete:S.fd.proprete,fonctionnement:S.fd.fonctionnement,dommages:S.fd.dommages,dommagesDesc:document.getElementById('dmg-desc')?.value||'',observations:document.getElementById('obs')?.value||'',actions:document.getElementById('act')?.value||'',photo:S.fd.photo||null};
+  const kitObs=getKitObs();
+  const obsField=document.getElementById('obs')?.value||'';
+  const obsValue=kitObs?(kitObs+(obsField?' — '+obsField:'')):obsField;
+  const scan={id:newId('SCAN'),materielId:S.curM,chantierId:m?.chantierId||'',agentNom:S.agent,date:nowISO(),etatGeneral:S.fd.etatGeneral,proprete:S.fd.proprete,fonctionnement:S.fd.fonctionnement,dommages:S.fd.dommages,dommagesDesc:document.getElementById('dmg-desc')?.value||'',observations:obsValue,actions:document.getElementById('act')?.value||'',photo:S.fd.photo||null};
   S.scans.push(scan);
   const idx=S.mat.findIndex(x=>x.id===S.curM);
   if(idx!==-1){
