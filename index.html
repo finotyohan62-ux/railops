@@ -1564,9 +1564,12 @@ function confirmRetirer(id){
   // fermeture uniquement via bouton Fermer
   document.getElementById('app').appendChild(div);
 }
-function doRetirer(id){
+async function doRetirer(id){
   S.mat=S.mat.filter(m=>m.id!==id);
-  save();S.modal=null;S.modalData=null;
+  try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
+  try{await db.from('materiels').delete().eq('id',id);}catch(e){console.warn('retirer:',e);}
+  try{await db.from('deleted_mat_ids').insert({id}).catch(()=>{});}catch(e){}
+  S.modal=null;S.modalData=null;
   renderChantierDetail();
   setTimeout(()=>toast('Article retiré du chantier','warn'),80);
 }
@@ -3561,6 +3564,7 @@ function selAll(){
 function deleteSelected(){
   const count=S.selItems.size;
   if(!count)return;
+  const idsToDelete=[...S.selItems]; // capturer avant que la modale efface la sélection
   const existing=document.getElementById('movl');if(existing)existing.remove();
   const div=document.createElement('div');
   div.id='movl';div.className='moverlay';
@@ -3575,21 +3579,20 @@ function deleteSelected(){
     </div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-outline" onclick="document.getElementById('movl').remove()" style="flex:1">Annuler</button>
-      <button class="btn btn-danger" onclick="doDeleteSelected()" style="flex:1">Supprimer</button>
+      <button class="btn btn-danger" onclick="doDeleteSelected(${JSON.stringify(idsToDelete)})" style="flex:1">Supprimer</button>
     </div>
   </div>`;
-  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
   document.getElementById('app').appendChild(div);
 }
-async function doDeleteSelected(){
-  const count=S.selItems.size;
-  const idsToDelete=[...S.selItems];
+async function doDeleteSelected(idsToDelete){
+  if(!idsToDelete||!idsToDelete.length) idsToDelete=[...S.selItems];
+  const count=idsToDelete.length;
+  if(!count) return;
   window._importing=true;
-  S.mat=S.mat.filter(m=>!S.selItems.has(m.id));
+  S.mat=S.mat.filter(m=>!idsToDelete.includes(m.id));
   S.selItems=new Set();
   S.selMode=false;
   try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-  // DELETE Supabase en priorité — chaque delete indépendamment
   for(const id of idsToDelete){
     try{await db.from('materiels').delete().eq('id',id);}catch(e){console.warn('del mat:',id,e);}
     try{await db.from('scans').delete().eq('materielId',id);}catch(e){console.warn('del scans:',id,e);}
