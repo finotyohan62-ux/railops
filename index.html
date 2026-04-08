@@ -3581,9 +3581,11 @@ async function doDeleteSelected(){
   try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
   // Attendre que Supabase confirme les suppressions
   try{
-    await Promise.all(idsToDelete.map(id=>db.from('materiels').delete().eq('id',id)));
+    const res=await Promise.all(idsToDelete.map(id=>db.from('materiels').delete().eq('id',id)));
+    const errs=res.filter(r=>r.error);
+    if(errs.length) toast('Erreur suppression Supabase : '+errs[0].error.message,'danger');
     await Promise.all(idsToDelete.map(id=>db.from('scans').delete().eq('materielId',id)));
-  }catch(e){console.warn('delete error:',e);}
+  }catch(e){toast('Erreur : '+e.message,'danger');console.warn('delete error:',e);}
   window._importing=false;
   const existing=document.getElementById('movl');if(existing)existing.remove();
   renderTab();
