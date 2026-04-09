@@ -434,14 +434,12 @@ async function load(){
     if(!em&&dm){ S.mat=dm; }
     else { S.mat=JSON.parse(localStorage.getItem('ro3_m')||'[]'); }
     localStorage.setItem('ro3_m',JSON.stringify(S.mat));
-    // Scans : Supabase sans photo + réattacher photos du localStorage
-    const {data:ds}=await db.from('scans').select('id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions');
+    // Scans : Supabase inclut maintenant la photo
+    const {data:ds}=await db.from('scans').select('id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions,photo');
     const localScans=JSON.parse(localStorage.getItem('ro3_s')||'[]');
     if(ds){
-      const localById={};
-      localScans.forEach(s=>{if(s.photo)localById[s.id]=s.photo;});
-      S.scans=ds.map(s=>localById[s.id]?{...s,photo:localById[s.id]}:s);
-      // Scans locaux pas encore en Supabase (créés offline)
+      S.scans=ds;
+      // Ajouter scans locaux pas encore en Supabase (mode offline)
       const sIds=new Set(ds.map(x=>x.id));
       localScans.filter(s=>!sIds.has(s.id)).forEach(s=>S.scans.push(s));
     } else {
@@ -3345,8 +3343,8 @@ function submitF(forceDouble=false){
   }
   // Sauvegarder le scan en localStorage immédiatement (avec photo)
   try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
-  // Sauvegarder en Supabase sans la photo (colonne absente de la table)
-  const scanForDB={id:scan.id,materielId:scan.materielId,chantierId:scan.chantierId,agentNom:scan.agentNom,date:scan.date,etatGeneral:scan.etatGeneral,proprete:scan.proprete,fonctionnement:scan.fonctionnement,dommages:scan.dommages,dommagesDesc:scan.dommagesDesc,observations:scan.observations,actions:scan.actions};
+  // Sauvegarder en Supabase avec la photo (colonne maintenant disponible)
+  const scanForDB={id:scan.id,materielId:scan.materielId,chantierId:scan.chantierId,agentNom:scan.agentNom,date:scan.date,etatGeneral:scan.etatGeneral,proprete:scan.proprete,fonctionnement:scan.fonctionnement,dommages:scan.dommages,dommagesDesc:scan.dommagesDesc,observations:scan.observations,actions:scan.actions,photo:scan.photo||null};
   db.from('scans').upsert([scanForDB],{onConflict:'id'}).then(()=>{
     // Marquer le scan comme synchronisé dans localStorage
     try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
@@ -4854,7 +4852,7 @@ async function silentSync(){
 
     // Scans : séparé pour ne pas bloquer si trop lourd
     try{
-      const {data:ds}=await db.from('scans').select('id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions');
+      const {data:ds}=await db.from('scans').select('id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions,photo');
       if(ds){
         const localScans=JSON.parse(localStorage.getItem('ro3_s')||'[]');
         const localById={};
