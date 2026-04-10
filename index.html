@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='80';
+const APP_VERSION='81';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -1463,62 +1463,39 @@ function pgChantiersDashboard(el){
         const bons=mats.filter(m=>m.etat==='bon').length;
         const confirms=mats.filter(m=>m.presence==='confirme').length;
         const taux=mats.length?Math.round(bons/mats.length*100):0;
-        const invPct=mats.length?Math.round(confirms/mats.length*100):0;
         const done=mats.filter(m=>m.verifLundi?.weekKey===wkNow||m.verifSemaine?.weekKey===wkNow).length;
         const retard=mats.filter(m=>!m.controle2m||(new Date()-new Date(m.controle2m.date))>d2m).length;
         const chefs=(c.chefs&&c.chefs.length>0)?c.chefs:[c.chef].filter(Boolean);
-        const verifPct=mats.length?Math.round(done/mats.length*100):0;
         const barConf=taux>=80?'#3db54a':taux>=50?'#f5a623':'#e24b4a';
-        const barInv=invPct>=80?'#3db54a':invPct>=50?'#f5a623':'#e24b4a';
-        const barVerif=verifPct>=80?'#3db54a':verifPct>=50?'#f5a623':'#e24b4a';
-        return`<div class="cc" onclick="openC('${c.id}')" style="cursor:pointer">
+        return`<div onclick="openC('${c.id}')" style="background:var(--bg2);border-radius:var(--r);border:.5px solid var(--border);cursor:pointer;overflow:hidden">
           <!-- En-tête chantier -->
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px">
+          <div style="padding:10px 14px 8px;border-bottom:.5px solid var(--border);display:flex;justify-content:space-between;align-items:center">
             <div style="flex:1;min-width:0">
               <div style="font-size:14px;font-weight:600;color:var(--text)">${c.nom}</div>
-              <div style="font-size:11px;color:var(--text2);margin-top:1px">${c.lieu}</div>
-              <div style="font-size:10px;color:var(--text3);margin-top:1px">Chef : ${chefs.join(', ')||'—'}</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:1px">${c.lieu} · Chef : ${chefs[0]||'—'}</div>
             </div>
-            <div style="text-align:right;flex-shrink:0">
-              ${ab?`<div class="badge b-danger" style="margin-bottom:3px">${ab} absent${ab>1?'s':''}</div>`:''}
-              ${hs?`<div class="badge" style="background:rgba(245,166,35,.12);color:var(--accent)">${hs} HS/dég.</div>`:''}
-              ${!ab&&!hs?`<div class="badge b-ok">✓ OK</div>`:''}
-            </div>
+            ${ab?`<span class="badge b-danger">${ab} absent${ab>1?'s':''}</span>`:hs?`<span class="badge" style="background:rgba(245,166,35,.12);color:var(--accent)">${hs} HS</span>`:`<span class="badge b-ok">✓ OK</span>`}
           </div>
-
-          <!-- 3 barres d'avancement -->
-          <div style="display:flex;flex-direction:column;gap:7px">
-            <!-- Conformité matériel -->
-            <div>
-              <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-                <span style="font-size:10px;color:var(--text3)">Conformité matériel</span>
-                <span style="font-size:10px;font-weight:700;color:${barConf}">${bons}/${mats.length} · ${taux}%</span>
-              </div>
-              <div class="pbar"><div class="pbf" style="width:${taux}%;background:${barConf}"></div></div>
+          <!-- Barre conformité -->
+          <div style="padding:0 14px;height:3px"><div style="height:3px;width:${taux}%;background:${barConf};transition:width .3s"></div></div>
+          <!-- Grid stats -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-top:.5px solid var(--border)">
+            <div style="padding:10px 8px;text-align:center;border-right:.5px solid var(--border)">
+              <div style="font-size:20px;font-weight:700;color:var(--text)">${mats.length}</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:1px">Articles</div>
             </div>
-            <!-- Inventaire confirmé -->
-            <div>
-              <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-                <span style="font-size:10px;color:var(--text3)">Inventaire confirmé</span>
-                <span style="font-size:10px;font-weight:700;color:${barInv}">${confirms}/${mats.length} · ${invPct}%${nc?' · '+nc+' non conf.':''}</span>
-              </div>
-              <div class="pbar"><div class="pbf" style="width:${invPct}%;background:${barInv}"></div></div>
+            <div style="padding:10px 8px;text-align:center;border-right:.5px solid var(--border)">
+              <div style="font-size:20px;font-weight:700;color:${ab?'#F09595':nc?'#f5a623':'#3db54a'}">${confirms}</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:1px">Confirmés</div>
             </div>
-            <!-- Vérifs semaine -->
-            <div>
-              <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-                <span style="font-size:10px;color:var(--text3)">Vérifications semaine</span>
-                <span style="font-size:10px;font-weight:700;color:${barVerif}">${done}/${mats.length} · ${verifPct}%</span>
-              </div>
-              <div class="pbar"><div class="pbf" style="width:${verifPct}%;background:${barVerif}"></div></div>
+            <div style="padding:10px 8px;text-align:center;border-right:.5px solid var(--border)">
+              <div style="font-size:20px;font-weight:700;color:${barConf}">${taux}%</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:1px">Conformité</div>
             </div>
-          </div>
-
-          <!-- Footer chantier -->
-          <div style="display:flex;gap:10px;margin-top:8px;padding-top:8px;border-top:.5px solid var(--border);align-items:center">
-            <span style="font-size:11px;color:var(--text3)">${mats.length} articles</span>
-            ${retard?`<span style="font-size:11px;color:#F09595">⚠ ${retard} ctrl en retard</span>`:''}
-            <span style="font-size:11px;color:var(--accent);margin-left:auto">Voir →</span>
+            <div style="padding:10px 8px;text-align:center">
+              <div style="font-size:20px;font-weight:700;color:${done===mats.length&&mats.length>0?'#3db54a':'var(--text2)'}">${done}/${mats.length}</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:1px">Vérifs sem.</div>
+            </div>
           </div>
         </div>`;}).join('')}
     </div>`;
