@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='85';
+const APP_VERSION='86';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -374,7 +374,7 @@ async function saveMat(id){
   const m=S.mat.find(x=>x.id===id);if(!m)return;
   try{
     localStorage.setItem('ro3_m',JSON.stringify(S.mat));
-    const {prix:_,...mDB}=m;
+    const {prix:_,autreChantier:__,...mDB}=m;
     const {error}=await db.from('materiels').upsert([mDB],{onConflict:'id'});
     if(error) toast('Erreur sync article : '+error.message,'danger');
   }catch(e){toast('Erreur réseau article','danger');}
@@ -1530,8 +1530,8 @@ function renderChantierDetail(){
       <div class="tab${S.tab==='registre'?' on':''}" data-tab="registre" onclick="setTab('registre')">
         ${S.role==='chef_chantier'?'Récap':'Inventaire'} <span style="margin-left:4px;font-size:10px;opacity:.8">${ab?'⚠ '+ab:mats.length}</span>
       </div>
-      ${S.role!=='agent'&&S.role!=='chef_chantier'?`<div class="tab${S.tab==='tournee'?' on':''}" data-tab="tournee" onclick="setTab('tournee')">Tournée CTE</div>`:''}
       ${S.role==='chef'?`<div class="tab${S.tab==='verifs'?' on':''}" data-tab="verifs" onclick="setTab('verifs')">Vérifs</div>`:''}
+      ${S.role!=='agent'&&S.role!=='chef_chantier'?`<div class="tab${S.tab==='tournee'?' on':''}" data-tab="tournee" onclick="setTab('tournee')">Tournée CTE</div>`:''}
       ${S.role!=='chef_chantier'?`<div class="tab${S.tab==='controle'?' on':''}" data-tab="controle" onclick="setTab('controle')">Contrôle 2 mois</div>`:''}
       ${S.role==='chef'?`<div class="tab${S.tab==='infos'?' on':''}" data-tab="infos" onclick="setTab('infos')">Infos</div>`:''}
     </div>
@@ -1759,7 +1759,7 @@ function regItemHTML(m){
       </div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:500;color:${isAbsent?'#F09595':isNC?'var(--accent)':isRetire?'var(--text3)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${isRetire?'text-decoration:line-through;':''}">${m.nom}</div>
-        <div style="font-size:11px;color:var(--text2);margin-top:2px">${m.cat}${S.role!=='chef_chantier'?' · <span style=\'font-family:monospace;font-size:10px\'>'+m.id+'</span>':''}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px">${m.cat}${S.role!=='chef_chantier'?' · <span style=\'font-family:monospace;font-size:10px\'>'+m.id+'</span>':''}${m.autreChantier?` · <span style='color:#f5a623;font-size:10px'>⚠ aussi sur ${m.autreChantier}</span>`:''}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
         <span class="badge ${presBadge(m.presence)}" style="font-size:9px">${isAbsent?'? ABSENT':isRetire?'Retiré':presLabel(m.presence)}</span>
@@ -2018,7 +2018,7 @@ function importReplace(input){
     });
     // Upsert en Supabase par lots de 100
     if(toUpsert.length){
-      const forDB=toUpsert.map(({prix:_,...m})=>m);
+      const forDB=toUpsert.map(({prix:_,autreChantier:__,...m})=>m);
       const CHUNK=100;
       (async()=>{
         for(let i=0;i<forDB.length;i+=CHUNK){
@@ -2095,6 +2095,7 @@ async function processRows(rows){
   const startRow = hasHeader ? 1 : 0;
   let added=0, skipped=0;
   const updatedIds=new Set();
+  const doublons=[];
 
   for(let i=startRow; i<rows.length; i++){
     const row = rows[i];
@@ -2137,16 +2138,17 @@ async function processRows(rows){
       }
     }
 
-    // Si l'article existe déjà → mettre à jour l'échéance, le prix et le chantierId si nécessaire
-    const existingIdx=S.mat.findIndex(m=>m.id===id);
-    if(existingIdx!==-1){
-      if(echeance) S.mat[existingIdx].echeance=echeance;
+    // Vérifier si l'article existe déjà dans ce chantier ou un autre
+    const existingInThisC=S.mat.findIndex(m=>m.id===id&&m.chantierId===S.curC);
+    const existingInOtherC=S.mat.findIndex(m=>m.id===id&&m.chantierId!==S.curC);
+
+    if(existingInThisC!==-1){
+      // Déjà dans ce chantier → juste mettre à jour échéance/prix
+      if(echeance) S.mat[existingInThisC].echeance=echeance;
       if(iPrix>=0&&row[iPrix]!==undefined&&row[iPrix]!==''){
         const p=parseFloat(String(row[iPrix]).replace(/[^\d.,]/g,'').replace(',','.'));
-        if(!isNaN(p)) S.mat[existingIdx].prix=p;
+        if(!isNaN(p)) S.mat[existingInThisC].prix=p;
       }
-      // Si l'article appartient à un autre chantier, le rattacher au bon
-      if(S.mat[existingIdx].chantierId!==S.curC) S.mat[existingIdx].chantierId=S.curC;
       updatedIds.add(id);
       skipped++;continue;
     }
@@ -2165,7 +2167,11 @@ async function processRows(rows){
       if(!isNaN(p)) prix=p;
     }
 
-    S.mat.push({id, nom, cat, chantierId:S.curC, etat, scan:null, presence:'non-confirme', echeance, prix});
+    // Ajouter dans ce chantier (même si présent ailleurs)
+    const autreChantierNom=existingInOtherC!==-1?getC(S.mat[existingInOtherC].chantierId)?.nom:null;
+    S.mat.push({id, nom, cat, chantierId:S.curC, etat, scan:null, presence:'non-confirme', echeance, prix,
+      autreChantier: autreChantierNom||null});
+    if(autreChantierNom) doublons.push({id, nom, autreChantierNom});
     added++;
   }
 
@@ -2178,7 +2184,7 @@ async function processRows(rows){
     toUpsertImport.push(...updatedMats);
   }
   if(toUpsertImport.length){
-    const forDB=toUpsertImport.map(({prix:_,...m})=>m);
+    const forDB=toUpsertImport.map(({prix:_,autreChantier:__,...m})=>m);
     const CHUNK=100;
     let errors=0;
     for(let i=0;i<forDB.length;i+=CHUNK){
@@ -2195,6 +2201,34 @@ async function processRows(rows){
   const updated=skipped;
   const info=hasHeader?` (ref col.${iId}, nom col.${iNom})`:'';
   toast(added+' ajouté(s)'+(updated?' · '+updated+' mis à jour':'')+info,'ok');
+  // Afficher un avertissement pour les références présentes sur d'autres chantiers
+  if(doublons.length){
+    setTimeout(()=>{
+      const existing=document.getElementById('movl');if(existing)existing.remove();
+      const div=document.createElement('div');div.id='movl';div.className='moverlay';
+      div.innerHTML=`<div class="msheet">
+        <div class="mhandle"></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="width:40px;height:40px;border-radius:50%;background:rgba(245,166,35,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div>
+            <div style="font-size:15px;font-weight:500;color:var(--text)">${doublons.length} référence(s) multi-chantier</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">Ces articles sont aussi présents sur un autre chantier</div>
+          </div>
+        </div>
+        <div style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
+          ${doublons.map(d=>`<div style="background:rgba(245,166,35,.06);border:.5px solid rgba(245,166,35,.25);border-radius:8px;padding:8px 12px">
+            <div style="font-size:13px;font-weight:500;color:var(--text)">${d.nom}</div>
+            <div style="font-size:11px;color:#f5a623;margin-top:2px">⚠ Déjà présent sur : ${d.autreChantierNom}</div>
+          </div>`).join('')}
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:14px">Ces articles ont été ajoutés à ce chantier. Ils restent également sur l'autre chantier.</div>
+        <button onclick="document.getElementById('movl').remove()" class="btn btn-accent">OK, compris</button>
+      </div>`;
+      document.getElementById('app').appendChild(div);
+    },1000);
+  }
 }
 
 
