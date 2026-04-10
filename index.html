@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='82';
+const APP_VERSION='83';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -1528,12 +1528,12 @@ function renderChantierDetail(){
     <!-- ONGLETS -->
     <div class="tabs" style="padding-top:12px;flex-shrink:0">
       <div class="tab${S.tab==='registre'?' on':''}" data-tab="registre" onclick="setTab('registre')">
-        Inventaire <span style="margin-left:4px;font-size:10px;opacity:.8">${ab?'⚠ '+ab:mats.length}</span>
+        ${S.role==='chef_chantier'?'Récap':'Inventaire'} <span style="margin-left:4px;font-size:10px;opacity:.8">${ab?'⚠ '+ab:mats.length}</span>
       </div>
-      ${S.role!=='agent'?`<div class="tab${S.tab==='tournee'?' on':''}" data-tab="tournee" onclick="setTab('tournee')">Tournée CTE</div>`:''}
-      ${(S.role==='chef'||S.role==='chef_chantier')?`<div class="tab${S.tab==='verifs'?' on':''}" data-tab="verifs" onclick="setTab('verifs')">Vérifs</div>`:''}
-      <div class="tab${S.tab==='controle'?' on':''}" data-tab="controle" onclick="setTab('controle')">Contrôle 2 mois</div>
-      ${(S.role==='chef'||S.role==='chef_chantier')?`<div class="tab${S.tab==='infos'?' on':''}" data-tab="infos" onclick="setTab('infos')">Infos</div>`:''}
+      ${S.role!=='agent'&&S.role!=='chef_chantier'?`<div class="tab${S.tab==='tournee'?' on':''}" data-tab="tournee" onclick="setTab('tournee')">Tournée CTE</div>`:''}
+      ${S.role==='chef'?`<div class="tab${S.tab==='verifs'?' on':''}" data-tab="verifs" onclick="setTab('verifs')">Vérifs</div>`:''}
+      ${S.role!=='chef_chantier'?`<div class="tab${S.tab==='controle'?' on':''}" data-tab="controle" onclick="setTab('controle')">Contrôle 2 mois</div>`:''}
+      ${S.role==='chef'?`<div class="tab${S.tab==='infos'?' on':''}" data-tab="infos" onclick="setTab('infos')">Infos</div>`:''}
     </div>
     <div id="tab-content" style="overflow-y:auto;flex:1;padding-bottom:80px"></div>
     ${S.modal?renderModal():''}
