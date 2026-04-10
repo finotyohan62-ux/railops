@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='83';
+const APP_VERSION='85';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -1935,7 +1935,7 @@ function importReplace(input){
     const newRows=[];
     for(let i=startRow;i<rows.length;i++){
       const raw=rows[i][iId];if(!raw)continue;
-      const id=String(raw).trim().replace(/\s/g,'').replace(/[*]/g,'');
+      const id=String(raw).trim().replace(/\s/g,'').replace(/[*\/\\#?&'"]/g,'-');
       if(id){newIds.add(id);newRows.push({id,row:rows[i]});}
     }
 
@@ -1979,6 +1979,8 @@ function importReplace(input){
       if(existingIdx!==-1){
         if(echeance) S.mat[existingIdx].echeance=echeance;
         if(prix!==null) S.mat[existingIdx].prix=prix;
+        // Rattacher au bon chantier si nécessaire
+        if(S.mat[existingIdx].chantierId!==S.curC) S.mat[existingIdx].chantierId=S.curC;
         toUpsert.push(S.mat[existingIdx]);
         updated++;
       } else {
@@ -2014,9 +2016,18 @@ function importReplace(input){
       db.from('materiels').delete().eq('id',id).then(()=>{},e=>console.warn('delete mat:',e));
       db.from('scans').delete().eq('materielId',id).then(()=>{},e=>console.warn('delete scan:',e));
     });
-    // Upsert en Supabase
-    if(toUpsert.length) db.from('materiels').upsert(toUpsert.map(({prix:_,...m})=>m),{onConflict:'id'}).then(()=>{window._importing=false;},e=>{console.warn('upsert:',e);window._importing=false;});
-    else window._importing=false;
+    // Upsert en Supabase par lots de 100
+    if(toUpsert.length){
+      const forDB=toUpsert.map(({prix:_,...m})=>m);
+      const CHUNK=100;
+      (async()=>{
+        for(let i=0;i<forDB.length;i+=CHUNK){
+          try{await db.from('materiels').upsert(forDB.slice(i,i+CHUNK),{onConflict:'id'});}
+          catch(e){console.warn('replace upsert chunk:',e);}
+        }
+        window._importing=false;
+      })();
+    } else window._importing=false;
 
     renderTab();
     toast(suppIds.length+' supprimé(s) · '+added+' ajouté(s) · '+updated+' mis à jour','ok');
@@ -2106,7 +2117,7 @@ async function processRows(rows){
     // ID/Référence : toujours utiliser iId quand disponible, peu importe si c'est la même colonne que nom
     let idRaw = '';
     if(iId>=0 && row[iId]!==undefined && row[iId]!==''){
-      idRaw = String(row[iId]).trim().replace(/\s/g,'').replace(/[*]/g,'');
+      idRaw = String(row[iId]).trim().replace(/\s/g,'').replace(/[*\/\\#?&'"]/g,'-');
     }
     // Fallback si pas de référence : générer depuis nom + index
     if(!idRaw) idRaw = nom.replace(/\s/g,'-').replace(/[^a-zA-Z0-9\-]/g,'').substring(0,20)+'-'+i;
@@ -2126,7 +2137,7 @@ async function processRows(rows){
       }
     }
 
-    // Si l'article existe déjà → mettre à jour l'échéance et le prix (ré-import)
+    // Si l'article existe déjà → mettre à jour l'échéance, le prix et le chantierId si nécessaire
     const existingIdx=S.mat.findIndex(m=>m.id===id);
     if(existingIdx!==-1){
       if(echeance) S.mat[existingIdx].echeance=echeance;
@@ -2134,6 +2145,8 @@ async function processRows(rows){
         const p=parseFloat(String(row[iPrix]).replace(/[^\d.,]/g,'').replace(',','.'));
         if(!isNaN(p)) S.mat[existingIdx].prix=p;
       }
+      // Si l'article appartient à un autre chantier, le rattacher au bon
+      if(S.mat[existingIdx].chantierId!==S.curC) S.mat[existingIdx].chantierId=S.curC;
       updatedIds.add(id);
       skipped++;continue;
     }
@@ -2156,7 +2169,7 @@ async function processRows(rows){
     added++;
   }
 
-  // Sauvegarde localStorage + upsert Supabase (attendu pour éviter écrasement par silentSync)
+  // Sauvegarde localStorage + upsert Supabase par lots de 100 (évite la limite Supabase)
   try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
   const toUpsertImport=[];
   if(added>0) toUpsertImport.push(...S.mat.slice(-added));
@@ -2165,10 +2178,17 @@ async function processRows(rows){
     toUpsertImport.push(...updatedMats);
   }
   if(toUpsertImport.length){
-    // Retirer les colonnes inexistantes en Supabase (prix, etc.)
     const forDB=toUpsertImport.map(({prix:_,...m})=>m);
-    try{await db.from('materiels').upsert(forDB,{onConflict:'id'});}
-    catch(e){console.warn('import upsert error:',e);toast('Erreur sauvegarde : '+e.message,'danger');}
+    const CHUNK=100;
+    let errors=0;
+    for(let i=0;i<forDB.length;i+=CHUNK){
+      const chunk=forDB.slice(i,i+CHUNK);
+      try{
+        const {error}=await db.from('materiels').upsert(chunk,{onConflict:'id'});
+        if(error){errors++;console.warn('import upsert chunk error:',error);}
+      }catch(e){errors++;console.warn('import upsert chunk error:',e);}
+    }
+    if(errors>0) toast('⚠ '+errors+' lot(s) en erreur — vérifiez les données','danger');
   }
   window._importing=false;
   renderTab();
