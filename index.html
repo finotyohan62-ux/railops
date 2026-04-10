@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='86';
+const APP_VERSION='87';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -1759,7 +1759,7 @@ function regItemHTML(m){
       </div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:500;color:${isAbsent?'#F09595':isNC?'var(--accent)':isRetire?'var(--text3)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${isRetire?'text-decoration:line-through;':''}">${m.nom}</div>
-        <div style="font-size:11px;color:var(--text2);margin-top:2px">${m.cat}${S.role!=='chef_chantier'?' · <span style=\'font-family:monospace;font-size:10px\'>'+m.id+'</span>':''}${m.autreChantier?` · <span style='color:#f5a623;font-size:10px'>⚠ aussi sur ${m.autreChantier}</span>`:''}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px">${m.cat}${S.role!=='chef_chantier'?' · <span style=\'font-family:monospace;font-size:10px\'>'+m.id+'</span>':''}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
         <span class="badge ${presBadge(m.presence)}" style="font-size:9px">${isAbsent?'? ABSENT':isRetire?'Retiré':presLabel(m.presence)}</span>
@@ -2095,7 +2095,7 @@ async function processRows(rows){
   const startRow = hasHeader ? 1 : 0;
   let added=0, skipped=0;
   const updatedIds=new Set();
-  const doublons=[];
+  const transferes=[];
 
   for(let i=startRow; i<rows.length; i++){
     const row = rows[i];
@@ -2153,6 +2153,23 @@ async function processRows(rows){
       skipped++;continue;
     }
 
+    if(existingInOtherC!==-1){
+      // Présent sur un autre chantier → transfert : reset inventaire, garder controle2m
+      const ancienChantierNom=getC(S.mat[existingInOtherC].chantierId)?.nom||'chantier inconnu';
+      const controle2mSauve=S.mat[existingInOtherC].controle2m||null;
+      S.mat[existingInOtherC].chantierId=S.curC;
+      S.mat[existingInOtherC].presence='non-confirme';
+      S.mat[existingInOtherC].etat='inconnu';
+      S.mat[existingInOtherC].scan=null;
+      S.mat[existingInOtherC].verifLundi=null;
+      S.mat[existingInOtherC].verifSemaine=null;
+      S.mat[existingInOtherC].controle2m=controle2mSauve;
+      if(echeance) S.mat[existingInOtherC].echeance=echeance;
+      transferes.push({id, nom, ancienChantierNom});
+      updatedIds.add(id);
+      skipped++;continue;
+    }
+
     // État
     let etat = 'inconnu';
     if(iEtat>=0 && row[iEtat]){
@@ -2160,18 +2177,14 @@ async function processRows(rows){
       etat=e.includes('bon')?'bon':e.includes('accept')?'acceptable':e.includes('degrad')?'degrade':e.includes('hors')?'hors-service':'inconnu';
     }
 
-    // Prix (invisible dans le registre, affiché uniquement si HS)
+    // Prix
     let prix=null;
     if(iPrix>=0&&row[iPrix]!==undefined&&row[iPrix]!==''){
       const p=parseFloat(String(row[iPrix]).replace(/[^\d.,]/g,'').replace(',','.'));
       if(!isNaN(p)) prix=p;
     }
 
-    // Ajouter dans ce chantier (même si présent ailleurs)
-    const autreChantierNom=existingInOtherC!==-1?getC(S.mat[existingInOtherC].chantierId)?.nom:null;
-    S.mat.push({id, nom, cat, chantierId:S.curC, etat, scan:null, presence:'non-confirme', echeance, prix,
-      autreChantier: autreChantierNom||null});
-    if(autreChantierNom) doublons.push({id, nom, autreChantierNom});
+    S.mat.push({id, nom, cat, chantierId:S.curC, etat, scan:null, presence:'non-confirme', echeance, prix});
     added++;
   }
 
@@ -2200,31 +2213,29 @@ async function processRows(rows){
   renderTab();
   const updated=skipped;
   const info=hasHeader?` (ref col.${iId}, nom col.${iNom})`:'';
-  toast(added+' ajouté(s)'+(updated?' · '+updated+' mis à jour':'')+info,'ok');
-  // Afficher un avertissement pour les références présentes sur d'autres chantiers
-  if(doublons.length){
+  toast(added+' ajouté(s)'+(transferes.length?' · '+transferes.length+' transféré(s)':'')+(updated-transferes.length>0?' · '+(updated-transferes.length)+' mis à jour':'')+info,'ok');
+  if(transferes.length){
     setTimeout(()=>{
       const existing=document.getElementById('movl');if(existing)existing.remove();
       const div=document.createElement('div');div.id='movl';div.className='moverlay';
       div.innerHTML=`<div class="msheet">
         <div class="mhandle"></div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-          <div style="width:40px;height:40px;border-radius:50%;background:rgba(245,166,35,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div style="width:40px;height:40px;border-radius:50%;background:rgba(55,138,221,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#85B7EB" stroke-width="2"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
           </div>
           <div>
-            <div style="font-size:15px;font-weight:500;color:var(--text)">${doublons.length} référence(s) multi-chantier</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:2px">Ces articles sont aussi présents sur un autre chantier</div>
+            <div style="font-size:15px;font-weight:500;color:var(--text)">${transferes.length} article(s) transféré(s)</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">Déplacés vers ce chantier · inventaire remis à zéro · contrôle 2 mois conservé</div>
           </div>
         </div>
         <div style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
-          ${doublons.map(d=>`<div style="background:rgba(245,166,35,.06);border:.5px solid rgba(245,166,35,.25);border-radius:8px;padding:8px 12px">
-            <div style="font-size:13px;font-weight:500;color:var(--text)">${d.nom}</div>
-            <div style="font-size:11px;color:#f5a623;margin-top:2px">⚠ Déjà présent sur : ${d.autreChantierNom}</div>
+          ${transferes.map(t=>`<div style="background:rgba(55,138,221,.06);border:.5px solid rgba(55,138,221,.2);border-radius:8px;padding:8px 12px">
+            <div style="font-size:13px;font-weight:500;color:var(--text)">${t.nom}</div>
+            <div style="font-size:11px;color:#85B7EB;margin-top:2px">← Transféré depuis : ${t.ancienChantierNom}</div>
           </div>`).join('')}
         </div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:14px">Ces articles ont été ajoutés à ce chantier. Ils restent également sur l'autre chantier.</div>
-        <button onclick="document.getElementById('movl').remove()" class="btn btn-accent">OK, compris</button>
+        <button onclick="document.getElementById('movl').remove()" class="btn btn-accent">OK</button>
       </div>`;
       document.getElementById('app').appendChild(div);
     },1000);
