@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='78';
+const APP_VERSION='79';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -1404,144 +1404,122 @@ function pgChantiers(el){
 function pgChantiersDashboard(el){
   const visibleC=S.chantiers.filter(c=>c.statut!=='termine');
   const wkNow=getWeekKey();
+  const d2m=60*24*60*60*1000;
   const totalMat=S.mat.length;
   const totalAbs=S.mat.filter(m=>m.presence==='absent').length;
   const totalHS=S.mat.filter(m=>m.etat==='hors-service'||m.etat==='degrade').length;
-  const d2m=60*24*60*60*1000;
   const totalRetard=S.mat.filter(m=>!m.controle2m||(new Date()-new Date(m.controle2m.date))>d2m).length;
   const totalBons=S.mat.filter(m=>m.etat==='bon').length;
   const tauxConf=totalMat?Math.round(totalBons/totalMat*100):0;
-
-  // Données par chantier pour graphiques
-  const chantiersData=visibleC.map(c=>{
-    const mats=matOfC(c.id);
-    const ab=mats.filter(m=>m.presence==='absent').length;
-    const hs=mats.filter(m=>m.etat==='hors-service'||m.etat==='degrade').length;
-    const bons=mats.filter(m=>m.etat==='bon').length;
-    const taux=mats.length?Math.round(bons/mats.length*100):0;
-    const done=mats.filter(m=>m.verifLundi?.weekKey===wkNow||m.verifSemaine?.weekKey===wkNow).length;
-    const retard=mats.filter(m=>!m.controle2m||(new Date()-new Date(m.controle2m.date))>d2m).length;
-    const chefs=(c.chefs&&c.chefs.length>0)?c.chefs:[c.chef].filter(Boolean);
-    const agents=c.agents||[];
-    return{c,mats,ab,hs,bons,taux,done,retard,chefs,agents};
-  });
-
-  // Graphique donut conformité globale
-  const r=44,cx=56,cy=56,circumference=2*Math.PI*r;
-  const confArc=circumference*(tauxConf/100);
   const donutColor=tauxConf>=80?'#3db54a':tauxConf>=50?'#f5a623':'#e24b4a';
-
-  // Graphique barres horizontales conformité par chantier
-  const maxNom=18;
-  const barHeight=22;
-  const barGap=6;
-  const svgH=chantiersData.length*(barHeight+barGap)+10;
-  const barsSVG=chantiersData.map(({c,taux,ab},i)=>{
-    const y=10+i*(barHeight+barGap);
-    const nomCourt=c.nom.length>maxNom?c.nom.substring(0,maxNom)+'…':c.nom;
-    const barColor=taux>=80?'#3db54a':taux>=50?'#f5a623':'#e24b4a';
-    const barW=Math.max(2,Math.round(taux*0.8)); // max 80px pour laisser la place au %
-    return`<g>
-      <text x="0" y="${y+15}" font-size="9" fill="var(--text2)" font-family="sans-serif">${nomCourt}</text>
-      <rect x="115" y="${y+4}" width="${barW}" height="${barHeight-8}" rx="3" fill="${barColor}" opacity=".85"/>
-      <text x="${115+barW+4}" y="${y+15}" font-size="9" font-weight="700" fill="${barColor}" font-family="sans-serif">${taux}%${ab?' ⚠':''}</text>
-    </g>`;
-  }).join('');
+  const r=40,cx=50,cy=50,circ=2*Math.PI*r;
+  const arc=circ*(tauxConf/100);
 
   el.innerHTML=`
     <div class="topbar"><div class="tbi"><div class="tbt">Tableau de bord</div><div class="tbs">${visibleC.length} chantiers · ${totalMat} articles</div></div></div>
 
-    <!-- Graphiques KPIs -->
-    <div style="padding:12px 16px 0;display:flex;gap:12px;align-items:stretch">
-      <!-- Donut conformité -->
-      <div style="background:var(--bg2);border-radius:var(--r);border:.5px solid var(--border);padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;width:120px">
-        <svg width="112" height="112" viewBox="0 0 112 112">
-          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--bg3)" stroke-width="10"/>
-          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${donutColor}" stroke-width="10"
-            stroke-dasharray="${confArc} ${circumference}" stroke-dashoffset="${circumference/4}"
-            stroke-linecap="round" style="transition:stroke-dasharray .6s"/>
-          <text x="${cx}" y="${cy-6}" text-anchor="middle" font-size="18" font-weight="700" fill="${donutColor}" font-family="sans-serif">${tauxConf}%</text>
-          <text x="${cx}" y="${cy+10}" text-anchor="middle" font-size="8" fill="var(--text3)" font-family="sans-serif">Conformité</text>
+    <!-- KPIs globaux compact -->
+    <div style="padding:10px 16px 0;display:flex;gap:10px;align-items:center">
+      <!-- Donut compact -->
+      <div style="flex-shrink:0">
+        <svg width="100" height="100" viewBox="0 0 100 100">
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--bg3)" stroke-width="9"/>
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${donutColor}" stroke-width="9"
+            stroke-dasharray="${arc} ${circ}" stroke-dashoffset="${circ/4}" stroke-linecap="round"/>
+          <text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="16" font-weight="700" fill="${donutColor}" font-family="sans-serif">${tauxConf}%</text>
+          <text x="${cx}" y="${cy+11}" text-anchor="middle" font-size="8" fill="var(--text3)" font-family="sans-serif">Conformité</text>
         </svg>
       </div>
-      <!-- Stats grille -->
-      <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="stat-card" style="text-align:center;padding:10px 6px">
-          <div style="font-size:22px;font-weight:700;color:var(--accent)">${visibleC.length}</div>
-          <div class="sl" style="font-size:10px">Chantiers</div>
-          <div style="font-size:9px;color:var(--text3)">${totalMat} articles</div>
+      <!-- 4 mini stats -->
+      <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div class="stat-card" style="padding:8px;text-align:center">
+          <div style="font-size:20px;font-weight:700;color:var(--accent)">${visibleC.length}</div>
+          <div style="font-size:10px;color:var(--text2)">Chantiers</div>
         </div>
-        <div class="stat-card" style="text-align:center;padding:10px 6px">
-          <div style="font-size:22px;font-weight:700;color:${totalAbs?'#F09595':'#3db54a'}">${totalAbs}</div>
-          <div class="sl" style="font-size:10px">Absents</div>
+        <div class="stat-card" style="padding:8px;text-align:center">
+          <div style="font-size:20px;font-weight:700;color:${totalAbs?'#F09595':'#3db54a'}">${totalAbs}</div>
+          <div style="font-size:10px;color:var(--text2)">Absents</div>
         </div>
-        <div class="stat-card" style="text-align:center;padding:10px 6px">
-          <div style="font-size:22px;font-weight:700;color:${totalHS?'var(--accent)':'#3db54a'}">${totalHS}</div>
-          <div class="sl" style="font-size:10px">Dégradés/HS</div>
+        <div class="stat-card" style="padding:8px;text-align:center">
+          <div style="font-size:20px;font-weight:700;color:${totalHS?'var(--accent)':'#3db54a'}">${totalHS}</div>
+          <div style="font-size:10px;color:var(--text2)">Dégradés/HS</div>
         </div>
-        <div class="stat-card" style="text-align:center;padding:10px 6px">
-          <div style="font-size:22px;font-weight:700;color:${totalRetard?'#F09595':'#3db54a'}">${totalRetard}</div>
-          <div class="sl" style="font-size:10px">Ctrl retard</div>
+        <div class="stat-card" style="padding:8px;text-align:center">
+          <div style="font-size:20px;font-weight:700;color:${totalRetard?'#F09595':'#3db54a'}">${totalRetard}</div>
+          <div style="font-size:10px;color:var(--text2)">Ctrl retard</div>
         </div>
       </div>
     </div>
 
-    <!-- Graphique barres conformité par chantier -->
-    ${chantiersData.length>0?`
-    <div style="padding:10px 16px 0">
-      <div style="background:var(--bg2);border-radius:var(--r);border:.5px solid var(--border);padding:12px">
-        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Conformité par chantier</div>
-        <svg width="100%" viewBox="0 0 210 ${svgH}" style="overflow:visible">
-          ${barsSVG}
-        </svg>
-        <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
-          <span style="font-size:10px;color:#3db54a">● ≥80% OK</span>
-          <span style="font-size:10px;color:#f5a623">● 50-79% Attention</span>
-          <span style="font-size:10px;color:#e24b4a">● &lt;50% Critique</span>
-          <span style="font-size:10px;color:#F09595">⚠ = absent(s)</span>
-        </div>
-      </div>
-    </div>`:''}
-
-    <!-- Récap par chantier -->
-    <div style="font-size:11px;font-weight:500;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;padding:12px 16px 6px">Détail par chantier</div>
+    <!-- Chantiers par chantier -->
+    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;padding:12px 16px 6px">Par chantier</div>
     <div style="padding:0 16px 80px;display:flex;flex-direction:column;gap:8px">
-      ${chantiersData.length===0?`<div style="text-align:center;padding:40px 0;color:var(--text3)">Aucun chantier actif</div>`:''}
-      ${chantiersData.map(({c,mats,ab,hs,taux,done,retard,chefs,agents})=>{
-        const todayScans=S.scans.filter(s=>s.chantierId===c.id&&new Date(s.date).toDateString()===new Date().toDateString()).length;
-        const barColor=taux>=80?'#3db54a':taux>=50?'var(--accent)':'#F09595';
+      ${visibleC.length===0?`<div style="text-align:center;padding:40px 0;color:var(--text3)">Aucun chantier actif</div>`:''}
+      ${visibleC.map(c=>{
+        const mats=matOfC(c.id);
+        const ab=mats.filter(m=>m.presence==='absent').length;
+        const nc=mats.filter(m=>m.presence==='non-confirme').length;
+        const hs=mats.filter(m=>m.etat==='hors-service'||m.etat==='degrade').length;
+        const bons=mats.filter(m=>m.etat==='bon').length;
+        const confirms=mats.filter(m=>m.presence==='confirme').length;
+        const taux=mats.length?Math.round(bons/mats.length*100):0;
+        const invPct=mats.length?Math.round(confirms/mats.length*100):0;
+        const done=mats.filter(m=>m.verifLundi?.weekKey===wkNow||m.verifSemaine?.weekKey===wkNow).length;
+        const retard=mats.filter(m=>!m.controle2m||(new Date()-new Date(m.controle2m.date))>d2m).length;
+        const chefs=(c.chefs&&c.chefs.length>0)?c.chefs:[c.chef].filter(Boolean);
+        const verifPct=mats.length?Math.round(done/mats.length*100):0;
+        const barConf=taux>=80?'#3db54a':taux>=50?'#f5a623':'#e24b4a';
+        const barInv=invPct>=80?'#3db54a':invPct>=50?'#f5a623':'#e24b4a';
+        const barVerif=verifPct>=80?'#3db54a':verifPct>=50?'#f5a623':'#e24b4a';
         return`<div class="cc" onclick="openC('${c.id}')" style="cursor:pointer">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
+          <!-- En-tête chantier -->
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px">
             <div style="flex:1;min-width:0">
               <div style="font-size:14px;font-weight:600;color:var(--text)">${c.nom}</div>
               <div style="font-size:11px;color:var(--text2);margin-top:1px">${c.lieu}</div>
-              <div style="font-size:10px;color:var(--text3);margin-top:1px">👷 ${chefs.join(', ')||'—'} · ${agents.length} agent(s)</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:1px">Chef : ${chefs.join(', ')||'—'}</div>
             </div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
-              ${ab?`<span class="badge b-danger">${ab} absent${ab>1?'s':''}</span>`:hs?`<span class="badge" style="background:rgba(245,166,35,.12);color:var(--accent)">${hs} alerte${hs>1?'s':''}</span>`:`<span class="badge b-ok">✓ OK</span>`}
-              <span style="font-size:13px;font-weight:700;color:${barColor}">${taux}%</span>
-            </div>
-          </div>
-          <div class="pbar"><div class="pbf" style="width:${taux}%;background:${barColor}"></div></div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px;padding-top:8px;border-top:.5px solid var(--border)">
-            <div style="text-align:center">
-              <div style="font-size:15px;font-weight:600;color:var(--text)">${mats.length}</div>
-              <div style="font-size:9px;color:var(--text3)">Articles</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-size:15px;font-weight:600;color:${ab?'#F09595':'#3db54a'}">${ab}</div>
-              <div style="font-size:9px;color:var(--text3)">Absents</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-size:15px;font-weight:600;color:${done===mats.length&&mats.length>0?'#3db54a':'var(--text2)'}">${done}/${mats.length}</div>
-              <div style="font-size:9px;color:var(--text3)">Vérifs sem.</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-size:15px;font-weight:600;color:${retard?'#F09595':'#3db54a'}">${retard}</div>
-              <div style="font-size:9px;color:var(--text3)">Ctrl retard</div>
+            <div style="text-align:right;flex-shrink:0">
+              ${ab?`<div class="badge b-danger" style="margin-bottom:3px">${ab} absent${ab>1?'s':''}</div>`:''}
+              ${hs?`<div class="badge" style="background:rgba(245,166,35,.12);color:var(--accent)">${hs} HS/dég.</div>`:''}
+              ${!ab&&!hs?`<div class="badge b-ok">✓ OK</div>`:''}
             </div>
           </div>
-          ${todayScans>0?`<div style="margin-top:5px;font-size:10px;color:#3db54a">✓ ${todayScans} inspection(s) aujourd'hui</div>`:''}
+
+          <!-- 3 barres d'avancement -->
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <!-- Conformité matériel -->
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+                <span style="font-size:10px;color:var(--text3)">Conformité matériel</span>
+                <span style="font-size:10px;font-weight:700;color:${barConf}">${bons}/${mats.length} · ${taux}%</span>
+              </div>
+              <div class="pbar"><div class="pbf" style="width:${taux}%;background:${barConf}"></div></div>
+            </div>
+            <!-- Inventaire confirmé -->
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+                <span style="font-size:10px;color:var(--text3)">Inventaire confirmé</span>
+                <span style="font-size:10px;font-weight:700;color:${barInv}">${confirms}/${mats.length} · ${invPct}%${nc?' · '+nc+' non conf.':''}</span>
+              </div>
+              <div class="pbar"><div class="pbf" style="width:${invPct}%;background:${barInv}"></div></div>
+            </div>
+            <!-- Vérifs semaine -->
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+                <span style="font-size:10px;color:var(--text3)">Vérifications semaine</span>
+                <span style="font-size:10px;font-weight:700;color:${barVerif}">${done}/${mats.length} · ${verifPct}%</span>
+              </div>
+              <div class="pbar"><div class="pbf" style="width:${verifPct}%;background:${barVerif}"></div></div>
+            </div>
+          </div>
+
+          <!-- Footer chantier -->
+          <div style="display:flex;gap:10px;margin-top:8px;padding-top:8px;border-top:.5px solid var(--border);align-items:center">
+            <span style="font-size:11px;color:var(--text3)">${mats.length} articles</span>
+            ${retard?`<span style="font-size:11px;color:#F09595">⚠ ${retard} ctrl en retard</span>`:''}
+            <span style="font-size:11px;color:var(--accent);margin-left:auto">Voir →</span>
+          </div>
         </div>`;}).join('')}
     </div>`;
 }
