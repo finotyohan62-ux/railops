@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='87';
+const APP_VERSION='88';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -2055,8 +2055,9 @@ function importReplace(input){
 }
 
 async function processRows(rows){
-  window._lastImport = Date.now(); // timestamp du dernier import
-  if(!rows||rows.length<1){toast('Fichier vide','danger');return;}
+  window._lastImport = Date.now();
+  window._importing = true; // bloquer silentSync pendant tout l'import
+  if(!rows||rows.length<1){window._importing=false;toast('Fichier vide','danger');return;}
 
   // ── Détection en-tête ──
   // Une référence matériel commence par 1-6 lettres ASCII puis un chiffre (CLR95, RI0, D15)
