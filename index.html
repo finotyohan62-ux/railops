@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='94';
+const APP_VERSION='95';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -1306,6 +1306,14 @@ function pgDashChefChantier(el){
 }
 
 function pgDashAgent(el){
+  const mesCh=S.chantiers.filter(c=>c.statut==='actif'&&(c.agents||[]).includes(S.agent));
+
+  // Calculer les articles à vérifier sur tous mes chantiers
+  const tousLesMats=mesCh.flatMap(c=>matOfC(c.id));
+  const aFaire0=tousLesMats.filter(m=>!getVerif(m,'lundi'));
+  const aFaire1=tousLesMats.filter(m=>getVerif(m,'lundi')&&!getVerif(m,'semaine'));
+  const total2=tousLesMats.filter(m=>getVerif(m,'lundi')&&getVerif(m,'semaine')).length;
+
   el.innerHTML=`
     <div class="topbar">
       <div class="tbi"><div class="tbt">Bonjour, ${S.agent.split(' ')[0]}</div><div class="tbs">${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div></div>
@@ -1314,6 +1322,8 @@ function pgDashAgent(el){
         <div class="avatar" style="background:var(--success);cursor:pointer" onclick="openProfil()" title="Mon profil">${ini(S.agent)}</div>
       </div>
     </div>
+
+    <!-- Bouton scanner -->
     <div style="padding:12px 16px 0">
       <div style="background:var(--bg3);border-radius:var(--r);padding:14px;border:.5px solid var(--border);display:flex;align-items:center;gap:12px">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/><rect x="3" y="15" width="6" height="6" rx="1"/></svg>
@@ -1321,19 +1331,98 @@ function pgDashAgent(el){
         <button class="btn btn-accent" onclick="go('scanner')" style="width:auto;padding:8px 14px;font-size:12px">Scanner</button>
       </div>
     </div>
-    <div style="font-size:11px;font-weight:500;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;padding:14px 16px 8px">Chantiers actifs</div>
+
+    <!-- Avancement vérifications semaine -->
+    ${tousLesMats.length>0?`
+    <div style="padding:10px 16px 0">
+      <div style="background:var(--bg2);border-radius:var(--r);border:.5px solid var(--border);padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:12px;font-weight:600;color:var(--text)">Vérifications semaine</div>
+          <div style="font-size:13px;font-weight:700;color:${total2===tousLesMats.length?'#3db54a':aFaire0.length?'#F09595':'#f5a623'}">${total2}/${tousLesMats.length}</div>
+        </div>
+        <div class="pbar" style="height:6px">
+          <div class="pbf" style="height:6px;width:${tousLesMats.length?Math.round(total2/tousLesMats.length*100):0}%;background:${total2===tousLesMats.length?'#3db54a':aFaire0.length?'#e24b4a':'#f5a623'}"></div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:8px">
+          <span style="font-size:11px;color:${aFaire0.length?'#F09595':'var(--text3)'}">✗ ${aFaire0.length} sans vérif</span>
+          <span style="font-size:11px;color:${aFaire1.length?'#f5a623':'var(--text3)'}">◑ ${aFaire1.length} à compléter</span>
+          <span style="font-size:11px;color:#3db54a">✓ ${total2} complets</span>
+        </div>
+      </div>
+    </div>`:''}
+
+    <!-- Articles à vérifier en priorité -->
+    ${aFaire0.length>0?`
+    <div style="padding:10px 16px 0">
+      <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.acc-arr').style.transform=this.nextElementSibling.style.display==='none'?'rotate(0deg)':'rotate(180deg)'"
+        style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:10px 12px;background:rgba(226,75,74,.08);border-radius:10px;border:.5px solid rgba(226,75,74,.25)">
+        <span style="font-size:11px;font-weight:600;color:#F09595">⚠ ${aFaire0.length} article(s) sans aucune vérification</span>
+        <svg class="acc-arr" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F09595" stroke-width="2" style="transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div style="margin-top:4px">
+        <div style="background:var(--bg2);border-radius:var(--r);border:.5px solid var(--border);overflow:hidden">
+          ${aFaire0.slice(0,10).map(m=>{const c=getC(m.chantierId);return`
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:.5px solid var(--border);cursor:pointer" onclick="startInspect('${m.id}')">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.nom}</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:1px">${c?.nom||''}</div>
+            </div>
+            <span style="font-size:11px;color:var(--accent);flex-shrink:0">Inspecter →</span>
+          </div>`}).join('')}
+          ${aFaire0.length>10?`<div style="padding:8px 12px;font-size:11px;color:var(--text3);text-align:center">... et ${aFaire0.length-10} autre(s)</div>`:''}
+        </div>
+      </div>
+    </div>`:''}
+
+    <!-- Articles avec 1 vérif sur 2 -->
+    ${aFaire1.length>0?`
+    <div style="padding:10px 16px 0">
+      <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.acc-arr').style.transform=this.nextElementSibling.style.display==='none'?'rotate(0deg)':'rotate(180deg)'"
+        style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:10px 12px;background:rgba(245,166,35,.08);border-radius:10px;border:.5px solid rgba(245,166,35,.25)">
+        <span style="font-size:11px;font-weight:600;color:#f5a623">◑ ${aFaire1.length} article(s) avec 1 vérification sur 2</span>
+        <svg class="acc-arr" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" style="transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div style="display:none;margin-top:4px">
+        <div style="background:var(--bg2);border-radius:var(--r);border:.5px solid var(--border);overflow:hidden">
+          ${aFaire1.slice(0,10).map(m=>{const c=getC(m.chantierId);return`
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:.5px solid var(--border);cursor:pointer" onclick="startInspect('${m.id}')">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.nom}</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:1px">${c?.nom||''}</div>
+            </div>
+            <span style="font-size:11px;color:var(--accent);flex-shrink:0">Inspecter →</span>
+          </div>`}).join('')}
+          ${aFaire1.length>10?`<div style="padding:8px 12px;font-size:11px;color:var(--text3);text-align:center">... et ${aFaire1.length-10} autre(s)</div>`:''}
+        </div>
+      </div>
+    </div>`:''}
+
+    ${total2===tousLesMats.length&&tousLesMats.length>0?`
+    <div class="alert-box a-ok" style="margin:10px 16px 0">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5DCAA5" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+      <span class="at">Toutes les vérifications sont complètes cette semaine ✓</span>
+    </div>`:''}
+
+    <!-- Chantiers -->
+    <div style="font-size:11px;font-weight:500;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;padding:14px 16px 8px">Mes chantiers</div>
     <div style="padding:0 16px 20px">
-      ${S.chantiers.filter(c=>c.statut==='actif'&&(c.agents||[]).includes(S.agent)).map(c=>{
+      ${mesCh.length===0?`<div style="text-align:center;padding:30px 0;color:var(--text3);font-size:13px">Aucun chantier assigné</div>`:''}
+      ${mesCh.map(c=>{
         const mats=matOfC(c.id);
         const ab=mats.filter(m=>m.presence==='absent').length;
+        const v0=mats.filter(m=>!getVerif(m,'lundi')).length;
+        const v1=mats.filter(m=>getVerif(m,'lundi')&&!getVerif(m,'semaine')).length;
+        const v2=mats.filter(m=>getVerif(m,'lundi')&&getVerif(m,'semaine')).length;
+        const statusColor=v0?'#F09595':v1?'#f5a623':'#3db54a';
         return`<div class="cc" onclick="openC('${c.id}')">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
             <div><div style="font-size:15px;font-weight:500;color:var(--text)">${c.nom}</div><div style="font-size:12px;color:var(--text2);margin-top:2px">${c.lieu}</div></div>
-            ${ab?`<span class="badge b-danger">${ab} absent${ab>1?'s':''}</span>`:`<span class="badge b-ok">${statutLabel(c.statut)}</span>`}
+            ${ab?`<span class="badge b-danger">${ab} absent${ab>1?'s':''}</span>`:`<span class="badge b-ok">OK</span>`}
           </div>
-          <div style="margin-top:8px;padding-top:8px;border-top:.5px solid var(--border);display:flex;gap:10px">
+          <div style="margin-top:8px;padding-top:8px;border-top:.5px solid var(--border);display:flex;gap:10px;align-items:center">
             <span style="font-size:11px;color:var(--text3)">${mats.length} articles</span>
-            <span style="font-size:11px;color:var(--accent);margin-left:auto">Registre + inspection →</span>
+            <span style="font-size:11px;font-weight:600;color:${statusColor}">Vérifs : ${v2}/${mats.length}${v0?' · '+v0+' manquant(s)':v1?' · '+v1+' à compléter':' ✓'}</span>
+            <span style="font-size:11px;color:var(--accent);margin-left:auto">→</span>
           </div>
         </div>`;}).join('')}
     </div>`;
@@ -1344,6 +1433,12 @@ function pgDashAgent(el){
 // ══════════════════════════════════════
 function pgDashCTE(el){
   const mesCh=S.chantiers.filter(c=>(c.agents||[]).includes(S.agent));
+  const wk=getWeekKey();
+  const tousLesMats=mesCh.flatMap(c=>matOfC(c.id));
+  const aFaire0=tousLesMats.filter(m=>!getVerif(m,'lundi'));
+  const aFaire1=tousLesMats.filter(m=>getVerif(m,'lundi')&&!getVerif(m,'semaine'));
+  const total2=tousLesMats.filter(m=>getVerif(m,'lundi')&&getVerif(m,'semaine')).length;
+
   el.innerHTML=`
     <div class="topbar">
       <div class="tbi"><div class="tbt">Bonjour, ${S.agent.split(' ')[0]}</div><div class="tbs">${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div></div>
@@ -1352,6 +1447,50 @@ function pgDashCTE(el){
         <div class="avatar" style="background:rgba(245,166,35,.3);color:#1a0a00;cursor:pointer" onclick="openProfil()">${ini(S.agent)}</div>
       </div>
     </div>
+
+    <!-- Avancement vérifications -->
+    ${tousLesMats.length>0?`
+    <div style="padding:12px 16px 0">
+      <div style="background:var(--bg2);border-radius:var(--r);border:.5px solid var(--border);padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:12px;font-weight:600;color:var(--text)">Vérifications semaine</div>
+          <div style="font-size:13px;font-weight:700;color:${total2===tousLesMats.length?'#3db54a':aFaire0.length?'#F09595':'#f5a623'}">${total2}/${tousLesMats.length}</div>
+        </div>
+        <div class="pbar" style="height:6px">
+          <div class="pbf" style="height:6px;width:${tousLesMats.length?Math.round(total2/tousLesMats.length*100):0}%;background:${total2===tousLesMats.length?'#3db54a':aFaire0.length?'#e24b4a':'#f5a623'}"></div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:8px">
+          <span style="font-size:11px;color:${aFaire0.length?'#F09595':'var(--text3)'}">✗ ${aFaire0.length} sans vérif</span>
+          <span style="font-size:11px;color:${aFaire1.length?'#f5a623':'var(--text3)'}">◑ ${aFaire1.length} à compléter</span>
+          <span style="font-size:11px;color:#3db54a">✓ ${total2} complets</span>
+        </div>
+      </div>
+    </div>`:''}
+
+    <!-- Articles sans vérification -->
+    ${aFaire0.length>0?`
+    <div style="padding:10px 16px 0">
+      <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.acc-arr').style.transform=this.nextElementSibling.style.display==='none'?'rotate(0deg)':'rotate(180deg)'"
+        style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:10px 12px;background:rgba(226,75,74,.08);border-radius:10px;border:.5px solid rgba(226,75,74,.25)">
+        <span style="font-size:11px;font-weight:600;color:#F09595">⚠ ${aFaire0.length} article(s) sans aucune vérification</span>
+        <svg class="acc-arr" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F09595" stroke-width="2" style="transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div style="margin-top:4px">
+        <div style="background:var(--bg2);border-radius:var(--r);border:.5px solid var(--border);overflow:hidden">
+          ${aFaire0.slice(0,8).map(m=>{const c=getC(m.chantierId);return`
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:.5px solid var(--border);cursor:pointer" onclick="startInspect('${m.id}')">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.nom}</div>
+              <div style="font-size:10px;color:var(--text3)">${c?.nom||''}</div>
+            </div>
+            <span style="font-size:11px;color:var(--accent);flex-shrink:0">→</span>
+          </div>`}).join('')}
+          ${aFaire0.length>8?`<div style="padding:8px 12px;font-size:11px;color:var(--text3);text-align:center">... et ${aFaire0.length-8} autre(s)</div>`:''}
+        </div>
+      </div>
+    </div>`:''}
+
+    <!-- Mes chantiers -->
     <div style="font-size:11px;font-weight:500;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;padding:14px 16px 8px">Mes chantiers</div>
     <div style="padding:0 16px 20px">
       ${mesCh.length===0?`<div style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px">Aucun chantier assigné</div>`:''}
@@ -1359,16 +1498,20 @@ function pgDashCTE(el){
         const mats=matOfC(c.id);
         const ab=mats.filter(m=>m.presence==='absent').length;
         const tournees=(c.tournees||[]);
-        const wk=getWeekKey();
         const tourneeSemaine=tournees.filter(t=>t.weekKey===wk);
+        const v0=mats.filter(m=>!getVerif(m,'lundi')).length;
+        const v1=mats.filter(m=>getVerif(m,'lundi')&&!getVerif(m,'semaine')).length;
+        const v2=mats.filter(m=>getVerif(m,'lundi')&&getVerif(m,'semaine')).length;
+        const statusColor=v0?'#F09595':v1?'#f5a623':'#3db54a';
         return`<div class="cc" onclick="openC('${c.id}')">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
             <div><div style="font-size:15px;font-weight:500;color:var(--text)">${c.nom}</div><div style="font-size:12px;color:var(--text2);margin-top:2px">${c.lieu}</div></div>
             ${ab?`<span class="badge b-danger">${ab} absent${ab>1?'s':''}</span>`:`<span class="badge b-ok">OK</span>`}
           </div>
-          <div style="display:flex;gap:10px;margin-top:8px;padding-top:8px;border-top:.5px solid var(--border)">
+          <div style="display:flex;gap:10px;margin-top:8px;padding-top:8px;border-top:.5px solid var(--border);align-items:center">
             <span style="font-size:11px;color:var(--text3)">${mats.length} articles</span>
-            <span style="font-size:11px;color:${tourneeSemaine.length>=2?'#3db54a':tourneeSemaine.length===1?'var(--accent)':'#F09595'}">Tournées : ${tourneeSemaine.length}/2 cette semaine</span>
+            <span style="font-size:11px;font-weight:600;color:${statusColor}">Vérifs : ${v2}/${mats.length}${v0?' · '+v0+' manquant(s)':v1?' · '+v1+' à compléter':' ✓'}</span>
+            <span style="font-size:11px;color:${tourneeSemaine.length>=2?'#3db54a':tourneeSemaine.length===1?'var(--accent)':'#F09595'};margin-left:auto">Tournées ${tourneeSemaine.length}/2</span>
           </div>
         </div>`;}).join('')}
     </div>`;
