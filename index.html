@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='93';
+const APP_VERSION='94';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -431,8 +431,8 @@ async function load(){
 
     // RÈGLE 2 : Matériels → Supabase fait loi, point
     const {data:dm, error:em}=await db.from('materiels').select('*');
-    if(!em&&dm){ S.mat=dm; }
-    else { S.mat=JSON.parse(localStorage.getItem('ro3_m')||'[]'); }
+    if(!em&&dm){ S.mat=normMats(dm); }
+    else { S.mat=normMats(JSON.parse(localStorage.getItem('ro3_m')||'[]')); }
     localStorage.setItem('ro3_m',JSON.stringify(S.mat));
     // Scans : Supabase inclut maintenant la photo
     const {data:ds}=await db.from('scans').select('id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions,photo');
@@ -482,6 +482,9 @@ function isChefOf(c){
 }
 function getM(id){return S.mat.find(m=>m.id===id);}
 function matOfC(cid){return S.mat.filter(m=>m.chantierId===cid);}
+// Normaliser les catégories legacy
+function normCat(c){return['Caténaire','EPI','Engins','Sécurité élec.','Signalisation'].includes(c)?'Outillage':(c||'Outillage');}
+function normMats(arr){return arr.map(m=>({...m,cat:normCat(m.cat)}));}
 function newId(p){return p+(Date.now().toString().slice(-6));}
 function sBadge(s){if(s==='actif')return 'b-ok';if(s==='termine')return 'b-gray';return 'b-warn';}
 function sLabel(s){return{actif:'Actif',planifie:'Planifié',termine:'Terminé'}[s]||s;}
@@ -5253,7 +5256,7 @@ async function silentSync(){
     // RÈGLE 2 : Matériels → Supabase fait loi, point
     const importRecent = window._lastImport && (Date.now() - window._lastImport) < 60000;
     if(!em&&dm&&!importRecent){
-      S.mat=dm;
+      S.mat=normMats(dm);
       try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
     }
 
