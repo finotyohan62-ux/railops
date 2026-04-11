@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='89';
+const APP_VERSION='90';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -3444,8 +3444,8 @@ function renderForm(){
           Prendre / Ajouter une photo
         </button>
       </div>
-      <label class="fl">Observations</label>
-      <textarea class="fi" id="obs" rows="2" placeholder="Remarques, contexte…"></textarea>
+      <label class="fl" id="obs-label">Observations</label>
+      <textarea class="fi" id="obs" rows="2" placeholder="Remarques, contexte…" oninput="this.style.borderColor='var(--border)'"></textarea>
       <label class="fl">Actions à prévoir</label>
       <textarea class="fi" id="act" rows="2" placeholder="Maintenance, commandes…"></textarea>
       <div style="display:flex;gap:10px;margin-top:20px">
@@ -3465,6 +3465,18 @@ function sE(v){S.fd.etatGeneral=v;['bon','acceptable','degrade','hors-service'].
   const anomalie=S.fd.dommages||(v==='degrade'||v==='hors-service');
   if(hint)hint.innerHTML=anomalie?'<span style="color:var(--accent);font-weight:500">⚠ Recommandée</span>':'Optionnel';
   if(btn)btn.style.borderColor=anomalie?'rgba(61,181,74,.4)':'var(--border)';
+  // Label observations : obligatoire si HS
+  const obsLabel=document.getElementById('obs-label');
+  const obsEl=document.getElementById('obs');
+  if(obsLabel){
+    if(v==='hors-service'){
+      obsLabel.innerHTML='Observations <span style="color:#F09595;font-weight:600">* obligatoire</span>';
+      if(obsEl){obsEl.placeholder='Décris la raison du hors service (obligatoire)…';obsEl.style.borderColor='rgba(226,75,74,.4)';}
+    } else {
+      obsLabel.innerHTML='Observations';
+      if(obsEl){obsEl.placeholder='Remarques, contexte…';obsEl.style.borderColor='var(--border)';}
+    }
+  }
   // Alerte HS prix
   const existingAlert=document.getElementById('hs-prix-alert');
   if(existingAlert)existingAlert.remove();
@@ -3623,6 +3635,16 @@ function clearPhoto(){
 function submitF(forceDouble=false){
   if(!S.fd.etatGeneral){toast('Sélectionne l\'état général','danger');return;}
   if(!S.fd.proprete){toast('Sélectionne la propreté','danger');return;}
+  // Observations obligatoires si hors service
+  if(S.fd.etatGeneral==='hors-service'){
+    const obs=document.getElementById('obs')?.value.trim();
+    if(!obs){
+      toast('Raison obligatoire pour un article hors service','danger');
+      const obsEl=document.getElementById('obs');
+      if(obsEl){obsEl.style.borderColor='var(--danger)';obsEl.focus();}
+      return;
+    }
+  }
   // Vérifier si cet article a déjà été inspecté aujourd'hui par cet agent
   if(!forceDouble){
     const today=new Date().toDateString();
