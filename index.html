@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='90';
+const APP_VERSION='91';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -5485,74 +5485,147 @@ function exportInventaireFinSemaine(){
   const mats=[...matOfC(S.curC)].sort((a,b)=>a.id.localeCompare(b.id,'fr'));
   if(!mats.length){toast('Aucun article dans ce chantier','warn');return;}
   const {jsPDF}=window.jspdf;
-  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  const pw=doc.internal.pageSize.getWidth();
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  const pw=doc.internal.pageSize.getWidth(); // 297mm
   const now=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
   const wk=getWeekKey();
-  const eL2=e=>({bon:'Bon état',acceptable:'Acceptable',degrade:'Dégradé','hors-service':'Hors service',inconnu:'Non inspecté'}[e]||e);
-  const pL=p=>({confirme:'Présent',absent:'Absent','non-confirme':'Non confirmé',retire:'Retiré'}[p]||p);
+  const wkNow=wk;
+  const fmtDate=iso=>iso?new Date(iso).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})+' '+new Date(iso).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'—';
+  const eL2=e=>({bon:'Bon état',acceptable:'Acceptable',degrade:'Dégradé','hors-service':'Hors service',inconnu:'—'}[e]||e);
+  const pL=p=>({confirme:'Présent',absent:'Absent','non-confirme':'Non conf.',retire:'Retiré'}[p]||p);
   const eColor=e=>e==='bon'?[26,122,58]:e==='acceptable'?[179,106,0]:e==='degrade'||e==='hors-service'?[192,57,43]:[100,100,100];
   const pColor=p=>p==='confirme'?[26,122,58]:p==='absent'?[192,57,43]:p==='non-confirme'?[179,106,0]:[150,150,150];
-  const wkNow=wk;
+
+  // Stats globales
+  const total=mats.length;
+  const pres=mats.filter(m=>m.presence==='confirme').length;
+  const abs=mats.filter(m=>m.presence==='absent').length;
+  const nc=mats.filter(m=>m.presence==='non-confirme').length;
+  const v1seul=mats.filter(m=>getVerif(m,'lundi')&&!getVerif(m,'semaine')).length;
+  const v2comp=mats.filter(m=>getVerif(m,'lundi')&&getVerif(m,'semaine')).length;
+  const v0=mats.filter(m=>!getVerif(m,'lundi')&&!getVerif(m,'semaine')).length;
+
   // Header
   doc.setFillColor(245,166,35);doc.rect(0,0,pw,16,'F');
   doc.setTextColor(255,255,255);doc.setFontSize(13);doc.setFont('helvetica','bold');
   doc.text('RailOps — SFERIS',14,10);
   doc.setFontSize(8);doc.setFont('helvetica','normal');
-  doc.text('Inventaire fin de semaine',pw-14,10,{align:'right'});
-  doc.setTextColor(30,30,30);doc.setFontSize(14);doc.setFont('helvetica','bold');
+  doc.text('Inventaire semaine '+wk,pw-14,10,{align:'right'});
+
+  // Infos chantier
+  doc.setTextColor(30,30,30);doc.setFontSize(13);doc.setFont('helvetica','bold');
   doc.text(c.nom,14,24);
-  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(100,100,100);
-  doc.text(c.lieu,14,30);
-  doc.text('Semaine '+wk+' · Généré le '+now,pw-14,24,{align:'right'});
-  // Stats
-  const pres=mats.filter(m=>m.presence==='confirme').length;
-  const abs=mats.filter(m=>m.presence==='absent').length;
-  const nc=mats.filter(m=>m.presence==='non-confirme').length;
-  const verifs=mats.filter(m=>m.verifLundi?.weekKey===wkNow||m.verifSemaine?.weekKey===wkNow).length;
-  doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
-  doc.text(`${mats.length} articles · ${pres} présents · ${abs} absents · ${verifs}/${mats.length} vérifiés sem.`,14,37);
-  // Grouper par catégorie
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(100,100,100);
+  doc.text(c.lieu+'  ·  Chef : '+((c.chefs&&c.chefs[0])||c.chef||'—'),14,30);
+  doc.text('Généré le '+now,pw-14,24,{align:'right'});
+
+  // Bandeau stats
+  const bx=14, bw=(pw-28)/5, by=34, bh=12;
+  const stats=[
+    {v:total,l:'Total articles',c:[60,60,80]},
+    {v:pres,l:'Présents',c:[26,122,58]},
+    {v:abs,l:'Absents',c:abs?[192,57,43]:[26,122,58]},
+    {v:v2comp,l:'2 vérifs ✓',c:v2comp===total?[26,122,58]:[26,122,58]},
+    {v:v0,l:'0 vérif ✗',c:v0?[192,57,43]:[26,122,58]},
+  ];
+  stats.forEach((s,i)=>{
+    doc.setFillColor(248,248,250);doc.setDrawColor(220,220,220);
+    doc.roundedRect(bx+i*(bw+1),by,bw,bh,1,1,'FD');
+    doc.setFontSize(12);doc.setFont('helvetica','bold');doc.setTextColor(...s.c);
+    doc.text(String(s.v),bx+i*(bw+1)+bw/2,by+7,{align:'center'});
+    doc.setFontSize(6);doc.setFont('helvetica','normal');doc.setTextColor(100,100,100);
+    doc.text(s.l,bx+i*(bw+1)+bw/2,by+11,{align:'center'});
+  });
+
+  // Alerte si articles non vérifiés
+  let curY=50;
+  if(v0>0){
+    doc.setFillColor(255,240,240);doc.setDrawColor(220,80,80);
+    doc.roundedRect(14,curY,pw-28,7,1,1,'FD');
+    doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(180,30,30);
+    doc.text('⚠  '+v0+' article(s) sans aucune vérification cette semaine',pw/2,curY+4.5,{align:'center'});
+    curY+=10;
+  }
+  if(v1seul>0){
+    doc.setFillColor(255,248,230);doc.setDrawColor(200,140,0);
+    doc.roundedRect(14,curY,pw-28,7,1,1,'FD');
+    doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(150,100,0);
+    doc.text('⚠  '+v1seul+' article(s) avec seulement 1 vérification sur 2',pw/2,curY+4.5,{align:'center'});
+    curY+=10;
+  }
+
+  // Tableau principal
   const cats=[...new Set(mats.map(m=>m.cat))].sort();
-  let curY=44;
   cats.forEach(cat=>{
     const catMats=mats.filter(m=>m.cat===cat);
-    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(80,80,80);
-    doc.text('▸ '+cat+' ('+catMats.length+')',14,curY);curY+=2;
+    if(catMats.length===0) return;
+    doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(60,60,80);
+    if(curY>doc.internal.pageSize.getHeight()-30){doc.addPage();curY=14;}
+    doc.text('▸ '+cat+' — '+catMats.length+' article(s)',14,curY);curY+=2;
+
     doc.autoTable({
       startY:curY,
-      head:[['Référence','Désignation','État','Présence','Vérif. sem.','Dernier scan']],
+      head:[['Désignation','État','Présence','Vérif 1 (début sem.)','Agent V1','Vérif 2 (fin sem.)','Agent V2','Dernier scan']],
       body:catMats.map(m=>{
-        const verifOk=m.verifLundi?.weekKey===wkNow||m.verifSemaine?.weekKey===wkNow;
-        return[m.id,m.nom,eL2(m.etat),pL(m.presence),verifOk?'✓ Oui':'—',m.scan?new Date(m.scan).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'—'];
+        const v1=getVerif(m,'lundi');
+        const v2=getVerif(m,'semaine');
+        return[
+          m.nom,
+          eL2(m.etat),
+          pL(m.presence),
+          v1?fmtDate(v1.date):'— Non faite',
+          v1?v1.agentNom:'',
+          v2?fmtDate(v2.date):'— Non faite',
+          v2?v2.agentNom:'',
+          m.scan?fmtDate(m.scan):'Jamais',
+        ];
       }),
       styles:{fontSize:7,cellPadding:2},
       headStyles:{fillColor:[70,114,196],textColor:255,fontStyle:'bold',fontSize:7},
-      columnStyles:{0:{font:'courier',fontSize:6},2:{fontStyle:'bold'},3:{fontStyle:'bold'},4:{fontStyle:'bold'}},
+      columnStyles:{
+        0:{cellWidth:55},
+        1:{fontStyle:'bold',cellWidth:22},
+        2:{fontStyle:'bold',cellWidth:20},
+        3:{cellWidth:28},4:{cellWidth:22},
+        5:{cellWidth:28},6:{cellWidth:22},
+        7:{cellWidth:22},
+      },
       didParseCell:(data)=>{
         if(data.section==='body'){
           const m=catMats[data.row.index];
-          if(data.column.index===2) data.cell.styles.textColor=eColor(m?.etat);
-          if(data.column.index===3) data.cell.styles.textColor=pColor(m?.presence);
-          if(data.column.index===4) data.cell.styles.textColor=m?.verifLundi?.weekKey===wkNow||m?.verifSemaine?.weekKey===wkNow?[26,122,58]:[150,150,150];
+          const v1=getVerif(m,'lundi');
+          const v2=getVerif(m,'semaine');
+          if(data.column.index===1) data.cell.styles.textColor=eColor(m?.etat);
+          if(data.column.index===2) data.cell.styles.textColor=pColor(m?.presence);
+          if(data.column.index===3){
+            data.cell.styles.textColor=v1?[26,122,58]:[192,57,43];
+            data.cell.styles.fontStyle='bold';
+          }
+          if(data.column.index===5){
+            data.cell.styles.textColor=v2?[26,122,58]:[192,57,43];
+            data.cell.styles.fontStyle='bold';
+          }
         }
       },
       margin:{left:14,right:14},
     });
-    curY=doc.lastAutoTable.finalY+5;
+    curY=doc.lastAutoTable.finalY+6;
   });
+
+  // Footer
   const pageCount=doc.getNumberOfPages();
   for(let i=1;i<=pageCount;i++){
-    doc.setPage(i);doc.setFontSize(7);doc.setTextColor(150,150,150);
-    doc.text('RailOps — SFERIS · '+now,14,doc.internal.pageSize.getHeight()-6);
-    doc.text(c.nom+' · Inventaire '+wk+' · Page '+i+'/'+pageCount,pw-14,doc.internal.pageSize.getHeight()-6,{align:'right'});
+    doc.setPage(i);doc.setFontSize(6);doc.setTextColor(150,150,150);
+    doc.text('RailOps — SFERIS · '+now,14,doc.internal.pageSize.getHeight()-4);
+    doc.text(c.nom+' · Semaine '+wk+' · Page '+i+'/'+pageCount,pw-14,doc.internal.pageSize.getHeight()-4,{align:'right'});
   }
-  const fname='Inventaire_FinSemaine_'+c.nom.replace(/[^a-z0-9]/gi,'_').slice(0,20)+'_'+wk+'.pdf';
+
+  const fname='Inventaire_'+c.nom.replace(/[^a-z0-9]/gi,'_').slice(0,20)+'_'+wk+'.pdf';
   const blob=doc.output('blob');const url=URL.createObjectURL(blob);
   const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
   if(isIOS){window.open(url,'_blank');toast('PDF prêt — Partager → Enregistrer dans Fichiers','ok');}
   else{const a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),10000);}
-  toast('Inventaire fin de semaine exporté ✓','ok');
+  toast('Inventaire semaine exporté ✓','ok');
 }
 
 // Export PDF contrôle 2 mois
