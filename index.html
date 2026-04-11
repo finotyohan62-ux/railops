@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='95';
+const APP_VERSION='97';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -3499,7 +3499,28 @@ function processQR(data){stopCam();if(data.startsWith('RAILOPS:MAT:')){const id=
 // ══════════════════════════════════════
 // FORM INSPECTION
 // ══════════════════════════════════════
-function startInspect(id){stopCam();S.curM=id;S.fd={etatGeneral:'',proprete:'',fonctionnement:true,dommages:false,dommagesDesc:'',observations:'',actions:'',photo:null};S.page='form';render();}
+function startInspect(id){
+  stopCam();S.curM=id;
+  S.fd={etatGeneral:'',proprete:'',fonctionnement:true,dommages:false,dommagesDesc:'',observations:'',actions:'',photo:null};
+  // Vérifier si l'inspection est bloquée (mardi/mercredi sans vérif 1)
+  if(S.role==='agent'||S.role==='cte'){
+    const m=getM(id);
+    const v1=getVerif(m,'lundi');
+    if(!v1){
+      const jour=((new Date(Date.now()-6*60*60*1000)).getDay()||7);
+      if(jour===2||jour===3){
+        S._inspectBloque=true;
+      } else {
+        S._inspectBloque=false;
+      }
+    } else {
+      S._inspectBloque=false;
+    }
+  } else {
+    S._inspectBloque=false;
+  }
+  S.page='form';render();
+}
 
 function renderForm(){
   const m=getM(S.curM);const c=getC(m?.chantierId);
@@ -3536,6 +3557,15 @@ function renderForm(){
 
       <!-- Vérification kit si applicable -->
       ${kitHTML}
+
+      <!-- Avertissement si inspection bloquée mardi/mercredi -->
+      ${S._inspectBloque?`<div style="background:rgba(226,75,74,.1);border:.5px solid rgba(226,75,74,.3);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F09595" stroke-width="2" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#F09595">Vérification bloquée</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5">La 1ère vérification devait être faite le lundi. Elle ne peut plus être enregistrée aujourd'hui. La validation sera refusée.</div>
+        </div>
+      </div>`:''}
 
       <!-- Présence sur chantier -->
       <label class="fl" style="margin-top:0">Présence sur le chantier</label>
@@ -3778,6 +3808,41 @@ function submitF(forceDouble=false){
       const obsEl=document.getElementById('obs');
       if(obsEl){obsEl.style.borderColor='var(--danger)';obsEl.focus();}
       return;
+    }
+  }
+  // ── Règle : vérif 1 bloquée si non faite le lundi (mardi + mercredi uniquement) ──
+  // Décalage 6h : avant 6h du matin = encore la veille (travail de nuit)
+  if(S.role==='agent'||S.role==='cte'){
+    const m=getM(S.curM);
+    const v1=getVerif(m,'lundi');
+    if(!v1){
+      const now=new Date();
+      const shifted=new Date(now.getTime()-6*60*60*1000); // -6h pour nuit
+      const jourSemaine=(shifted.getDay()||7); // 1=lundi … 7=dimanche
+      if(jourSemaine===2||jourSemaine===3){
+        // Mardi ou mercredi sans vérif 1 → bloqué
+        const existing=document.getElementById('movl');if(existing)existing.remove();
+        const div=document.createElement('div');div.id='movl';div.className='moverlay';
+        div.innerHTML=`<div class="msheet">
+          <div class="mhandle"></div>
+          <div style="text-align:center;margin-bottom:16px">
+            <div style="width:52px;height:52px;border-radius:50%;background:rgba(226,75,74,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F09595" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div style="font-size:16px;font-weight:600;color:var(--text)">Vérification non autorisée</div>
+            <div style="font-size:13px;color:var(--text2);margin-top:8px;line-height:1.6">
+              La <strong>1ère vérification</strong> devait être faite le <strong>lundi</strong>.<br>
+              Elle ne peut plus être effectuée ${jourSemaine===2?'ce mardi':'ce mercredi'}.
+            </div>
+          </div>
+          <div style="background:rgba(226,75,74,.06);border:.5px solid rgba(226,75,74,.2);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#F09595">
+            Contacte ton chef d'équipe si tu penses qu'il s'agit d'une erreur.
+          </div>
+          <button onclick="document.getElementById('movl').remove()" class="btn btn-outline">Fermer</button>
+        </div>`;
+        document.getElementById('app').appendChild(div);
+        return;
+      }
     }
   }
   // Vérifier si cet article a déjà été inspecté aujourd'hui par cet agent
