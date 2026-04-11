@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='91';
+const APP_VERSION='92';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -1978,11 +1978,6 @@ function importReplace(input){
       } else {
         // Auto-catégorie
         let cat='Outillage';
-        const n=nom.toUpperCase();
-        if(n.startsWith('CLR')||n.startsWith('CV9')) cat='Caténaire';
-        else if(n.startsWith('PI-')||n.startsWith('PI0')) cat='Sécurité élec.';
-        else if(n.startsWith('RPIR')||n.startsWith('D15')) cat='Caténaire';
-        else if(n.startsWith('DRAP')||n.startsWith('CONE')) cat='EPI';
         const newMat={id,nom,cat,chantierId:S.curC,etat:'inconnu',scan:null,presence:'non-confirme',echeance,prix};
         S.mat.push(newMat);
         toUpsert.push(newMat);
@@ -2100,12 +2095,6 @@ async function processRows(rows){
     let cat = 'Outillage';
     if(iCat>=0 && row[iCat]){
       cat = String(row[iCat]).trim();
-    } else {
-      const n=nom.toUpperCase();
-      if(n.startsWith('CLR')||n.startsWith('CV9')) cat='Caténaire';
-      else if(n.startsWith('PI-')||n.startsWith('PI0')) cat='Sécurité élec.';
-      else if(n.startsWith('RPIR')||n.startsWith('D15')) cat='Caténaire';
-      else if(n.startsWith('DRAP')||n.startsWith('CONE')) cat='EPI';
     }
 
     // ID/Référence : toujours utiliser iId quand disponible, peu importe si c'est la même colonne que nom
@@ -3204,7 +3193,7 @@ function renderAjoutMat(){
       <label class="fl" style="margin-top:14px">Désignation *</label>
       <input class="fi" id="am-nom" placeholder="Ex: Nacelle élévatrice #3">
       <label class="fl">Catégorie *</label>
-      <select class="fi" id="am-cat"><option>Engins</option><option>Caténaire</option><option>EPI</option><option>Sécurité élec.</option><option>Signalisation</option><option>Outillage</option><option>Autre</option></select>
+      <select class="fi" id="am-cat"><option>Outillage</option><option>Autre</option></select>
       <label class="fl">Identifiant (auto si vide)</label>
       <input class="fi" id="am-id" placeholder="Ex: MAT013">
       <label class="fl">État initial</label>
@@ -5595,6 +5584,12 @@ function exportInventaireFinSemaine(){
           const m=catMats[data.row.index];
           const v1=getVerif(m,'lundi');
           const v2=getVerif(m,'semaine');
+          // Fond coloré selon état des vérifs
+          if(!v1&&!v2){
+            data.cell.styles.fillColor=[255,235,235]; // rouge clair — aucune vérif
+          } else if(!v2){
+            data.cell.styles.fillColor=[255,248,225]; // orange clair — 1 vérif sur 2
+          }
           if(data.column.index===1) data.cell.styles.textColor=eColor(m?.etat);
           if(data.column.index===2) data.cell.styles.textColor=pColor(m?.presence);
           if(data.column.index===3){
