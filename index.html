@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='92';
+const APP_VERSION='93';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -4457,9 +4457,11 @@ function exportNonVerifies(){
   const c=getC(S.curC);if(!c)return;
   const wk=getWeekKey();
   const mats=matOfC(S.curC);
-  const scansWeek=new Set(S.scans.filter(s=>s.chantierId===S.curC).map(s=>s.materielId));
-  const nonVerifies=mats.filter(m=>!scansWeek.has(m.id));
-  if(!nonVerifies.length){toast('Tous les articles ont été vérifiés cette semaine ✓','ok');return;}
+  // Non vérifiés = pas les 2 vérifs de la semaine complètes
+  const nonV1=mats.filter(m=>!getVerif(m,'lundi'));           // 0 vérif
+  const nonV2=mats.filter(m=>getVerif(m,'lundi')&&!getVerif(m,'semaine')); // 1 vérif seulement
+  const nonVerifies=[...nonV1,...nonV2];
+  if(!nonVerifies.length){toast('Toutes les vérifications sont complètes ✓','ok');return;}
 
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
@@ -4471,7 +4473,7 @@ function exportNonVerifies(){
   doc.setTextColor(255,255,255);doc.setFontSize(13);doc.setFont('helvetica','bold');
   doc.text('RailOps — SFERIS',14,10);
   doc.setFontSize(8);doc.setFont('helvetica','normal');
-  doc.text('Articles non vérifiés',pw-14,10,{align:'right'});
+  doc.text('Vérifications incomplètes',pw-14,10,{align:'right'});
 
   // Infos
   doc.setTextColor(30,30,30);doc.setFontSize(14);doc.setFont('helvetica','bold');
@@ -4479,26 +4481,43 @@ function exportNonVerifies(){
   doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(100,100,100);
   doc.text(c.lieu,14,30);
   doc.text('Semaine : '+wk+' · Généré le '+now,pw-14,24,{align:'right'});
-  doc.setFontSize(11);doc.setFont('helvetica','bold');doc.setTextColor(192,57,43);
-  doc.text(nonVerifies.length+' article(s) non vérifiés cette semaine',14,38);
+
+  // Stats
+  doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(192,57,43);
+  doc.text(nonV1.length+' article(s) sans aucune vérification  ·  '+nonV2.length+' article(s) avec 1 vérification sur 2',14,38);
 
   doc.autoTable({
     startY:44,
-    head:[['Référence','Désignation','Catégorie','Dernier scan','État']],
-    body:nonVerifies.map(m=>[
-      m.id,
-      m.nom,
-      m.cat,
-      m.scan?new Date(m.scan).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}):'Jamais inspecté',
-      {bon:'Bon état',acceptable:'Acceptable',degrade:'Dégradé','hors-service':'Hors service',inconnu:'Non inspecté'}[m.etat]||m.etat
-    ]),
+    head:[['Désignation','Vérif 1','Vérif 2','État','Dernier scan']],
+    body:nonVerifies.map(m=>{
+      const v1=getVerif(m,'lundi');
+      const v2=getVerif(m,'semaine');
+      const eL={bon:'Bon état',acceptable:'Acceptable',degrade:'Dégradé','hors-service':'Hors service',inconnu:'Non inspecté'};
+      return[
+        m.nom,
+        v1?'✓ '+new Date(v1.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'✗ Non faite',
+        v2?'✓ '+new Date(v2.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'✗ Non faite',
+        eL[m.etat]||m.etat,
+        m.scan?new Date(m.scan).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}):'Jamais',
+      ];
+    }),
     styles:{fontSize:8,cellPadding:2},
     headStyles:{fillColor:[192,57,43],textColor:255,fontStyle:'bold',fontSize:8},
     didParseCell:(data)=>{
-      if(data.section==='body'&&data.column.index===4){
-        const etat=nonVerifies[data.row.index]?.etat;
-        data.cell.styles.textColor=etat==='bon'?[26,122,58]:etat==='acceptable'?[179,106,0]:etat==='degrade'||etat==='hors-service'?[192,57,43]:[100,100,100];
-        data.cell.styles.fontStyle='bold';
+      if(data.section==='body'){
+        const m=nonVerifies[data.row.index];
+        const v1=getVerif(m,'lundi');
+        const v2=getVerif(m,'semaine');
+        if(data.column.index===1){data.cell.styles.textColor=v1?[26,122,58]:[192,57,43];data.cell.styles.fontStyle='bold';}
+        if(data.column.index===2){data.cell.styles.textColor=v2?[26,122,58]:[192,57,43];data.cell.styles.fontStyle='bold';}
+        if(data.column.index===3){
+          const etat=m?.etat;
+          data.cell.styles.textColor=etat==='bon'?[26,122,58]:etat==='acceptable'?[179,106,0]:etat==='degrade'||etat==='hors-service'?[192,57,43]:[100,100,100];
+          data.cell.styles.fontStyle='bold';
+        }
+        // Fond rouge si 0 vérif, orange si 1 vérif
+        if(!v1) data.cell.styles.fillColor=[255,235,235];
+        else if(!v2) data.cell.styles.fillColor=[255,248,225];
       }
     },
     margin:{left:14,right:14},
@@ -4507,7 +4526,7 @@ function exportNonVerifies(){
   // Footer
   doc.setFontSize(7);doc.setTextColor(150,150,150);
   doc.text('RailOps — SFERIS · '+now,14,doc.internal.pageSize.getHeight()-6);
-  doc.text(c.nom+' · Non vérifiés '+wk,pw-14,doc.internal.pageSize.getHeight()-6,{align:'right'});
+  doc.text(c.nom+' · Vérifications incomplètes '+wk,pw-14,doc.internal.pageSize.getHeight()-6,{align:'right'});
 
   const fname='NonVerifies_'+c.nom.replace(/[^a-z0-9]/gi,'_')+'_'+wk+'.pdf';
   const blob=doc.output('blob');
@@ -4515,7 +4534,7 @@ function exportNonVerifies(){
   const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
   if(isIOS){window.open(url,'_blank');toast('PDF prêt — Partager → Enregistrer dans Fichiers','ok');}
   else{const a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),10000);}
-  toast(nonVerifies.length+' article(s) non vérifiés exportés en PDF','warn');
+  toast(nonVerifies.length+' vérification(s) incomplète(s) exportées','warn');
 }
 
 // ══════════════════════════════════════
@@ -5362,37 +5381,49 @@ function buildPDF(c, mats, scans, titre){
 
   let curY=66;
 
-  // ── REGISTRE
+  // ── INVENTAIRE
   doc.setFontSize(10);doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
-  doc.text('Registre matériel ('+mats.length+' articles)',14,curY);
+  doc.text('Inventaire ('+mats.length+' articles)',14,curY);
   curY+=3;
+  const eL2b=e=>({bon:'Bon état',acceptable:'Acceptable',degrade:'Dégradé','hors-service':'Hors service',inconnu:'Non inspecté'}[e]||e);
+  const pL2=p=>({confirme:'Présent',absent:'Absent','non-confirme':'Non confirmé',retire:'Retiré'}[p]||p);
   doc.autoTable({
     startY:curY,
-    head:[['Désignation','Catégorie','Référence','État','Présence','Dernier scan']],
+    head:[['Désignation','Référence','État','Présence','Vérif 1','Vérif 2','Dernier scan']],
     body:mats.map(m=>{
+      const v1=getVerif(m,'lundi');
+      const v2=getVerif(m,'semaine');
       const lastScan=scans.filter(s=>s.materielId===m.id).slice(-1)[0];
-      return[m.nom,m.cat,m.id,eL2(m.etat),pL(m.presence),m.scan?fd(m.scan)+(lastScan?' '+lastScan.agentNom:''):'—'];
+      return[m.nom,m.id,eL2b(m.etat),pL2(m.presence),
+        v1?'✓ '+new Date(v1.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'✗ Non faite',
+        v2?'✓ '+new Date(v2.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'✗ Non faite',
+        m.scan?fd(m.scan)+(lastScan?' '+lastScan.agentNom:''):'—'];
     }),
-    styles:{fontSize:8,cellPadding:2},
-    headStyles:{fillColor:[245,166,35],textColor:255,fontStyle:'bold',fontSize:8},
-    columnStyles:{2:{font:'courier',fontSize:7},3:{fontStyle:'bold'},4:{fontStyle:'bold'}},
+    styles:{fontSize:7,cellPadding:2},
+    headStyles:{fillColor:[245,166,35],textColor:255,fontStyle:'bold',fontSize:7},
+    columnStyles:{1:{font:'courier',fontSize:6},2:{fontStyle:'bold'},3:{fontStyle:'bold'},4:{fontStyle:'bold'},5:{fontStyle:'bold'}},
     didParseCell:function(data){
       if(data.section==='body'){
         const m=mats[data.row.index];
-        if(data.column.index===3) data.cell.styles.textColor=eColor(m?.etat);
-        if(data.column.index===4) data.cell.styles.textColor=pColor(m?.presence);
+        const v1=getVerif(m,'lundi');
+        const v2=getVerif(m,'semaine');
+        if(data.column.index===2) data.cell.styles.textColor=eColor(m?.etat);
+        if(data.column.index===3) data.cell.styles.textColor=pColor(m?.presence);
+        if(data.column.index===4){data.cell.styles.textColor=v1?[26,122,58]:[192,57,43];}
+        if(data.column.index===5){data.cell.styles.textColor=v2?[26,122,58]:[192,57,43];}
+        if(!v1||!v2) data.cell.styles.fillColor=!v1?[255,235,235]:[255,248,225];
       }
     },
     margin:{left:14,right:14},
   });
   curY=doc.lastAutoTable.finalY+8;
 
-  // ── CONTRÔLES 60j
+  // ── CONTRÔLES 2 MOIS
   doc.setFontSize(10);doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
-  doc.text('Contrôles visuels 60 jours',14,curY);curY+=3;
+  doc.text('Contrôles visuels 2 mois',14,curY);curY+=3;
   doc.autoTable({
     startY:curY,
-    head:[['Article','Dernier contrôle','Agent','Résultat','Statut']],
+    head:[['Désignation','Dernier contrôle','Agent','Résultat','Statut']],
     body:mats.map(m=>{
       const last=m.controle2m;
       const late=!last||(new Date()-new Date(last.date))>d2m;
@@ -5420,7 +5451,7 @@ function buildPDF(c, mats, scans, titre){
     doc.text('Dernières inspections ('+lastScans.length+')',14,curY);curY+=3;
     doc.autoTable({
       startY:curY,
-      head:[['Article','Date','Agent','État','Observations']],
+      head:[['Désignation','Date','Agent','État','Observations']],
       body:lastScans.map(s=>{
         const m=mats.find(x=>x.id===s.materielId);
         return[m?m.nom:s.materielId,fd(s.date),s.agentNom,eL2(s.etatGeneral),s.observations||'—'];
