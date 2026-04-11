@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='88';
+const APP_VERSION='89';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -1693,12 +1693,10 @@ function tabRegistre(el){
         </button>`:''}
       </div>
     </div>
-    <!-- Filtres fusionnés multi-select -->
+    <!-- Filtres présence uniquement -->
     <div class="chips" style="flex-wrap:wrap;gap:6px;padding:10px 16px 4px">
       ${filtres.filter(f=>f.k!=='tous').map(f=>`<div class="chip${S.filterPres.has(f.k)?' on':''}" onclick="setFP('${f.k}')">${f.l}</div>`).join('')}
-      ${cats.filter(cat=>cat!=='tous').length?`<div style="width:1px;background:var(--border);align-self:stretch;margin:0 1px;border-radius:1px"></div>`:''}
-      ${cats.filter(cat=>cat!=='tous').map(cat=>`<div class="chip${S.filterCat.has(cat)?' on':''}" onclick="setFC('${cat}')">${cat}</div>`).join('')}
-      ${(S.filterPres.size>0||S.filterCat.size>0)?`<div class="chip" onclick="resetFiltres()" style="opacity:.55;border-color:rgba(255,255,255,.1)">✕ Effacer</div>`:''}
+      ${S.filterPres.size>0?`<div class="chip" onclick="resetFiltres()" style="opacity:.55;border-color:rgba(255,255,255,.1)">✕ Effacer</div>`:''}
     </div>
     <!-- Barre de tri -->
     <div style="padding:0 16px 6px;display:flex;align-items:center;gap:6px">
@@ -1713,22 +1711,16 @@ function tabRegistre(el){
         <button onclick="go('ajout_mat')" style="flex:1;background:var(--bg3);border:.5px solid var(--border);border-radius:10px;padding:9px 8px;font-size:12px;color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ajouter
         </button>
-        <button onclick="triggerImport()" style="flex:1;background:rgba(55,138,221,.1);border:.5px solid rgba(55,138,221,.3);border-radius:10px;padding:9px 8px;font-size:12px;color:#85B7EB;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>+ Import
+        <button onclick="openImportChoix()" style="flex:1;background:rgba(55,138,221,.1);border:.5px solid rgba(55,138,221,.3);border-radius:10px;padding:9px 8px;font-size:12px;color:#85B7EB;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importer
         </button>
-        <button onclick="triggerReplace()" style="flex:1;background:rgba(226,75,74,.08);border:.5px solid rgba(226,75,74,.25);border-radius:10px;padding:9px 8px;font-size:12px;color:#F09595;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Remplacer
-        </button>
-        <input type="file" id="csv-replace-input" accept=".csv,.txt,.xlsx,.xls" style="display:none" onchange="importReplace(this)">
-        <button onclick="toggleSelMode()"  style="flex:1;background:${S.selMode?'rgba(61,181,74,.15)':'var(--bg3)'};border:.5px solid ${S.selMode?'rgba(61,181,74,.4)':'var(--border)'};border-radius:10px;padding:9px 8px;font-size:12px;color:${S.selMode?'var(--accent)':'var(--text2)'};cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
+        <button onclick="toggleSelMode()" style="flex:1;background:${S.selMode?'rgba(61,181,74,.15)':'var(--bg3)'};border:.5px solid ${S.selMode?'rgba(61,181,74,.4)':'var(--border)'};border-radius:10px;padding:9px 8px;font-size:12px;color:${S.selMode?'var(--accent)':'var(--text2)'};cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>${S.selMode?'Annuler':'Sélectionner'}
         </button>
-        ${['chef','chef_chantier'].includes(S.role)?`<button onclick="exportNonVerifies()" style="flex:1;background:rgba(226,75,74,.08);border:.5px solid rgba(226,75,74,.2);border-radius:10px;padding:9px 8px;font-size:12px;color:#F09595;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F09595" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Non vérifiés
-        </button>
-        <button onclick="exportInventaireFinSemaine()" style="flex:1;background:rgba(55,138,221,.08);border:.5px solid rgba(55,138,221,.2);border-radius:10px;padding:9px 8px;font-size:12px;color:#85B7EB;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#85B7EB" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Inventaire fin sem.
+        ${['chef','chef_chantier'].includes(S.role)?`<button onclick="openExportChoix()" style="flex:1;background:rgba(29,158,117,.08);border:.5px solid rgba(29,158,117,.2);border-radius:10px;padding:9px 8px;font-size:12px;color:#5DCAA5;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5DCAA5" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>Exporter
         </button>`:''}
+        <input type="file" id="csv-replace-input" accept=".csv,.txt,.xlsx,.xls" style="display:none" onchange="importReplace(this)">
         <input type="file" id="csv-input" accept=".csv,.txt,.xlsx,.xls,.pdf" style="display:none" onchange="importCSV(this)">
       </div>
       <!-- Barre de sélection multiple -->
@@ -2166,8 +2158,12 @@ async function processRows(rows){
       S.mat[existingInOtherC].verifSemaine=null;
       S.mat[existingInOtherC].controle2m=controle2mSauve;
       if(echeance) S.mat[existingInOtherC].echeance=echeance;
+      // Upsert immédiat — ne pas attendre le batch final
+      try{
+        const {prix:_p,autreChantier:_a,...matT}=S.mat[existingInOtherC];
+        await db.from('materiels').upsert([matT],{onConflict:'id'});
+      }catch(e){console.warn('transfert upsert:',e);}
       transferes.push({id, nom, ancienChantierNom});
-      updatedIds.add(id);
       skipped++;continue;
     }
 
@@ -5048,6 +5044,53 @@ async function manualSync(){
 
 // Merge intelligent : pour un même article, garde le champ le plus récent
 // Utilise mat.scan (date dernière inspection) comme proxy de fraîcheur
+function openImportChoix(){
+  const existing=document.getElementById('movl');if(existing)existing.remove();
+  const div=document.createElement('div');div.id='movl';div.className='moverlay';
+  div.innerHTML=`<div class="msheet">
+    <div class="mhandle"></div>
+    <div style="font-size:15px;font-weight:500;color:var(--text);margin-bottom:6px">Importer un registre</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:16px">Choisis le mode d'import</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button onclick="document.getElementById('movl').remove();triggerImport()" style="background:rgba(55,138,221,.1);border:.5px solid rgba(55,138,221,.3);border-radius:12px;padding:14px 16px;text-align:left;cursor:pointer;font-family:inherit">
+        <div style="font-size:14px;font-weight:500;color:#85B7EB">➕ Ajouter au registre</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">Les nouveaux articles s'ajoutent. Les existants sont mis à jour (échéance, prix). Rien n'est supprimé.</div>
+      </button>
+      <button onclick="document.getElementById('movl').remove();triggerReplace()" style="background:rgba(226,75,74,.06);border:.5px solid rgba(226,75,74,.2);border-radius:12px;padding:14px 16px;text-align:left;cursor:pointer;font-family:inherit">
+        <div style="font-size:14px;font-weight:500;color:#F09595">🔄 Remplacer le registre</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">Le fichier devient le nouveau registre. Les articles absents du fichier sont supprimés.</div>
+      </button>
+    </div>
+    <button onclick="document.getElementById('movl').remove()" class="btn btn-ghost" style="margin-top:12px">Annuler</button>
+  </div>`;
+  document.getElementById('app').appendChild(div);
+}
+
+function openExportChoix(){
+  const existing=document.getElementById('movl');if(existing)existing.remove();
+  const div=document.createElement('div');div.id='movl';div.className='moverlay';
+  div.innerHTML=`<div class="msheet">
+    <div class="mhandle"></div>
+    <div style="font-size:15px;font-weight:500;color:var(--text);margin-bottom:16px">Exporter</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button onclick="document.getElementById('movl').remove();exportPDF()" style="background:rgba(61,181,74,.08);border:.5px solid rgba(61,181,74,.2);border-radius:12px;padding:14px 16px;text-align:left;cursor:pointer;font-family:inherit">
+        <div style="font-size:14px;font-weight:500;color:var(--accent)">📄 Rapport complet</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">Registre + contrôles 2 mois + dernières inspections</div>
+      </button>
+      <button onclick="document.getElementById('movl').remove();exportInventaireFinSemaine()" style="background:rgba(55,138,221,.08);border:.5px solid rgba(55,138,221,.2);border-radius:12px;padding:14px 16px;text-align:left;cursor:pointer;font-family:inherit">
+        <div style="font-size:14px;font-weight:500;color:#85B7EB">📋 Inventaire fin de semaine</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">État actuel du registre trié par référence, groupé par catégorie</div>
+      </button>
+      <button onclick="document.getElementById('movl').remove();exportNonVerifies()" style="background:rgba(226,75,74,.06);border:.5px solid rgba(226,75,74,.2);border-radius:12px;padding:14px 16px;text-align:left;cursor:pointer;font-family:inherit">
+        <div style="font-size:14px;font-weight:500;color:#F09595">⚠ Articles non vérifiés</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">Liste des articles sans inspection cette semaine</div>
+      </button>
+    </div>
+    <button onclick="document.getElementById('movl').remove()" class="btn btn-ghost" style="margin-top:12px">Annuler</button>
+  </div>`;
+  document.getElementById('app').appendChild(div);
+}
+
 function mergeMateriels(local, remote){
   // Merge intelligent : chaque champ garde la valeur la plus récente
   const pickVerif=(a,b)=>{
@@ -5069,6 +5112,10 @@ function mergeMateriels(local, remote){
     return new Date(a)>new Date(b);
   };
   const localScanNewer=scanNewer(local.scan,remote.scan);
+  // Si le chantierId a changé dans Supabase → forcer le reset des vérifs sans merger
+  if(local.chantierId!==remote.chantierId){
+    return{...remote};
+  }
   return {
     ...remote,
     etat:        localScanNewer ? local.etat      : remote.etat,
