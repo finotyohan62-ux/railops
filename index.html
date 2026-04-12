@@ -807,7 +807,6 @@ function doLogin(){
   if(!user){toast('Nom ou mot de passe incorrect','danger');return;}
   // Vider le localStorage des données métier — Supabase est la seule source de vérité
   localStorage.removeItem('ro3_c');
-  localStorage.removeItem('ro3_m');
   localStorage.removeItem('ro3_u');
   S.agent=user.nom;S.role=user.role;S.page='dashboard';
   localStorage.setItem('ro3_a',JSON.stringify({agent:S.agent,role:S.role}));
