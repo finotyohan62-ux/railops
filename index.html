@@ -1709,6 +1709,7 @@ function renderChantierDetail(){
       ${S.role==='chef'?`<div class="tab${S.tab==='verifs'?' on':''}" data-tab="verifs" onclick="setTab('verifs')">Vérifs</div>`:''}
       ${S.role!=='agent'&&S.role!=='chef_chantier'?`<div class="tab${S.tab==='tournee'?' on':''}" data-tab="tournee" onclick="setTab('tournee')">Tournée CTE</div>`:''}
       ${S.role!=='chef_chantier'?`<div class="tab${S.tab==='controle'?' on':''}" data-tab="controle" onclick="setTab('controle')">Contrôle 2 mois</div>`:''}
+      ${S.role==='chef'?`<div class="tab${S.tab==='inspections'?' on':''}" data-tab="inspections" onclick="setTab('inspections')">Historique</div>`:''}
       ${S.role==='chef'?`<div class="tab${S.tab==='infos'?' on':''}" data-tab="infos" onclick="setTab('infos')">Infos</div>`:''}
     </div>
     <div id="tab-content" style="overflow-y:auto;flex:1;padding-bottom:80px"></div>
@@ -1727,6 +1728,7 @@ function renderTab(){
   else if(S.tab==='tournee') tabTournee(el);
   else if(S.tab==='verifs') tabVerifs(el);
   else if(S.tab==='controle') tabControle(el);
+  else if(S.tab==='inspections') tabInspections(el);
   else if(S.tab==='infos') tabInfos(el);
 }
 
@@ -1964,7 +1966,7 @@ function regItemHTML(m){
       <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end">
         ${isAbsent?`<button onclick="setPresence('${m.id}','confirme')" style="background:rgba(29,158,117,.15);border:.5px solid rgba(29,158,117,.3);border-radius:8px;padding:5px 10px;font-size:11px;color:#5DCAA5;cursor:pointer;font-family:inherit">✓ Retrouvé</button>`:''}
         ${!isAbsent?`<button onclick="setPresence('${m.id}','absent')" style="background:rgba(226,75,74,.1);border:.5px solid rgba(226,75,74,.25);border-radius:8px;padding:5px 10px;font-size:11px;color:#F09595;cursor:pointer;font-family:inherit">? Absent</button>`:''}
-        ${S.scans.filter(s=>s.materielId===m.id).length?`<button onclick="openHistoriqueArticle('${m.id}')" style="background:rgba(55,138,221,.08);border:.5px solid rgba(55,138,221,.25);border-radius:8px;padding:5px 10px;font-size:11px;color:#85B7EB;cursor:pointer;font-family:inherit">Historique</button>`:''}
+        ${S.scans.filter(s=>s.materielId===m.id).length||['chef','chef_chantier'].includes(S.role)?`<button onclick="openHistoriqueArticle('${m.id}')" style="background:rgba(55,138,221,.08);border:.5px solid rgba(55,138,221,.25);border-radius:8px;padding:5px 10px;font-size:11px;color:#85B7EB;cursor:pointer;font-family:inherit">Historique</button>`:''}
         <button onclick="startInspect('${m.id}')" style="background:rgba(61,181,74,.12);border:.5px solid rgba(61,181,74,.3);border-radius:8px;padding:5px 10px;font-size:11px;color:var(--accent);cursor:pointer;font-family:inherit">Inspecter</button>
         ${S.role==='chef'||S.role==='chef_chantier'?`<button onclick="openEditEcheance('${m.id}')" style="background:rgba(245,166,35,.1);border:.5px solid rgba(245,166,35,.3);border-radius:8px;padding:5px 10px;font-size:11px;color:#f5a623;cursor:pointer;font-family:inherit">📅</button>`:''}
         ${S.role==='chef'?`<button onclick="confirmRetirer('${m.id}')" style="background:rgba(255,255,255,.05);border:.5px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px;color:var(--text3);cursor:pointer;font-family:inherit">Retirer</button>`:''}
