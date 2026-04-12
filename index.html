@@ -429,10 +429,23 @@ async function load(){
     if(!ec){ S.chantiers=dc||[]; localStorage.setItem('ro3_c',JSON.stringify(S.chantiers)); }
     else S.chantiers=[];
 
-    // RÈGLE 2 : Matériels → Supabase fait loi, point
+    // RÈGLE 2 : Matériels → merger Supabase + locaux non synchronisés
     const {data:dm, error:em}=await db.from('materiels').select('*');
-    if(!em&&dm){ S.mat=normMats(dm); }
-    else { S.mat=normMats(JSON.parse(localStorage.getItem('ro3_m')||'[]')); }
+    const localMats=JSON.parse(localStorage.getItem('ro3_m')||'[]');
+    if(!em&&dm){
+      const remoteIds=new Set(dm.map(m=>m.id));
+      const localOnly=localMats.filter(m=>!remoteIds.has(m.id));
+      S.mat=normMats([...dm,...localOnly]);
+      // Re-tenter upsert des articles locaux non encore en Supabase
+      if(localOnly.length){
+        const forDB=localOnly.map(({prix:_,autreChantier:__,...m})=>m);
+        for(let i=0;i<forDB.length;i+=100){
+          db.from('materiels').upsert(forDB.slice(i,i+100),{onConflict:'id'}).catch(e=>console.warn('resync mat:',e));
+        }
+      }
+    } else {
+      S.mat=normMats(localMats);
+    }
     localStorage.setItem('ro3_m',JSON.stringify(S.mat));
     // Scans : Supabase inclut maintenant la photo
     const {data:ds}=await db.from('scans').select('id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions,photo');
