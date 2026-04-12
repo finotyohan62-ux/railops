@@ -2203,9 +2203,13 @@ function importReplace(input){
       const CHUNK=100;
       (async()=>{
         for(let i=0;i<forDB.length;i+=CHUNK){
-          try{await db.from('materiels').upsert(forDB.slice(i,i+CHUNK),{onConflict:'id'});}
+          try{
+            const {error}=await db.from('materiels').upsert(forDB.slice(i,i+CHUNK),{onConflict:'id'});
+            if(error) toast('Erreur Supabase : '+error.message,'danger');
+          }
           catch(e){console.warn('replace upsert chunk:',e);}
         }
+        window._lastImport=Date.now();
         window._importing=false;
       })();
     } else window._importing=false;
@@ -2372,7 +2376,6 @@ async function processRows(rows){
   try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
   // Upsert tous les articles du chantier (plus fiable que slice(-added))
   const toUpsertImport=S.mat.filter(m=>m.chantierId===S.curC);
-  toast('Debug: '+toUpsertImport.length+' articles à envoyer pour chantier '+S.curC,'info');
   if(toUpsertImport.length){
     const forDB=toUpsertImport.map(({prix:_,autreChantier:__,...m})=>m);
     const CHUNK=100;
