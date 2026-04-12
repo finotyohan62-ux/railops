@@ -1965,7 +1965,7 @@ function regItemHTML(m){
       <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end">
         ${isAbsent?`<button onclick="setPresence('${m.id}','confirme')" style="background:rgba(29,158,117,.15);border:.5px solid rgba(29,158,117,.3);border-radius:8px;padding:5px 10px;font-size:11px;color:#5DCAA5;cursor:pointer;font-family:inherit">✓ Retrouvé</button>`:''}
         ${!isAbsent?`<button onclick="setPresence('${m.id}','absent')" style="background:rgba(226,75,74,.1);border:.5px solid rgba(226,75,74,.25);border-radius:8px;padding:5px 10px;font-size:11px;color:#F09595;cursor:pointer;font-family:inherit">? Absent</button>`:''}
-        ${S.scans.filter(s=>s.materielId===m.id).length||['chef','chef_chantier'].includes(S.role)?`<button onclick="openHistoriqueArticle('${m.id}')" style="background:rgba(55,138,221,.08);border:.5px solid rgba(55,138,221,.25);border-radius:8px;padding:5px 10px;font-size:11px;color:#85B7EB;cursor:pointer;font-family:inherit">Historique</button>`:''}
+        ${S.scans.filter(s=>s.materielId===m.id).length?`<button onclick="openHistoriqueArticle('${m.id}')" style="background:rgba(55,138,221,.08);border:.5px solid rgba(55,138,221,.25);border-radius:8px;padding:5px 10px;font-size:11px;color:#85B7EB;cursor:pointer;font-family:inherit">Historique</button>`:''}
         <button onclick="startInspect('${m.id}')" style="background:rgba(61,181,74,.12);border:.5px solid rgba(61,181,74,.3);border-radius:8px;padding:5px 10px;font-size:11px;color:var(--accent);cursor:pointer;font-family:inherit">Inspecter</button>
         ${S.role==='chef'||S.role==='chef_chantier'?`<button onclick="openEditEcheance('${m.id}')" style="background:rgba(245,166,35,.1);border:.5px solid rgba(245,166,35,.3);border-radius:8px;padding:5px 10px;font-size:11px;color:#f5a623;cursor:pointer;font-family:inherit">📅</button>`:''}
         ${S.role==='chef'?`<button onclick="confirmRetirer('${m.id}')" style="background:rgba(255,255,255,.05);border:.5px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px;color:var(--text3);cursor:pointer;font-family:inherit">Retirer</button>`:''}
@@ -4950,12 +4950,15 @@ function exportNonVerifies(){
 // ══════════════════════════════════════
 // HISTORIQUE PAR ARTICLE
 // ══════════════════════════════════════
-function openHistoriqueArticle(matId){  const m=getM(matId);if(!m)return;
+function openHistoriqueArticle(matId){
+  const m=getM(matId);if(!m)return;
   const c=getC(m.chantierId);
-  const scans=[...S.scans].filter(s=>s.materielId===matId).reverse();
-  const existing=document.getElementById('movl');if(existing)existing.remove();
-  const div=document.createElement('div');
-  div.id='movl';div.className='moverlay';
+
+  const renderModal=(scansData)=>{
+    const scans=[...scansData].filter(s=>s.materielId===matId).reverse();
+    const existing=document.getElementById('movl');if(existing)existing.remove();
+    const div=document.createElement('div');
+    div.id='movl';div.className='moverlay';
 
   const scanHTML=scans.map(s=>{
     const etatColor=s.etatGeneral==='bon'?'#5DCAA5':s.etatGeneral==='acceptable'?'var(--accent)':s.etatGeneral==='degrade'||s.etatGeneral==='hors-service'?'#F09595':'var(--text3)';
@@ -5028,9 +5031,28 @@ function openHistoriqueArticle(matId){  const m=getM(matId);if(!m)return;
     }
     <button onclick="document.getElementById(\'movl\').remove()" class="btn btn-outline" style="margin-top:16px">Fermer</button>
   </div>`;
+    document.getElementById('app').appendChild(div);
+  }; // fin renderModal
 
-  // fermeture uniquement via bouton Fermer (plus fiable sur mobile)
-  document.getElementById('app').appendChild(div);
+  // Si S.scans a les données → affiche directement
+  // Sinon → charge depuis Supabase (cas du chef sur une nouvelle session)
+  if(S.scans.some(s=>s.materielId===matId)){
+    renderModal(S.scans);
+  } else {
+    // Afficher modale de chargement
+    const loadDiv=document.createElement('div');loadDiv.id='movl';loadDiv.className='moverlay';
+    loadDiv.innerHTML=`<div class="msheet"><div class="mhandle"></div><div style="text-align:center;padding:30px 0;color:var(--text3)">Chargement…</div></div>`;
+    document.getElementById('app').appendChild(loadDiv);
+    db.from('scans').select('id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions,photo,lat,lng')
+      .eq('materielId',matId)
+      .then(({data})=>{
+        if(data&&data.length){
+          // Merge dans S.scans
+          data.forEach(s=>{if(!S.scans.find(x=>x.id===s.id))S.scans.push(s);});
+        }
+        renderModal(S.scans);
+      });
+  }
 }
 
 // ══════════════════════════════════════
