@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='98';
+const APP_VERSION='98h';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -2370,12 +2370,7 @@ async function processRows(rows){
 
   // Sauvegarde localStorage + upsert Supabase par lots de 100 (évite la limite Supabase)
   try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-  const toUpsertImport=[];
-  if(added>0) toUpsertImport.push(...S.mat.slice(-added));
-  if(skipped>0){
-    const updatedMats=S.mat.filter(m=>m.chantierId===S.curC&&updatedIds.has(m.id));
-    toUpsertImport.push(...updatedMats);
-  }
+  const toUpsertImport=S.mat.filter(m=>m.chantierId===S.curC);
   if(toUpsertImport.length){
     const forDB=toUpsertImport.map(({prix:_,autreChantier:__,...m})=>m);
     const CHUNK=100;
