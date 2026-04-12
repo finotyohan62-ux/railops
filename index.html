@@ -3936,25 +3936,28 @@ function submitF(forceDouble=false){
   }
   try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
 
-  // Capture GPS silencieuse — ne bloque pas la validation
+  // Sauvegarder le scan en Supabase immédiatement (sans GPS d'abord)
+  const scanForDB={id:scan.id,materielId:scan.materielId,chantierId:scan.chantierId,agentNom:scan.agentNom,date:scan.date,etatGeneral:scan.etatGeneral,proprete:scan.proprete,fonctionnement:scan.fonctionnement,dommages:scan.dommages,dommagesDesc:scan.dommagesDesc,observations:scan.observations,actions:scan.actions,photo:scan.photo||null,lat:null,lng:null};
   const scanId=scan.id;
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(
-      pos=>{
-        const lat=pos.coords.latitude;
-        const lng=pos.coords.longitude;
-        // Mettre à jour en mémoire
-        const si=S.scans.findIndex(s=>s.id===scanId);
-        if(si!==-1){S.scans[si].lat=lat;S.scans[si].lng=lng;}
-        // Upsert direct lat/lng dans Supabase
-        db.from('scans').update({lat,lng}).eq('id',scanId)
-          .then(()=>{try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}})
-          .catch(e=>console.warn('GPS save:',e));
-      },
-      ()=>{}, // permission refusée → silencieux
-      {timeout:8000,maximumAge:0,enableHighAccuracy:false}
-    );
-  }
+  db.from('scans').upsert([scanForDB],{onConflict:'id'}).then(()=>{
+    try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
+    // GPS : update APRÈS que le scan existe en Supabase
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(
+        pos=>{
+          const lat=pos.coords.latitude;
+          const lng=pos.coords.longitude;
+          const si=S.scans.findIndex(s=>s.id===scanId);
+          if(si!==-1){S.scans[si].lat=lat;S.scans[si].lng=lng;}
+          db.from('scans').update({lat,lng}).eq('id',scanId)
+            .then(()=>{try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}})
+            .catch(e=>console.warn('GPS save:',e));
+        },
+        ()=>{}, // permission refusée → silencieux
+        {timeout:8000,maximumAge:0,enableHighAccuracy:false}
+      );
+    }
+  },e=>console.warn('scan save error:',e));
 
   if(idx!==-1) saveMat(S.curM);
   if(!navigator.onLine){
