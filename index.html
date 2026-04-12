@@ -2372,6 +2372,7 @@ async function processRows(rows){
   try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
   // Upsert tous les articles du chantier (plus fiable que slice(-added))
   const toUpsertImport=S.mat.filter(m=>m.chantierId===S.curC);
+  toast('Debug: '+toUpsertImport.length+' articles à envoyer pour chantier '+S.curC,'info');
   if(toUpsertImport.length){
     const forDB=toUpsertImport.map(({prix:_,autreChantier:__,...m})=>m);
     const CHUNK=100;
