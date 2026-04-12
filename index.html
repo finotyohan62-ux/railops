@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='98d';
+const APP_VERSION='98e';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -2380,8 +2380,8 @@ async function processRows(rows){
       const chunk=forDB.slice(i,i+CHUNK);
       try{
         const {error}=await db.from('materiels').upsert(chunk,{onConflict:'id'});
-        if(error){errors++;console.warn('import upsert chunk error:',error);}
-      }catch(e){errors++;console.warn('import upsert chunk error:',e);}
+        if(error){errors++;console.warn('import upsert chunk error:',error);toast('Erreur Supabase : '+error.message,'danger');}
+      }catch(e){errors++;console.warn('import upsert chunk error:',e);toast('Erreur réseau : '+e.message,'danger');}
     }
     if(errors>0) toast('⚠ '+errors+' lot(s) en erreur — vérifiez les données','danger');
   }
@@ -5510,11 +5510,25 @@ async function silentSync(){
       try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
     }
 
-    // RÈGLE 2 : Matériels → Supabase fait loi, point
+    // RÈGLE 2 : Matériels → merger Supabase + locaux non synchronisés
     const importRecent = window._lastImport && (Date.now() - window._lastImport) < 300000;
-    if(!em&&dm&&!importRecent){
-      S.mat=normMats(dm);
-      try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
+    if(!em&&dm){
+      const remoteIds=new Set(dm.map(m=>m.id));
+      const localOnly=S.mat.filter(m=>!remoteIds.has(m.id));
+      if(importRecent){
+        // Pendant import : garder local tel quel
+      } else {
+        // Hors import : Supabase fait loi + on garde les locaux non encore sync
+        S.mat=[...normMats(dm),...normMats(localOnly)];
+        // Re-tenter l'upsert des articles locaux manquants dans Supabase
+        if(localOnly.length){
+          const forDB=localOnly.map(({prix:_,autreChantier:__,...m})=>m);
+          for(let i=0;i<forDB.length;i+=100){
+            db.from('materiels').upsert(forDB.slice(i,i+100),{onConflict:'id'}).catch(e=>console.warn('resync mat:',e));
+          }
+        }
+        try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
+      }
     }
 
     if(du&&du.length) S.users=du;
