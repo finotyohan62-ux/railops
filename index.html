@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='98p';
+const APP_VERSION='98q';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -2365,32 +2365,18 @@ async function processRows(rows){
     }
 
     S.mat.push({id, nom, cat, chantierId:S.curC, etat, scan:null, presence:'non-confirme', echeance, prix});
-    await saveMat(id);
     added++;
   }
 
-  // Sauvegarde localStorage + upsert Supabase par lots de 100 (évite la limite Supabase)
   try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-  const toUpsertImport=[];
-  if(added>0) toUpsertImport.push(...S.mat.slice(-added));
-  if(skipped>0){
-    const updatedMats=S.mat.filter(m=>m.chantierId===S.curC&&updatedIds.has(m.id));
-    toUpsertImport.push(...updatedMats);
-  }
-  if(toUpsertImport.length){
-    const forDB=toUpsertImport.map(({prix:_,autreChantier:__,...m})=>m);
-    const CHUNK=100;
-    let errors=0;
-    for(let i=0;i<forDB.length;i+=CHUNK){
-      const chunk=forDB.slice(i,i+CHUNK);
-      try{
-        const {error}=await db.from('materiels').upsert(chunk,{onConflict:'id'});
-        if(error){errors++;console.warn('import upsert chunk error:',error);}
-      }catch(e){errors++;console.warn('import upsert chunk error:',e);}
-    }
-    if(errors>0) toast('⚠ '+errors+' lot(s) en erreur — vérifiez les données','danger');
-  }
   window._importing=false;
+  // Sauvegarder en Supabase APRÈS la fin de l'import (evite blocage)
+  const matsToSave=S.mat.filter(m=>m.chantierId===S.curC);
+  setTimeout(async()=>{
+    for(const mat of matsToSave){
+      await saveMat(mat.id);
+    }
+  },500);
   renderTab();
   const updated=skipped;
   const info=hasHeader?` (ref col.${iId}, nom col.${iNom})`:'';
