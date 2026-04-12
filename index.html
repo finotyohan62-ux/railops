@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='98k';
+const APP_VERSION='98m';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -429,17 +429,28 @@ async function load(){
     if(!ec){ S.chantiers=dc||[]; localStorage.setItem('ro3_c',JSON.stringify(S.chantiers)); }
     else S.chantiers=[];
 
-    // RÈGLE 2 : Matériels → Supabase fait loi + conserver locaux non sync
+    // RÈGLE 2 : Matériels → Supabase fait loi, point
     const {data:dm, error:em}=await db.from('materiels').select('*');
-    const localMats=JSON.parse(localStorage.getItem('ro3_m')||'[]');
     if(!em&&dm){
-      const remoteIds=new Set(dm.map(m=>m.id));
-      const chantierIds=new Set((dc||[]).map(c=>c.id));
-      // Garder uniquement les articles locaux dont le chantier existe ET qui ne sont pas en Supabase
-      const localUnsync=localMats.filter(m=>!remoteIds.has(m.id)&&chantierIds.has(m.chantierId));
-      S.mat=normMats([...dm,...localUnsync]);
+      S.mat=normMats(dm);
+      // Réintégrer articles locaux non encore en Supabase
+      if(window._preSaveMats){
+        try{
+          const local=JSON.parse(window._preSaveMats);
+          const remoteIds=new Set(dm.map(m=>m.id));
+          const chIds=new Set((dc||[]).map(c=>c.id));
+          const unsync=local.filter(m=>!remoteIds.has(m.id)&&chIds.has(m.chantierId));
+          if(unsync.length){
+            S.mat=[...S.mat,...normMats(unsync)];
+            const forDB=unsync.map(({prix:_,autreChantier:__,...m})=>m);
+            for(let i=0;i<forDB.length;i+=100)
+              db.from('materiels').upsert(forDB.slice(i,i+100),{onConflict:'id'}).catch(()=>{});
+          }
+        }catch(e){}
+        window._preSaveMats=null;
+      }
     }
-    else { S.mat=normMats(localMats); }
+    else { S.mat=normMats(JSON.parse(localStorage.getItem('ro3_m')||'[]')); }
     localStorage.setItem('ro3_m',JSON.stringify(S.mat));
     // Scans : Supabase inclut maintenant la photo
     const {data:ds}=await db.from('scans').select('id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions,photo');
@@ -812,7 +823,7 @@ function doLogin(){
 
   const user=S.users.find(u=>u.nom.toLowerCase()===n.toLowerCase()&&u.mdp===p);
   if(!user){toast('Nom ou mot de passe incorrect','danger');return;}
-  // Vider le localStorage des données métier — Supabase est la seule source de vérité
+  window._preSaveMats=localStorage.getItem('ro3_m');
   localStorage.removeItem('ro3_c');
   localStorage.removeItem('ro3_m');
   localStorage.removeItem('ro3_u');
@@ -2375,27 +2386,18 @@ async function processRows(rows){
     added++;
   }
 
-  // Sauvegarde localStorage + upsert Supabase par lots de 100 (évite la limite Supabase)
+  // Sauvegarde localStorage + upsert Supabase article par article (comme saveMat)
   try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-  const toUpsertImport=[];
-  if(added>0) toUpsertImport.push(...S.mat.slice(-added));
-  if(skipped>0){
-    const updatedMats=S.mat.filter(m=>m.chantierId===S.curC&&updatedIds.has(m.id));
-    toUpsertImport.push(...updatedMats);
+  const toUpsertImport=S.mat.filter(m=>m.chantierId===S.curC);
+  let errors=0;
+  for(const mat of toUpsertImport){
+    try{
+      const {prix:_,autreChantier:__,...mDB}=mat;
+      const {error}=await db.from('materiels').upsert([mDB],{onConflict:'id'});
+      if(error){errors++;console.warn('import upsert error:',error);}
+    }catch(e){errors++;console.warn('import upsert error:',e);}
   }
-  if(toUpsertImport.length){
-    const forDB=toUpsertImport.map(({prix:_,autreChantier:__,...m})=>m);
-    const CHUNK=100;
-    let errors=0;
-    for(let i=0;i<forDB.length;i+=CHUNK){
-      const chunk=forDB.slice(i,i+CHUNK);
-      try{
-        const {error}=await db.from('materiels').upsert(chunk,{onConflict:'id'});
-        if(error){errors++;console.warn('import upsert chunk error:',error);}
-      }catch(e){errors++;console.warn('import upsert chunk error:',e);}
-    }
-    if(errors>0) toast('⚠ '+errors+' lot(s) en erreur — vérifiez les données','danger');
-  }
+  if(errors>0) toast('⚠ '+errors+' article(s) en erreur','danger');
   window._importing=false;
   renderTab();
   const updated=skipped;
@@ -5515,16 +5517,10 @@ async function silentSync(){
     // RÈGLE 1 : Chantiers → Supabase fait TOUJOURS loi
     if(!ec){ S.chantiers=dc||[]; try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){} }
 
-    // RÈGLE 2 : Matériels → Supabase fait loi, sauf articles locaux récents non encore sync
+    // RÈGLE 2 : Matériels → Supabase fait loi, point
     const importRecent = window._lastImport && (Date.now() - window._lastImport) < 60000;
     if(!em&&dm&&!importRecent){
-      const remoteIds=new Set(dm.map(m=>m.id));
-      const localUnsync=S.mat.filter(m=>!remoteIds.has(m.id));
       S.mat=normMats(dm);
-      // Conserver les articles locaux non encore en Supabase
-      if(localUnsync.length){
-        localUnsync.forEach(m=>{if(!S.mat.find(x=>x.id===m.id)) S.mat.push(m);});
-      }
       try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
     }
 
