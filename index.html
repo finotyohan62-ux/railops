@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='100';
+const APP_VERSION='101';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -2483,14 +2483,17 @@ function confirmLogout(){
       <div style="font-size:11px;color:var(--text3);margin-top:4px">${{chef:'Chef d\'équipe',cte:'CTE',chef_chantier:'Chef chantier'}[S.role]||'Agent terrain'}</div>
     </div>
     <div style="display:flex;gap:10px">
-      <button class="btn btn-outline" onclick="closeLogoutModal()" style="flex:1">Annuler</button>
-      <button class="btn btn-ghost" onclick="doLogout()" style="flex:1">Se déconnecter</button>
+      <button class="btn btn-outline" onclick="closeLogoutModal()" style="flex:1">← Retour</button>
+      <button class="btn btn-danger" onclick="doLogout()" style="flex:1">Se déconnecter</button>
     </div>
   </div>`;
-  // fermeture uniquement via bouton Fermer
   document.getElementById('app').appendChild(div);
 }
-function closeLogoutModal(){const e=document.getElementById('movl');if(e)e.remove();}
+function closeLogoutModal(){
+  const e=document.getElementById('movl');if(e)e.remove();
+  // Rouvrir le profil si on venait de là
+  setTimeout(openProfil, 50);
+}
 function doLogout(){
   S.agent=null;S.role=null;S.page='login';S.modal=null;S.curC=null;S.curM=null;
   try{localStorage.removeItem('ro3_a');}catch(e){}
@@ -3935,9 +3938,22 @@ function submitF(forceDouble=false){
   }
   try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
   // Sauvegarder en Supabase
-  const scanForDB={id:scan.id,materielId:scan.materielId,chantierId:scan.chantierId,agentNom:scan.agentNom,date:scan.date,etatGeneral:scan.etatGeneral,proprete:scan.proprete,fonctionnement:scan.fonctionnement,dommages:scan.dommages,dommagesDesc:scan.dommagesDesc,observations:scan.observations,actions:scan.actions,photo:scan.photo||null};
+  const scanId=scan.id;
+  const scanForDB={id:scan.id,materielId:scan.materielId,chantierId:scan.chantierId,agentNom:scan.agentNom,date:scan.date,etatGeneral:scan.etatGeneral,proprete:scan.proprete,fonctionnement:scan.fonctionnement,dommages:scan.dommages,dommagesDesc:scan.dommagesDesc,observations:scan.observations,actions:scan.actions,photo:scan.photo||null,lat:null,lng:null};
   db.from('scans').upsert([scanForDB],{onConflict:'id'}).then(()=>{
     try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
+    // GPS après insertion confirmée
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(
+        pos=>{
+          const lat=pos.coords.latitude,lng=pos.coords.longitude;
+          const si=S.scans.findIndex(s=>s.id===scanId);
+          if(si!==-1){S.scans[si].lat=lat;S.scans[si].lng=lng;}
+          db.from('scans').update({lat,lng}).eq('id',scanId).catch(e=>console.warn('GPS:',e));
+        },
+        ()=>{},{timeout:8000,maximumAge:0,enableHighAccuracy:false}
+      );
+    }
   },e=>console.warn('scan save error:',e));
 
   if(idx!==-1) saveMat(S.curM);
@@ -4947,6 +4963,7 @@ function openHistoriqueArticle(matId){  const m=getM(matId);if(!m)return;
         <div>
           <div style="font-size:12px;font-weight:500;color:var(--text)">${fmt(s.date)}</div>
           <div style="font-size:11px;color:var(--text2);margin-top:1px">par ${s.agentNom}</div>
+          ${s.lat&&s.lng?`<a href="https://maps.google.com/?q=${s.lat},${s.lng}" target="_blank" style="font-size:10px;color:#3498DB;text-decoration:none;display:inline-flex;align-items:center;gap:3px;margin-top:2px">📍 Voir position</a>`:''}
         </div>
         <span class="badge ${eB(s.etatGeneral)}" style="font-size:9px">${eL(s.etatGeneral)}</span>
       </div>
@@ -5594,6 +5611,14 @@ function setupRealtime(){
       if(scan.agentNom!==S.agent){
         toast('Inspection reçue : '+scan.agentNom+' → '+(S.mat.find(m=>m.id===scan.materielId)?.nom||scan.materielId),'info');
       }
+      if(!['form','ajout_mat','nouveau_chantier'].includes(S.page) && !S.modalOpen) renderTab?.();
+    })
+    .on('postgres_changes',{event:'DELETE',schema:'public',table:'scans'}, payload=>{
+      if(!S.agent) return;
+      const deletedId=payload.old?.id;
+      if(!deletedId) return;
+      S.scans=S.scans.filter(s=>s.id!==deletedId);
+      try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
       if(!['form','ajout_mat','nouveau_chantier'].includes(S.page) && !S.modalOpen) renderTab?.();
     })
     .on('postgres_changes',{event:'*',schema:'public',table:'chantiers'}, payload=>{
