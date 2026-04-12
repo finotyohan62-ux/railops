@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='98';
+const APP_VERSION='99';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -718,6 +718,7 @@ function render(){
     {id:'chantiers',l:'Chantiers',s:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>'},
     {id:'scanner',l:'Scanner',s:'<rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/><rect x="3" y="15" width="6" height="6" rx="1"/><rect x="11" y="11" width="3" height="3"/>'},
     {id:'historique',l:'Historique',s:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
+    {id:'historique_chantiers',l:'Archives',s:'<path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/>'},
     {id:'qrcodes',l:'QR Codes',s:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>'},
   ];
   const pagesAgent=[
@@ -752,7 +753,7 @@ function render(){
     ${S.modal?renderModal():''}
   `;
   const pc=document.getElementById('pc');
-  ({dashboard:pgDash,chantiers:pgChantiers,scanner:pgScanner,historique:pgHistorique,qrcodes:pgQRCodes})[S.page]?.(pc);
+  ({dashboard:pgDash,chantiers:pgChantiers,scanner:pgScanner,historique:pgHistorique,qrcodes:pgQRCodes,historique_chantiers:pgHistoriqueChantiers})[S.page]?.(pc);
   if(S.modal)setTimeout(bindModal,0);
   setTimeout(updateNotifBadge,0);
   setTimeout(updateSyncDot,0);
@@ -3247,26 +3248,20 @@ async function doTerminer(){
   const pdfMats=S.mat.filter(m=>m.chantierId===chantierId);
   const pdfScans=S.scans.filter(s=>s.chantierId===chantierId);
 
-  // Supprimer de la mémoire
-  S.chantiers=S.chantiers.filter(c=>c.id!==chantierId);
-  S.mat=S.mat.filter(m=>m.chantierId!==chantierId);
-  S.scans=S.scans.filter(s=>s.chantierId!==chantierId);
+  // Marquer comme terminé avec date de clôture (conservation 30 jours)
+  const idx=S.chantiers.findIndex(c=>c.id===chantierId);
+  if(idx!==-1){
+    S.chantiers[idx].statut='termine';
+    S.chantiers[idx].dateTermine=nowISO();
+    saveChantier(chantierId);
+  }
   try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
-  try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-  try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
-
-  // Supprimer définitivement de Supabase
-  try{
-    await db.from('scans').delete().eq('chantierId',chantierId);
-    await db.from('materiels').delete().eq('chantierId',chantierId);
-    await db.from('chantiers').delete().eq('id',chantierId);
-  }catch(e){console.warn('Erreur suppression Supabase:',e);}
 
   const existing=document.getElementById('movl');if(existing)existing.remove();
   S.curC=null;
   S.page=S.role==='chef'?'chantiers':'dashboard';
   render();
-  setTimeout(()=>toast('Chantier terminé — rapport PDF en cours…','ok'),80);
+  setTimeout(()=>toast('Chantier terminé — archivé 30 jours · rapport PDF en cours…','ok'),80);
   if(pdfC) setTimeout(()=>exportPDFData(pdfC, pdfMats, pdfScans),800);
 }
 
@@ -3967,6 +3962,147 @@ function submitF(forceDouble=false){
 // ══════════════════════════════════════
 // HISTORIQUE
 // ══════════════════════════════════════
+// ══════════════════════════════════════
+// HISTORIQUE CHANTIERS TERMINÉS
+// ══════════════════════════════════════
+function pgHistoriqueChantiers(el){
+  const now=new Date();
+  const trente=30*24*60*60*1000;
+  const sept=7*24*60*60*1000;
+  const termines=S.chantiers
+    .filter(c=>c.statut==='termine'&&c.dateTermine)
+    .sort((a,b)=>new Date(b.dateTermine)-new Date(a.dateTermine));
+
+  // Purge auto des chantiers terminés depuis plus de 30 jours
+  const aSupprimer=termines.filter(c=>(now-new Date(c.dateTermine))>trente);
+  if(aSupprimer.length){
+    aSupprimer.forEach(async c=>{
+      S.chantiers=S.chantiers.filter(x=>x.id!==c.id);
+      try{
+        await db.from('scans').delete().eq('chantierId',c.id);
+        await db.from('materiels').delete().eq('chantierId',c.id);
+        await db.from('chantiers').delete().eq('id',c.id);
+      }catch(e){console.warn('purge chantier:',e);}
+    });
+    try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
+  }
+
+  const visibles=termines.filter(c=>(now-new Date(c.dateTermine))<=trente);
+
+  el.innerHTML=`
+    <div class="topbar">
+      <div class="tbi"><div class="tbt">Archives chantiers</div><div class="tbs">${visibles.length} chantier(s) · conservés 30 jours</div></div>
+    </div>
+    <div style="padding:10px 16px 20px;display:flex;flex-direction:column;gap:10px">
+      ${visibles.length===0?`
+        <div style="text-align:center;padding:60px 0;color:var(--text3)">
+          <div style="font-size:32px;margin-bottom:12px">📦</div>
+          <div style="font-size:14px">Aucun chantier archivé</div>
+          <div style="font-size:12px;margin-top:6px;color:var(--text3)">Les chantiers terminés apparaissent ici pendant 30 jours</div>
+        </div>`:
+      visibles.map(c=>{
+        const mats=S.mat.filter(m=>m.chantierId===c.id);
+        const scans=S.scans.filter(s=>s.chantierId===c.id);
+        const dateTermine=new Date(c.dateTermine);
+        const jourRestants=Math.ceil((trente-(now-dateTermine))/(1000*60*60*24));
+        const alerte=jourRestants<=7;
+        const chefs=(c.chefs&&c.chefs.length)?c.chefs:[c.chef].filter(Boolean);
+        return`<div style="background:var(--bg2);border-radius:var(--r);border:.5px solid ${alerte?'rgba(226,75,74,.3)':'var(--border)'};padding:14px 16px;overflow:hidden">
+          <!-- En-tête -->
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:15px;font-weight:600;color:var(--text)">${c.nom}</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:2px">${c.lieu}</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:2px">Chef : ${chefs.join(', ')||'—'}</div>
+            </div>
+            <span class="badge b-gray">Terminé</span>
+          </div>
+          <!-- Stats -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+            <div style="background:var(--bg3);border-radius:8px;padding:8px;text-align:center">
+              <div style="font-size:18px;font-weight:700;color:var(--text)">${mats.length}</div>
+              <div style="font-size:10px;color:var(--text3)">Articles</div>
+            </div>
+            <div style="background:var(--bg3);border-radius:8px;padding:8px;text-align:center">
+              <div style="font-size:18px;font-weight:700;color:var(--accent)">${scans.length}</div>
+              <div style="font-size:10px;color:var(--text3)">Inspections</div>
+            </div>
+            <div style="background:var(--bg3);border-radius:8px;padding:8px;text-align:center">
+              <div style="font-size:18px;font-weight:700;color:${alerte?'#F09595':'var(--text3)'}">${jourRestants}j</div>
+              <div style="font-size:10px;color:var(--text3)">Restants</div>
+            </div>
+          </div>
+          <!-- Dates -->
+          <div style="display:flex;gap:12px;font-size:11px;color:var(--text3);margin-bottom:10px;padding-top:8px;border-top:.5px solid var(--border)">
+            ${c.dateDebut?`<span>Début : ${new Date(c.dateDebut).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})}</span>`:''}
+            <span>Clôturé le : ${dateTermine.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})}</span>
+          </div>
+          ${alerte?`<div style="background:rgba(226,75,74,.08);border:.5px solid rgba(226,75,74,.2);border-radius:8px;padding:8px 12px;font-size:11px;color:#F09595;margin-bottom:10px">
+            ⚠ Suppression dans ${jourRestants} jour(s) — pense à exporter le rapport PDF
+          </div>`:''}
+          <!-- Actions -->
+          <div style="display:flex;gap:8px">
+            <button onclick="exportArchivedPDF('${c.id}')" style="flex:1;background:rgba(61,181,74,.1);border:.5px solid rgba(61,181,74,.3);border-radius:8px;padding:9px;font-size:12px;color:var(--accent);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+              Rapport PDF
+            </button>
+            <button onclick="confirmSupprimerArchive('${c.id}')" style="background:rgba(226,75,74,.08);border:.5px solid rgba(226,75,74,.2);border-radius:8px;padding:9px 12px;font-size:12px;color:#F09595;cursor:pointer;font-family:inherit">
+              🗑
+            </button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function exportArchivedPDF(chantierId){
+  const c=S.chantiers.find(x=>x.id===chantierId);if(!c)return;
+  const mats=S.mat.filter(m=>m.chantierId===chantierId);
+  const scans=S.scans.filter(s=>s.chantierId===chantierId);
+  toast('Génération du rapport…','ok');
+  setTimeout(()=>buildPDF(c,mats,scans,'Rapport de clôture'),50);
+}
+
+function confirmSupprimerArchive(chantierId){
+  const c=S.chantiers.find(x=>x.id===chantierId);if(!c)return;
+  const existing=document.getElementById('movl');if(existing)existing.remove();
+  const div=document.createElement('div');div.id='movl';div.className='moverlay';
+  div.innerHTML=`<div class="msheet">
+    <div class="mhandle"></div>
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="width:52px;height:52px;border-radius:50%;background:rgba(226,75,74,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F09595" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+      </div>
+      <div style="font-size:16px;font-weight:500;color:var(--text)">Supprimer définitivement</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:6px">${c.nom}</div>
+      <div style="font-size:11px;color:#F09595;margin-top:4px">Cette action est irréversible</div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button onclick="document.getElementById('movl').remove()" class="btn btn-outline" style="flex:1">Annuler</button>
+      <button onclick="doSupprimerArchive('${chantierId}')" class="btn btn-danger" style="flex:1">Supprimer</button>
+    </div>
+  </div>`;
+  document.getElementById('app').appendChild(div);
+}
+
+async function doSupprimerArchive(chantierId){
+  S.chantiers=S.chantiers.filter(c=>c.id!==chantierId);
+  S.mat=S.mat.filter(m=>m.chantierId!==chantierId);
+  S.scans=S.scans.filter(s=>s.chantierId!==chantierId);
+  try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
+  try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
+  try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
+  try{
+    await db.from('scans').delete().eq('chantierId',chantierId);
+    await db.from('materiels').delete().eq('chantierId',chantierId);
+    await db.from('chantiers').delete().eq('id',chantierId);
+  }catch(e){console.warn('suppr archive:',e);}
+  document.getElementById('movl')?.remove();
+  const pc=document.getElementById('pc');
+  if(pc) pgHistoriqueChantiers(pc);
+  toast('Archive supprimée','warn');
+}
+
 function pgHistorique(el){
   const scans=(S.role==='agent')?[...S.scans].filter(s=>s.agentNom===S.agent).reverse():[...S.scans].reverse();
   el.innerHTML=`
