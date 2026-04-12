@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='98m';
+const APP_VERSION='98n';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -2394,9 +2394,13 @@ async function processRows(rows){
   for(const mat of toUpsertImport){
     try{
       const {prix:_,autreChantier:__,...mDB}=mat;
-      const {error}=await db.from('materiels').upsert([mDB],{onConflict:'id'});
-      if(error){errors++;console.warn('import upsert error:',error);}
-    }catch(e){errors++;console.warn('import upsert error:',e);}
+      // Essayer insert d'abord, upsert si conflit
+      let res=await db.from('materiels').insert([mDB]);
+      if(res.error&&res.error.code==='23505'){
+        res=await db.from('materiels').upsert([mDB],{onConflict:'id'});
+      }
+      if(res.error){errors++;console.warn('import error:',res.error);}
+    }catch(e){errors++;console.warn('import error:',e);}
   }
   if(errors>0) toast('⚠ '+errors+' article(s) en erreur','danger');
   window._importing=false;
