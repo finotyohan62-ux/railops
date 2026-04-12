@@ -5035,19 +5035,17 @@ function openHistoriqueArticle(matId){
   }; // fin renderModal
 
   // Si S.scans a les données → affiche directement
-  // Sinon → charge depuis Supabase (cas du chef sur une nouvelle session)
+  // Sinon → charge tous les scans du chantier depuis Supabase
   if(S.scans.some(s=>s.materielId===matId)){
     renderModal(S.scans);
   } else {
-    // Afficher modale de chargement
     const loadDiv=document.createElement('div');loadDiv.id='movl';loadDiv.className='moverlay';
     loadDiv.innerHTML=`<div class="msheet"><div class="mhandle"></div><div style="text-align:center;padding:30px 0;color:var(--text3)">Chargement…</div></div>`;
     document.getElementById('app').appendChild(loadDiv);
     db.from('scans').select('id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions,photo,lat,lng')
-      .eq('materielId',matId)
+      .eq('chantierId', m.chantierId)
       .then(({data})=>{
         if(data&&data.length){
-          // Merge dans S.scans
           data.forEach(s=>{if(!S.scans.find(x=>x.id===s.id))S.scans.push(s);});
         }
         renderModal(S.scans);
