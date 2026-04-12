@@ -2389,6 +2389,7 @@ async function processRows(rows){
   // Sauvegarde localStorage + upsert Supabase article par article (comme saveMat)
   try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
   const toUpsertImport=S.mat.filter(m=>m.chantierId===S.curC);
+  console.log('[Import] S.curC=',S.curC,'toUpsert=',toUpsertImport.length,'S.mat total=',S.mat.length);
   let errors=0;
   for(const mat of toUpsertImport){
     try{
