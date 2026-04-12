@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='99';
+const APP_VERSION='100';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -3082,7 +3082,7 @@ function tabInspections(el){
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
             <div style="flex:1;min-width:0">
               <div style="font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m?.nom||s.materielId}</div>
-              <div style="font-size:11px;color:var(--text2);margin-top:2px">${s.agentNom} · ${fmt(s.date)}</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:2px">${s.agentNom} · ${fmt(s.date)}${s.lat&&s.lng?` · <a href="https://maps.google.com/?q=${s.lat},${s.lng}" target="_blank" style="color:#3498DB;text-decoration:none">📍 Position</a>`:''}</div>
             </div>
             <span class="badge ${eB(s.etatGeneral)}">${eL(s.etatGeneral)}</span>
           </div>
@@ -3924,7 +3924,7 @@ function submitF(forceDouble=false){
   const kitObs=getKitObs();
   const obsField=document.getElementById('obs')?.value||'';
   const obsValue=kitObs?(kitObs+(obsField?' — '+obsField:'')):obsField;
-  const scan={id:newId('SCAN'),materielId:S.curM,chantierId:m?.chantierId||'',agentNom:S.agent,date:nowISO(),etatGeneral:S.fd.etatGeneral,proprete:S.fd.proprete,fonctionnement:S.fd.fonctionnement,dommages:S.fd.dommages,dommagesDesc:document.getElementById('dmg-desc')?.value||'',observations:obsValue,actions:document.getElementById('act')?.value||'',photo:S.fd.photo||null};
+  const scan={id:newId('SCAN'),materielId:S.curM,chantierId:m?.chantierId||'',agentNom:S.agent,date:nowISO(),etatGeneral:S.fd.etatGeneral,proprete:S.fd.proprete,fonctionnement:S.fd.fonctionnement,dommages:S.fd.dommages,dommagesDesc:document.getElementById('dmg-desc')?.value||'',observations:obsValue,actions:document.getElementById('act')?.value||'',photo:S.fd.photo||null,lat:null,lng:null};
   S.scans.push(scan);
   const idx=S.mat.findIndex(x=>x.id===S.curM);
   if(idx!==-1){
@@ -3934,16 +3934,29 @@ function submitF(forceDouble=false){
     else if(S.mat[idx].presence!=='absent')S.mat[idx].presence='confirme';
     recordVerif(idx);
   }
-  // Sauvegarder le scan en localStorage immédiatement (avec photo)
   try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
-  // Sauvegarder en Supabase avec la photo (colonne maintenant disponible)
-  const scanForDB={id:scan.id,materielId:scan.materielId,chantierId:scan.chantierId,agentNom:scan.agentNom,date:scan.date,etatGeneral:scan.etatGeneral,proprete:scan.proprete,fonctionnement:scan.fonctionnement,dommages:scan.dommages,dommagesDesc:scan.dommagesDesc,observations:scan.observations,actions:scan.actions,photo:scan.photo||null};
-  db.from('scans').upsert([scanForDB],{onConflict:'id'}).then(()=>{
-    // Marquer le scan comme synchronisé dans localStorage
-    try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
-  },e=>console.warn('scan save error:',e));
+
+  // Capture GPS silencieuse — ne bloque pas la validation
+  const saveScan=()=>{
+    const scanForDB={id:scan.id,materielId:scan.materielId,chantierId:scan.chantierId,agentNom:scan.agentNom,date:scan.date,etatGeneral:scan.etatGeneral,proprete:scan.proprete,fonctionnement:scan.fonctionnement,dommages:scan.dommages,dommagesDesc:scan.dommagesDesc,observations:scan.observations,actions:scan.actions,photo:scan.photo||null,lat:scan.lat||null,lng:scan.lng||null};
+    db.from('scans').upsert([scanForDB],{onConflict:'id'}).then(()=>{
+      try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
+    },e=>console.warn('scan save error:',e));
+  };
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        const scanIdx=S.scans.findIndex(s=>s.id===scan.id);
+        if(scanIdx!==-1){S.scans[scanIdx].lat=pos.coords.latitude;S.scans[scanIdx].lng=pos.coords.longitude;}
+        scan.lat=pos.coords.latitude;scan.lng=pos.coords.longitude;
+        saveScan();
+      },
+      ()=>saveScan(), // permission refusée → on sauvegarde sans GPS
+      {timeout:5000,maximumAge:0}
+    );
+  } else { saveScan(); }
+
   if(idx!==-1) saveMat(S.curM);
-  // Si hors ligne → mettre en file d'attente
   if(!navigator.onLine){
     addToOfflineQueue('scan', {...scan});
     if(idx!==-1) addToOfflineQueue('materiel', {...S.mat[idx]});
@@ -3956,7 +3969,8 @@ function submitF(forceDouble=false){
   const v1ok=idx2!==-1&&S.mat[idx2].verifLundi?.weekKey===wk2;
   const v2ok=idx2!==-1&&S.mat[idx2].verifSemaine?.weekKey===wk2;
   const dotMsg=v1ok&&v2ok?' · 🟢🟢 Semaine complète':v1ok?' · 🟢 1ère vérif OK':'';
-  const offlineMsg=!navigator.onLine?' · En attente de sync':''; setTimeout(()=>toast('Inspection enregistrée'+dotMsg+offlineMsg,!navigator.onLine?'warn':'ok'),80);
+  const offlineMsg=!navigator.onLine?' · En attente de sync':'';
+  setTimeout(()=>toast('Inspection enregistrée'+dotMsg+offlineMsg,!navigator.onLine?'warn':'ok'),80);
 }
 
 // ══════════════════════════════════════
@@ -4949,6 +4963,7 @@ function openHistoriqueArticle(matId){  const m=getM(matId);if(!m)return;
         <div>
           <div style="font-size:12px;font-weight:500;color:var(--text)">${fmt(s.date)}</div>
           <div style="font-size:11px;color:var(--text2);margin-top:1px">par ${s.agentNom}</div>
+          ${s.lat&&s.lng?`<a href="https://maps.google.com/?q=${s.lat},${s.lng}" target="_blank" style="font-size:10px;color:#3498DB;text-decoration:none;display:inline-flex;align-items:center;gap:3px;margin-top:2px">📍 Voir position</a>`:''}
         </div>
         <span class="badge ${eB(s.etatGeneral)}" style="font-size:9px">${eL(s.etatGeneral)}</span>
       </div>
