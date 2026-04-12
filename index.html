@@ -3937,24 +3937,24 @@ function submitF(forceDouble=false){
   try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
 
   // Capture GPS silencieuse — ne bloque pas la validation
-  const saveScan=()=>{
-    const scanForDB={id:scan.id,materielId:scan.materielId,chantierId:scan.chantierId,agentNom:scan.agentNom,date:scan.date,etatGeneral:scan.etatGeneral,proprete:scan.proprete,fonctionnement:scan.fonctionnement,dommages:scan.dommages,dommagesDesc:scan.dommagesDesc,observations:scan.observations,actions:scan.actions,photo:scan.photo||null,lat:scan.lat||null,lng:scan.lng||null};
-    db.from('scans').upsert([scanForDB],{onConflict:'id'}).then(()=>{
-      try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
-    },e=>console.warn('scan save error:',e));
-  };
+  const scanId=scan.id;
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(
       pos=>{
-        const scanIdx=S.scans.findIndex(s=>s.id===scan.id);
-        if(scanIdx!==-1){S.scans[scanIdx].lat=pos.coords.latitude;S.scans[scanIdx].lng=pos.coords.longitude;}
-        scan.lat=pos.coords.latitude;scan.lng=pos.coords.longitude;
-        saveScan();
+        const lat=pos.coords.latitude;
+        const lng=pos.coords.longitude;
+        // Mettre à jour en mémoire
+        const si=S.scans.findIndex(s=>s.id===scanId);
+        if(si!==-1){S.scans[si].lat=lat;S.scans[si].lng=lng;}
+        // Upsert direct lat/lng dans Supabase
+        db.from('scans').update({lat,lng}).eq('id',scanId)
+          .then(()=>{try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}})
+          .catch(e=>console.warn('GPS save:',e));
       },
-      ()=>saveScan(), // permission refusée → on sauvegarde sans GPS
-      {timeout:5000,maximumAge:0}
+      ()=>{}, // permission refusée → silencieux
+      {timeout:8000,maximumAge:0,enableHighAccuracy:false}
     );
-  } else { saveScan(); }
+  }
 
   if(idx!==-1) saveMat(S.curM);
   if(!navigator.onLine){
