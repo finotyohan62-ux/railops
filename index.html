@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='98e';
+const APP_VERSION='98';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -429,23 +429,10 @@ async function load(){
     if(!ec){ S.chantiers=dc||[]; localStorage.setItem('ro3_c',JSON.stringify(S.chantiers)); }
     else S.chantiers=[];
 
-    // RÈGLE 2 : Matériels → merger Supabase + locaux non synchronisés
+    // RÈGLE 2 : Matériels → Supabase fait loi, point
     const {data:dm, error:em}=await db.from('materiels').select('*');
-    const localMats=JSON.parse(localStorage.getItem('ro3_m')||'[]');
-    if(!em&&dm){
-      const remoteIds=new Set(dm.map(m=>m.id));
-      const localOnly=localMats.filter(m=>!remoteIds.has(m.id));
-      S.mat=normMats([...dm,...localOnly]);
-      // Re-tenter upsert des articles locaux non encore en Supabase
-      if(localOnly.length){
-        const forDB=localOnly.map(({prix:_,autreChantier:__,...m})=>m);
-        for(let i=0;i<forDB.length;i+=100){
-          db.from('materiels').upsert(forDB.slice(i,i+100),{onConflict:'id'}).catch(e=>console.warn('resync mat:',e));
-        }
-      }
-    } else {
-      S.mat=normMats(localMats);
-    }
+    if(!em&&dm){ S.mat=normMats(dm); }
+    else { S.mat=normMats(JSON.parse(localStorage.getItem('ro3_m')||'[]')); }
     localStorage.setItem('ro3_m',JSON.stringify(S.mat));
     // Scans : Supabase inclut maintenant la photo
     const {data:ds}=await db.from('scans').select('id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions,photo');
@@ -820,6 +807,7 @@ function doLogin(){
   if(!user){toast('Nom ou mot de passe incorrect','danger');return;}
   // Vider le localStorage des données métier — Supabase est la seule source de vérité
   localStorage.removeItem('ro3_c');
+  localStorage.removeItem('ro3_m');
   localStorage.removeItem('ro3_u');
   S.agent=user.nom;S.role=user.role;S.page='dashboard';
   localStorage.setItem('ro3_a',JSON.stringify({agent:S.agent,role:S.role}));
@@ -2215,13 +2203,9 @@ function importReplace(input){
       const CHUNK=100;
       (async()=>{
         for(let i=0;i<forDB.length;i+=CHUNK){
-          try{
-            const {error}=await db.from('materiels').upsert(forDB.slice(i,i+CHUNK),{onConflict:'id'});
-            if(error) toast('Erreur Supabase : '+error.message,'danger');
-          }
+          try{await db.from('materiels').upsert(forDB.slice(i,i+CHUNK),{onConflict:'id'});}
           catch(e){console.warn('replace upsert chunk:',e);}
         }
-        window._lastImport=Date.now();
         window._importing=false;
       })();
     } else window._importing=false;
@@ -2386,8 +2370,12 @@ async function processRows(rows){
 
   // Sauvegarde localStorage + upsert Supabase par lots de 100 (évite la limite Supabase)
   try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-  // Upsert tous les articles du chantier (plus fiable que slice(-added))
-  const toUpsertImport=S.mat.filter(m=>m.chantierId===S.curC);
+  const toUpsertImport=[];
+  if(added>0) toUpsertImport.push(...S.mat.slice(-added));
+  if(skipped>0){
+    const updatedMats=S.mat.filter(m=>m.chantierId===S.curC&&updatedIds.has(m.id));
+    toUpsertImport.push(...updatedMats);
+  }
   if(toUpsertImport.length){
     const forDB=toUpsertImport.map(({prix:_,autreChantier:__,...m})=>m);
     const CHUNK=100;
@@ -2396,12 +2384,11 @@ async function processRows(rows){
       const chunk=forDB.slice(i,i+CHUNK);
       try{
         const {error}=await db.from('materiels').upsert(chunk,{onConflict:'id'});
-        if(error){errors++;console.warn('import upsert chunk error:',error);toast('Erreur Supabase : '+error.message,'danger');}
-      }catch(e){errors++;console.warn('import upsert chunk error:',e);toast('Erreur réseau : '+e.message,'danger');}
+        if(error){errors++;console.warn('import upsert chunk error:',error);}
+      }catch(e){errors++;console.warn('import upsert chunk error:',e);}
     }
     if(errors>0) toast('⚠ '+errors+' lot(s) en erreur — vérifiez les données','danger');
   }
-  window._lastImport=Date.now(); // bloquer silentSync 5 min après import
   window._importing=false;
   renderTab();
   const updated=skipped;
@@ -5518,33 +5505,14 @@ async function silentSync(){
     // ║  Même logique que load() — validée v75 après nombreux bugs.     ║
     // ╚══════════════════════════════════════════════════════════════════╝
 
-    // RÈGLE 1 : Chantiers → merger Supabase + locaux non encore synchronisés
-    if(!ec){
-      const remoteIds=new Set((dc||[]).map(c=>c.id));
-      const localOnly=S.chantiers.filter(c=>!remoteIds.has(c.id));
-      S.chantiers=[...(dc||[]),...localOnly];
-      try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
-    }
+    // RÈGLE 1 : Chantiers → Supabase fait TOUJOURS loi
+    if(!ec){ S.chantiers=dc||[]; try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){} }
 
-    // RÈGLE 2 : Matériels → merger Supabase + locaux non synchronisés
-    const importRecent = window._lastImport && (Date.now() - window._lastImport) < 300000;
-    if(!em&&dm){
-      const remoteIds=new Set(dm.map(m=>m.id));
-      const localOnly=S.mat.filter(m=>!remoteIds.has(m.id));
-      if(importRecent){
-        // Pendant import : garder local tel quel
-      } else {
-        // Hors import : Supabase fait loi + on garde les locaux non encore sync
-        S.mat=[...normMats(dm),...normMats(localOnly)];
-        // Re-tenter l'upsert des articles locaux manquants dans Supabase
-        if(localOnly.length){
-          const forDB=localOnly.map(({prix:_,autreChantier:__,...m})=>m);
-          for(let i=0;i<forDB.length;i+=100){
-            db.from('materiels').upsert(forDB.slice(i,i+100),{onConflict:'id'}).catch(e=>console.warn('resync mat:',e));
-          }
-        }
-        try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-      }
+    // RÈGLE 2 : Matériels → Supabase fait loi, point
+    const importRecent = window._lastImport && (Date.now() - window._lastImport) < 60000;
+    if(!em&&dm&&!importRecent){
+      S.mat=normMats(dm);
+      try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
     }
 
     if(du&&du.length) S.users=du;
