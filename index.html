@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='98f';
+const APP_VERSION='98g';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -431,7 +431,23 @@ async function load(){
 
     // RÈGLE 2 : Matériels → Supabase fait loi, point
     const {data:dm, error:em}=await db.from('materiels').select('*');
-    if(!em&&dm){ S.mat=normMats(dm); }
+    if(!em&&dm){
+      S.mat=normMats(dm);
+      // Réintégrer les articles locaux non encore en Supabase
+      if(window._savedLocalMats&&window._savedLocalMats.length){
+        const remoteIds=new Set(dm.map(m=>m.id));
+        const localOnly=window._savedLocalMats.filter(m=>!remoteIds.has(m.id));
+        if(localOnly.length){
+          S.mat=[...S.mat,...normMats(localOnly)];
+          // Ré-envoyer vers Supabase
+          const forDB=localOnly.map(({prix:_,autreChantier:__,...m})=>m);
+          for(let i=0;i<forDB.length;i+=100){
+            db.from('materiels').upsert(forDB.slice(i,i+100),{onConflict:'id'}).catch(()=>{});
+          }
+        }
+        window._savedLocalMats=null;
+      }
+    }
     else { S.mat=normMats(JSON.parse(localStorage.getItem('ro3_m')||'[]')); }
     localStorage.setItem('ro3_m',JSON.stringify(S.mat));
     // Scans : Supabase inclut maintenant la photo
@@ -805,7 +821,9 @@ function doLogin(){
 
   const user=S.users.find(u=>u.nom.toLowerCase()===n.toLowerCase()&&u.mdp===p);
   if(!user){toast('Nom ou mot de passe incorrect','danger');return;}
-  // Vider le localStorage des données métier — Supabase est la seule source de vérité
+  // Sauvegarder les articles locaux avant nettoyage
+  const savedMats=localStorage.getItem('ro3_m');
+  window._savedLocalMats=savedMats?JSON.parse(savedMats):[];
   localStorage.removeItem('ro3_c');
   localStorage.removeItem('ro3_m');
   localStorage.removeItem('ro3_u');
