@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='98c';
+const APP_VERSION='98d';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -2370,12 +2370,8 @@ async function processRows(rows){
 
   // Sauvegarde localStorage + upsert Supabase par lots de 100 (évite la limite Supabase)
   try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-  const toUpsertImport=[];
-  if(added>0) toUpsertImport.push(...S.mat.slice(-added));
-  if(skipped>0){
-    const updatedMats=S.mat.filter(m=>m.chantierId===S.curC&&updatedIds.has(m.id));
-    toUpsertImport.push(...updatedMats);
-  }
+  // Upsert tous les articles du chantier (plus fiable que slice(-added))
+  const toUpsertImport=S.mat.filter(m=>m.chantierId===S.curC);
   if(toUpsertImport.length){
     const forDB=toUpsertImport.map(({prix:_,autreChantier:__,...m})=>m);
     const CHUNK=100;
@@ -2389,6 +2385,7 @@ async function processRows(rows){
     }
     if(errors>0) toast('⚠ '+errors+' lot(s) en erreur — vérifiez les données','danger');
   }
+  window._lastImport=Date.now(); // bloquer silentSync 5 min après import
   window._importing=false;
   renderTab();
   const updated=skipped;
@@ -5514,7 +5511,7 @@ async function silentSync(){
     }
 
     // RÈGLE 2 : Matériels → Supabase fait loi, point
-    const importRecent = window._lastImport && (Date.now() - window._lastImport) < 60000;
+    const importRecent = window._lastImport && (Date.now() - window._lastImport) < 300000;
     if(!em&&dm&&!importRecent){
       S.mat=normMats(dm);
       try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
