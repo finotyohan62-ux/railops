@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='102';
+const APP_VERSION='103';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -5526,6 +5526,8 @@ async function silentSync(){
 
     setSyncStatus('connected');
     updateNotifBadge();
+    // Rafraîchir l'affichage si on est sur le dashboard ou un chantier
+    if(['dashboard','chantier_detail'].includes(S.page)) renderTab?.();
   }catch(e){
     console.warn('silentSync error:',e.message);
     setSyncStatus('offline');
