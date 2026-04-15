@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='105';
+const APP_VERSION='106';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -1130,7 +1130,7 @@ function pgDashChef(el){
         const ab=mats.filter(m=>m.presence==='absent').length;
         const nc=mats.filter(m=>m.presence==='non-confirme').length;
         const wkNow=getWeekKey();
-        const done=mats.filter(m=>m.verifLundi?.weekKey===wkNow||m.verifSemaine?.weekKey===wkNow).length;
+        const done=mats.filter(m=>getVerif(m,"lundi")||getVerif(m,"semaine")).length;
         return`<div class="cc" onclick="openC('${c.id}')">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
             <div><div style="font-size:15px;font-weight:500;color:var(--text)">${c.nom}</div><div style="font-size:12px;color:var(--text2);margin-top:2px">${c.lieu}</div></div>
@@ -1565,7 +1565,7 @@ function pgChantiers(el){
       ${visibleC.map(c=>{
         const mats=matOfC(c.id);const ab=mats.filter(m=>m.presence==='absent').length;
         const wkNow=getWeekKey();
-        const done=mats.filter(m=>m.verifLundi?.weekKey===wkNow||m.verifSemaine?.weekKey===wkNow).length;
+        const done=mats.filter(m=>getVerif(m,"lundi")||getVerif(m,"semaine")).length;
         return`<div class="cc" onclick="openC('${c.id}')">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
             <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:500;color:var(--text)">${c.nom}</div><div style="font-size:12px;color:var(--text2);margin-top:2px">${c.lieu}</div></div>
@@ -1644,7 +1644,7 @@ function pgChantiersDashboard(el){
         const bons=mats.filter(m=>m.etat==='bon').length;
         const confirms=mats.filter(m=>m.presence==='confirme').length;
         const taux=mats.length?Math.round(bons/mats.length*100):0;
-        const done=mats.filter(m=>m.verifLundi?.weekKey===wkNow||m.verifSemaine?.weekKey===wkNow).length;
+        const done=mats.filter(m=>getVerif(m,"lundi")||getVerif(m,"semaine")).length;
         const retard=mats.filter(m=>!m.controle2m||(new Date()-new Date(m.controle2m.date))>d2m).length;
         const chefs=(c.chefs&&c.chefs.length>0)?c.chefs:[c.chef].filter(Boolean);
         const barConf=taux>=80?'#3db54a':taux>=50?'#f5a623':'#e24b4a';
