@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>RailOps — SFERIS</title>
 <meta name="theme-color" content="#f5a623">
 <meta name="mobile-web-app-capable" content="yes">
@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='104b';
+const APP_VERSION='105';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -383,6 +383,11 @@ async function saveChantier(id){
   const c=S.chantiers.find(x=>x.id===id);if(!c)return;
   try{
     localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));
+    // Strip photos base64 des tournées avant envoi Supabase (trop lourd)
+    const tourneesForDB=(c.tournees||[]).map(t=>({
+      ...t,
+      visites:(t.visites||[]).map(v=>({...v,photos:(v.photos||[]).map(p=>({...p,data:null}))}))
+    }));
     const row={
       id:c.id, nom:c.nom||'', lieu:c.lieu||'',
       chef:c.chefs?.[0]||c.chef||'',
@@ -392,7 +397,7 @@ async function saveChantier(id){
       dateDebut:c.dateDebut||'',
       dateFin:c.dateFin||'',
       agents:c.agents||[],
-      tournees:c.tournees||[]
+      tournees:tourneesForDB
     };
     const {error}=await db.from('chantiers').upsert([row],{onConflict:'id'});
     if(error) toast('Erreur sync chantier : '+error.message,'danger');
@@ -5442,7 +5447,29 @@ async function silentSync(){
     // ╚══════════════════════════════════════════════════════════════════╝
 
     // RÈGLE 1 : Chantiers → Supabase fait TOUJOURS loi
-    if(!ec){ S.chantiers=dc||[]; try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){} }
+    if(!ec){
+      // Réinjecter les photos locales des tournées (stripées avant envoi Supabase)
+      const localChantiers=JSON.parse(localStorage.getItem('ro3_c')||'[]');
+      S.chantiers=(dc||[]).map(remote=>{
+        const local=localChantiers.find(c=>c.id===remote.id);
+        if(!local||!local.tournees) return remote;
+        // Fusionner les photos locales dans les tournées distantes
+        const tournees=(remote.tournees||[]).map(rt=>{
+          const lt=local.tournees.find(t=>t.id===rt.id);
+          if(!lt) return rt;
+          return {...rt, visites:(rt.visites||[]).map((rv,vi)=>{
+            const lv=(lt.visites||[])[vi];
+            if(!lv) return rv;
+            return {...rv, photos:(rv.photos||[]).map((rp,pi)=>{
+              const lp=(lv.photos||[])[pi];
+              return (lp&&lp.data)?{...rp,data:lp.data}:rp;
+            })};
+          })};
+        });
+        return {...remote, tournees};
+      });
+      try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
+    }
 
     // RÈGLE 2 : Matériels → merger Supabase avec local (préserve les vérifs locales)
     const importRecent = window._lastImport && (Date.now() - window._lastImport) < 60000;
@@ -5475,9 +5502,6 @@ async function silentSync(){
 
     setSyncStatus('connected');
     updateNotifBadge();
-    // Rafraîchir l'affichage
-    if(S.page==='dashboard') render();
-    else if(S.page==='chantier_detail') renderTab?.();
   }catch(e){
     console.warn('silentSync error:',e.message);
     setSyncStatus('offline');
