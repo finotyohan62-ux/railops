@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='106';
+const APP_VERSION='107';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -5502,6 +5502,13 @@ async function silentSync(){
 
     setSyncStatus('connected');
     updateNotifBadge();
+    // Mettre à jour le dashboard en arrière-plan sans toucher aux modales
+    if(S.page==='dashboard'&&!document.getElementById('movl')){
+      const pc=document.getElementById('pc');
+      if(pc) pgDash(pc);
+    } else if(S.page==='chantier_detail'&&!document.getElementById('movl')){
+      renderTab?.();
+    }
   }catch(e){
     console.warn('silentSync error:',e.message);
     setSyncStatus('offline');
