@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='110d';
+const APP_VERSION='110e';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -3728,9 +3728,8 @@ function submitF(forceDouble=false){
     navigator.geolocation.getCurrentPosition(
       pos=>{
         localStorage.setItem('_pendingGPS',JSON.stringify({lat:pos.coords.latitude,lng:pos.coords.longitude}));
-        toast('GPS OK : '+pos.coords.latitude.toFixed(4)+', '+pos.coords.longitude.toFixed(4),'ok');
       },
-      err=>{toast('GPS erreur : '+err.message,'danger');},
+      err=>{console.warn('GPS erreur:',err.message);},
       {enableHighAccuracy:true,timeout:10000,maximumAge:0}
     );
   } else {
@@ -4694,6 +4693,7 @@ function openHistoriqueArticle(matId){  const m=getM(matId);if(!m)return;
       ${s.dommagesDesc?`<div style="margin-top:4px;font-size:11px;color:#F09595">${s.dommagesDesc}</div>`:''}
       ${s.observations?`<div style="margin-top:4px;font-size:11px;color:var(--text2)">${s.observations}</div>`:''}
       ${s.actions?`<div style="margin-top:4px;padding:4px 8px;background:rgba(61,181,74,.08);border-radius:6px;font-size:11px;color:var(--accent)">→ ${s.actions}</div>`:''}
+      ${s.lat&&s.lng?`<div style="margin-top:4px"><a href="https://maps.google.com/?q=${s.lat},${s.lng}" target="_blank" style="font-size:11px;color:#378ADD;text-decoration:none">📍 Voir sur la carte (${s.lat.toFixed(5)}, ${s.lng.toFixed(5)})</a></div>`:''}
       ${s.photo?`<div style="margin-top:6px;position:relative">
         <img src="${s.photo}" onclick="openPhotoFull('${s.id}')" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;border:.5px solid var(--border);cursor:pointer">
         <div style="position:absolute;top:4px;right:4px;display:flex;gap:3px">
