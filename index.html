@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='110f';
+const APP_VERSION='110g';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -3441,6 +3441,15 @@ function startInspect(id){
   stopCam();S.curM=id;
   S.fd={etatGeneral:'',proprete:'',fonctionnement:true,dommages:false,dommagesDesc:'',observations:'',actions:'',photo:null};
   S._inspectBloque=false;
+  // Pré-charger GPS dès l'ouverture (l'agent a le temps de remplir le formulaire)
+  localStorage.removeItem('_pendingGPS');
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      pos=>{localStorage.setItem('_pendingGPS',JSON.stringify({lat:pos.coords.latitude,lng:pos.coords.longitude}));},
+      ()=>{},
+      {enableHighAccuracy:true,timeout:15000,maximumAge:0}
+    );
+  }
   S.page='form';render();
 }
 
@@ -3722,19 +3731,6 @@ function clearPhoto(){
 function submitF(forceDouble=false){
   if(!S.fd.etatGeneral){toast('Sélectionne l\'état général','danger');return;}
   if(!S.fd.proprete){toast('Sélectionne la propreté','danger');return;}
-  // Capturer GPS immédiatement (doit être dans un geste utilisateur)
-  localStorage.removeItem('_pendingGPS');
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(
-      pos=>{
-        localStorage.setItem('_pendingGPS',JSON.stringify({lat:pos.coords.latitude,lng:pos.coords.longitude}));
-      },
-      err=>{console.warn('GPS erreur:',err.message);},
-      {enableHighAccuracy:true,timeout:10000,maximumAge:0}
-    );
-  } else {
-    toast('GPS non disponible sur cet appareil','warn');
-  }
   // Observations obligatoires si hors service
   if(S.fd.etatGeneral==='hors-service'){
     const obs=document.getElementById('obs')?.value.trim();
