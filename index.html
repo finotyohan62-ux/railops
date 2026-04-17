@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='108b';
+const APP_VERSION='108c';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -2775,8 +2775,12 @@ function selTourneeType(t){
 function addVisitePhoto(){
   const input=document.createElement('input');
   input.type='file';input.accept='image/*';input.capture='environment';
+  input.style.cssText='position:fixed;top:-100px;left:-100px;opacity:0;';
+  document.body.appendChild(input);
   input.onchange=function(){
-    const file=input.files[0];if(!file)return;
+    const file=input.files[0];
+    document.body.removeChild(input);
+    if(!file)return;
     const reader=new FileReader();
     reader.onload=function(e){
       const img2=new Image();
