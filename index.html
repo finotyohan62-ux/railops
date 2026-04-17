@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='110g';
+const APP_VERSION='110h';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -3731,6 +3731,10 @@ function clearPhoto(){
 function submitF(forceDouble=false){
   if(!S.fd.etatGeneral){toast('Sélectionne l\'état général','danger');return;}
   if(!S.fd.proprete){toast('Sélectionne la propreté','danger');return;}
+  // Récupérer GPS depuis localStorage (déclenché dans startInspect)
+  const gpsRaw=localStorage.getItem('_pendingGPS');
+  const gps=gpsRaw?JSON.parse(gpsRaw):null;
+  localStorage.removeItem('_pendingGPS');
   // Observations obligatoires si hors service
   if(S.fd.etatGeneral==='hors-service'){
     const obs=document.getElementById('obs')?.value.trim();
@@ -3777,7 +3781,7 @@ function submitF(forceDouble=false){
   const kitObs=getKitObs();
   const obsField=document.getElementById('obs')?.value||'';
   const obsValue=kitObs?(kitObs+(obsField?' — '+obsField:'')):obsField;
-  const scan={id:newId('SCAN'),materielId:S.curM,chantierId:m?.chantierId||'',agentNom:S.agent,date:nowISO(),etatGeneral:S.fd.etatGeneral,proprete:S.fd.proprete,fonctionnement:S.fd.fonctionnement,dommages:S.fd.dommages,dommagesDesc:document.getElementById('dmg-desc')?.value||'',observations:obsValue,actions:document.getElementById('act')?.value||'',photo:S.fd.photo||null,lat:null,lng:null};
+  const scan={id:newId('SCAN'),materielId:S.curM,chantierId:m?.chantierId||'',agentNom:S.agent,date:nowISO(),etatGeneral:S.fd.etatGeneral,proprete:S.fd.proprete,fonctionnement:S.fd.fonctionnement,dommages:S.fd.dommages,dommagesDesc:document.getElementById('dmg-desc')?.value||'',observations:obsValue,actions:document.getElementById('act')?.value||'',photo:S.fd.photo||null,lat:gps?.lat||null,lng:gps?.lng||null};
   S.scans.push(scan);
   const idx=S.mat.findIndex(x=>x.id===S.curM);
   if(idx!==-1){
@@ -3789,28 +3793,10 @@ function submitF(forceDouble=false){
   }
   // Sauvegarder le scan en localStorage immédiatement (avec photo)
   try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
-  // Sauvegarder en Supabase avec la photo (colonne maintenant disponible)
-  const gpsRaw=localStorage.getItem('_pendingGPS');
-  const gps=gpsRaw?JSON.parse(gpsRaw):null;
-  if(gps){scan.lat=gps.lat;scan.lng=gps.lng;}
+  // Sauvegarder en Supabase
   const scanForDB={id:scan.id,materielId:scan.materielId,chantierId:scan.chantierId,agentNom:scan.agentNom,date:scan.date,etatGeneral:scan.etatGeneral,proprete:scan.proprete,fonctionnement:scan.fonctionnement,dommages:scan.dommages,dommagesDesc:scan.dommagesDesc,observations:scan.observations,actions:scan.actions,photo:scan.photo||null,lat:scan.lat||null,lng:scan.lng||null};
   db.from('scans').upsert([scanForDB],{onConflict:'id'}).then(()=>{
     try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
-    // Attendre GPS si pas encore arrivé
-    const tryGPS=(attempts)=>{
-      const raw=localStorage.getItem('_pendingGPS');
-      if(raw){
-        const {lat,lng}=JSON.parse(raw);
-        localStorage.removeItem('_pendingGPS');
-        const si=S.scans.findIndex(s=>s.id===scan.id);
-        if(si!==-1){S.scans[si].lat=lat;S.scans[si].lng=lng;}
-        try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
-        db.from('scans').update({lat,lng}).eq('id',scan.id).catch(()=>{});
-      } else if(attempts>0){
-        setTimeout(()=>tryGPS(attempts-1),1000);
-      }
-    };
-    if(!gps) tryGPS(10); else localStorage.removeItem('_pendingGPS');
   },e=>console.warn('scan save error:',e));
   if(idx!==-1) saveMat(S.curM);
   // Si hors ligne → mettre en file d'attente
