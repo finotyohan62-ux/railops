@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='110c';
+const APP_VERSION='110d';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -3726,10 +3726,15 @@ function submitF(forceDouble=false){
   localStorage.removeItem('_pendingGPS');
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(
-      pos=>{localStorage.setItem('_pendingGPS',JSON.stringify({lat:pos.coords.latitude,lng:pos.coords.longitude}));},
-      ()=>{},
+      pos=>{
+        localStorage.setItem('_pendingGPS',JSON.stringify({lat:pos.coords.latitude,lng:pos.coords.longitude}));
+        toast('GPS OK : '+pos.coords.latitude.toFixed(4)+', '+pos.coords.longitude.toFixed(4),'ok');
+      },
+      err=>{toast('GPS erreur : '+err.message,'danger');},
       {enableHighAccuracy:true,timeout:10000,maximumAge:0}
     );
+  } else {
+    toast('GPS non disponible sur cet appareil','warn');
   }
   // Observations obligatoires si hors service
   if(S.fd.etatGeneral==='hors-service'){
