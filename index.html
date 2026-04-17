@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='108';
+const APP_VERSION='108b';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -5343,6 +5343,8 @@ async function silentSync(){
       S.chantiers=(dc||[]).map(remote=>{
         const local=localChantiers.find(c=>c.id===remote.id);
         if(!local||!local.tournees) return remote;
+        const remoteTIds=new Set((remote.tournees||[]).map(t=>t.id));
+        // Fusionner photos/signatures locales dans tournées distantes
         const tournees=(remote.tournees||[]).map(rt=>{
           const lt=local.tournees.find(t=>t.id===rt.id);
           if(!lt) return rt;
@@ -5360,7 +5362,9 @@ async function silentSync(){
             };
           })};
         });
-        return {...remote, tournees};
+        // Ajouter les tournées locales pas encore en Supabase
+        const localOnly=local.tournees.filter(t=>!remoteTIds.has(t.id));
+        return {...remote, tournees:[...tournees,...localOnly]};
       });
       try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
     }
