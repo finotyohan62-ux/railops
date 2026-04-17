@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='107c';
+const APP_VERSION='108';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -383,10 +383,15 @@ async function saveChantier(id){
   const c=S.chantiers.find(x=>x.id===id);if(!c)return;
   try{
     localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));
-    // Strip photos base64 des tournées avant envoi Supabase (trop lourd)
+    // Strip photos ET signatures base64 des tournées avant envoi Supabase (trop lourd)
     const tourneesForDB=(c.tournees||[]).map(t=>({
       ...t,
-      visites:(t.visites||[]).map(v=>({...v,photos:(v.photos||[]).map(p=>({...p,data:null}))}))
+      visites:(t.visites||[]).map(v=>({
+        ...v,
+        sigAgent:null,
+        sigCte:null,
+        photos:(v.photos||[]).map(p=>({...p,data:null}))
+      }))
     }));
     const row={
       id:c.id, nom:c.nom||'', lieu:c.lieu||'',
@@ -5333,22 +5338,26 @@ async function silentSync(){
 
     // RÈGLE 1 : Chantiers → Supabase fait TOUJOURS loi
     if(!ec){
-      // Réinjecter les photos locales des tournées (stripées avant envoi Supabase)
+      // Réinjecter les photos ET signatures locales des tournées (stripées avant envoi Supabase)
       const localChantiers=JSON.parse(localStorage.getItem('ro3_c')||'[]');
       S.chantiers=(dc||[]).map(remote=>{
         const local=localChantiers.find(c=>c.id===remote.id);
         if(!local||!local.tournees) return remote;
-        // Fusionner les photos locales dans les tournées distantes
         const tournees=(remote.tournees||[]).map(rt=>{
           const lt=local.tournees.find(t=>t.id===rt.id);
           if(!lt) return rt;
           return {...rt, visites:(rt.visites||[]).map((rv,vi)=>{
             const lv=(lt.visites||[])[vi];
             if(!lv) return rv;
-            return {...rv, photos:(rv.photos||[]).map((rp,pi)=>{
-              const lp=(lv.photos||[])[pi];
-              return (lp&&lp.data)?{...rp,data:lp.data}:rp;
-            })};
+            return {
+              ...rv,
+              sigAgent: lv.sigAgent || rv.sigAgent || null,
+              sigCte: lv.sigCte || rv.sigCte || null,
+              photos:(rv.photos||[]).map((rp,pi)=>{
+                const lp=(lv.photos||[])[pi];
+                return (lp&&lp.data)?{...rp,data:lp.data}:rp;
+              })
+            };
           })};
         });
         return {...remote, tournees};
