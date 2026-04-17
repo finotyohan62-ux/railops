@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='108c';
+const APP_VERSION='108d';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -2773,6 +2773,7 @@ function selTourneeType(t){
 }
 
 function addVisitePhoto(){
+  window._tourneeEnCours=true;
   const input=document.createElement('input');
   input.type='file';input.accept='image/*';input.capture='environment';
   input.style.cssText='position:fixed;top:-100px;left:-100px;opacity:0;';
@@ -2780,7 +2781,7 @@ function addVisitePhoto(){
   input.onchange=function(){
     const file=input.files[0];
     document.body.removeChild(input);
-    if(!file)return;
+    if(!file){window._tourneeEnCours=false;return;}
     const reader=new FileReader();
     reader.onload=function(e){
       const img2=new Image();
@@ -2796,6 +2797,8 @@ function addVisitePhoto(){
     };
     reader.readAsDataURL(file);
   };
+  // Réactiver silentSync après 30s max si l'utilisateur annule
+  setTimeout(()=>{window._tourneeEnCours=false;},30000);
   input.click();
 }
 
@@ -5442,9 +5445,9 @@ setInterval(()=>{
 // Retour au premier plan : reconnexion Realtime + sync immédiat
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible' && S.agent){
-    // Forcer reconnexion du canal Realtime (coupé en arrière-plan sur mobile)
+    // Ne pas interrompre une saisie de tournée en cours
+    if(window._tourneeEnCours) return;
     setupRealtime();
-    // Sync immédiat des données
     silentSync();
   }
 });
