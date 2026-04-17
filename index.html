@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='109';
+const APP_VERSION='110';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -3785,6 +3785,20 @@ function submitF(forceDouble=false){
   db.from('scans').upsert([scanForDB],{onConflict:'id'}).then(()=>{
     // Marquer le scan comme synchronisé dans localStorage
     try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
+    // Capturer GPS après confirmation de l'upsert
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos=>{
+        const lat=pos.coords.latitude;
+        const lng=pos.coords.longitude;
+        // Mettre à jour le scan local
+        const si=S.scans.findIndex(s=>s.id===scan.id);
+        if(si!==-1){S.scans[si].lat=lat;S.scans[si].lng=lng;}
+        try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
+        // Mettre à jour en Supabase
+        db.from('scans').update({lat,lng}).eq('id',scan.id).catch(e=>console.warn('GPS update:',e));
+      },()=>{},// Silencieux si refus GPS
+      {enableHighAccuracy:true,timeout:10000,maximumAge:0});
+    }
   },e=>console.warn('scan save error:',e));
   if(idx!==-1) saveMat(S.curM);
   // Si hors ligne → mettre en file d'attente
