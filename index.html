@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='108d';
+const APP_VERSION='108e';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -2931,6 +2931,7 @@ function saveTournee(chantierId){
   const cutoff=new Date(Date.now()-30*24*60*60*1000);
   S.chantiers[idx].tournees=S.chantiers[idx].tournees.filter(t=>new Date(t.createdAt||t.date)>=cutoff);
   _visitePhotos=[];_tourneeType=null;_visites=[];
+  window._tourneeEnCours=false;
   saveChantier(chantierId);
   renderTab();
   toast('Tournée enregistrée — '+tournee.visites.length+' visite(s) ✓','ok');
@@ -5407,7 +5408,8 @@ async function silentSync(){
 
     setSyncStatus('connected');
     updateNotifBadge();
-    // Mettre à jour le dashboard en arrière-plan sans toucher aux modales
+    // Mettre à jour le dashboard en arrière-plan sans toucher aux modales ni à la tournée CTE
+    if(window._tourneeEnCours) return;
     if(S.page==='dashboard'&&!document.getElementById('movl')){
       const pc=document.getElementById('pc');
       if(pc) pgDash(pc);
