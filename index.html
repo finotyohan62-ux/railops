@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='110b';
+const APP_VERSION='110c';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -3723,11 +3723,11 @@ function submitF(forceDouble=false){
   if(!S.fd.etatGeneral){toast('Sélectionne l\'état général','danger');return;}
   if(!S.fd.proprete){toast('Sélectionne la propreté','danger');return;}
   // Capturer GPS immédiatement (doit être dans un geste utilisateur)
-  window._pendingGPS=null;
+  localStorage.removeItem('_pendingGPS');
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(
-      pos=>{window._pendingGPS={lat:pos.coords.latitude,lng:pos.coords.longitude};},
-      ()=>{window._pendingGPS=null;},
+      pos=>{localStorage.setItem('_pendingGPS',JSON.stringify({lat:pos.coords.latitude,lng:pos.coords.longitude}));},
+      ()=>{},
       {enableHighAccuracy:true,timeout:10000,maximumAge:0}
     );
   }
@@ -3790,21 +3790,27 @@ function submitF(forceDouble=false){
   // Sauvegarder le scan en localStorage immédiatement (avec photo)
   try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
   // Sauvegarder en Supabase avec la photo (colonne maintenant disponible)
-  const gps=window._pendingGPS||null;
+  const gpsRaw=localStorage.getItem('_pendingGPS');
+  const gps=gpsRaw?JSON.parse(gpsRaw):null;
   if(gps){scan.lat=gps.lat;scan.lng=gps.lng;}
   const scanForDB={id:scan.id,materielId:scan.materielId,chantierId:scan.chantierId,agentNom:scan.agentNom,date:scan.date,etatGeneral:scan.etatGeneral,proprete:scan.proprete,fonctionnement:scan.fonctionnement,dommages:scan.dommages,dommagesDesc:scan.dommagesDesc,observations:scan.observations,actions:scan.actions,photo:scan.photo||null,lat:scan.lat||null,lng:scan.lng||null};
   db.from('scans').upsert([scanForDB],{onConflict:'id'}).then(()=>{
     try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
-    // Si GPS pas encore arrivé, mettre à jour quand il arrive
-    if(!gps&&navigator.geolocation){
-      navigator.geolocation.getCurrentPosition(pos=>{
-        const lat=pos.coords.latitude,lng=pos.coords.longitude;
+    // Attendre GPS si pas encore arrivé
+    const tryGPS=(attempts)=>{
+      const raw=localStorage.getItem('_pendingGPS');
+      if(raw){
+        const {lat,lng}=JSON.parse(raw);
+        localStorage.removeItem('_pendingGPS');
         const si=S.scans.findIndex(s=>s.id===scan.id);
         if(si!==-1){S.scans[si].lat=lat;S.scans[si].lng=lng;}
         try{localStorage.setItem('ro3_s',JSON.stringify(S.scans));}catch(e){}
         db.from('scans').update({lat,lng}).eq('id',scan.id).catch(()=>{});
-      },()=>{},{enableHighAccuracy:true,timeout:10000,maximumAge:0});
-    }
+      } else if(attempts>0){
+        setTimeout(()=>tryGPS(attempts-1),1000);
+      }
+    };
+    if(!gps) tryGPS(10); else localStorage.removeItem('_pendingGPS');
   },e=>console.warn('scan save error:',e));
   if(idx!==-1) saveMat(S.curM);
   // Si hors ligne → mettre en file d'attente
