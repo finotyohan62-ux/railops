@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='110h';
+const APP_VERSION='110i';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -3735,6 +3735,21 @@ function submitF(forceDouble=false){
   const gpsRaw=localStorage.getItem('_pendingGPS');
   const gps=gpsRaw?JSON.parse(gpsRaw):null;
   localStorage.removeItem('_pendingGPS');
+  // Si pas encore de GPS, demander maintenant et soumettre quand disponible (max 5s)
+  if(!gps&&navigator.geolocation){
+    toast('Localisation en cours…','info');
+    const timeout=setTimeout(()=>_doSubmit(null,forceDouble),5000);
+    navigator.geolocation.getCurrentPosition(
+      pos=>{clearTimeout(timeout);_doSubmit({lat:pos.coords.latitude,lng:pos.coords.longitude},forceDouble);},
+      ()=>{clearTimeout(timeout);_doSubmit(null,forceDouble);},
+      {enableHighAccuracy:true,timeout:5000,maximumAge:0}
+    );
+    return;
+  }
+  _doSubmit(gps,forceDouble);
+}
+
+function _doSubmit(gps,forceDouble=false){
   // Observations obligatoires si hors service
   if(S.fd.etatGeneral==='hors-service'){
     const obs=document.getElementById('obs')?.value.trim();
