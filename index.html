@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='110i';
+const APP_VERSION='111';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -1586,6 +1586,8 @@ function renderChantierDetail(){
   const nc=mats.filter(m=>m.presence==='non-confirme').length;
   const conf=mats.filter(m=>m.presence==='confirme').length;
 
+  const hs=mats.filter(m=>m.etat==='hors-service').length;
+
   app.innerHTML=`
     <div class="sb"><span class="t">${tStr()}</span><span class="r">${S.agent}</span></div>
     <div class="topbar">
@@ -1598,8 +1600,7 @@ function renderChantierDetail(){
     </div>
     <!-- ONGLETS -->
     <div class="tabs" style="padding-top:12px;flex-shrink:0">
-      <div class="tab${S.tab==='registre'?' on':''}" data-tab="registre" onclick="setTab('registre')">
-        ${S.role==='chef_chantier'?'Récap':'Inventaire'} <span style="margin-left:4px;font-size:10px;opacity:.8">${ab?'⚠ '+ab:mats.length}</span>
+      <div class="tab${S.tab==='registre'?' on':''}" data-tab="registre" onclick="setTab('registre')" style="${hs?'color:#F09595;':''}">${S.role==='chef_chantier'?'Récap':'Inventaire'} <span style="margin-left:4px;font-size:10px;opacity:.8">${hs?'🔴 '+hs+' HS':ab?'⚠ '+ab:mats.length}</span>
       </div>
       ${S.role==='chef'?`<div class="tab${S.tab==='verifs'?' on':''}" data-tab="verifs" onclick="setTab('verifs')">Vérifs</div>`:''}
       ${S.role!=='agent'&&S.role!=='chef_chantier'?`<div class="tab${S.tab==='tournee'?' on':''}" data-tab="tournee" onclick="setTab('tournee')">Tournée CTE</div>`:''}
@@ -1750,6 +1751,10 @@ function tabRegistre(el){
   const etatOrder={bon:0,acceptable:1,degrade:2,'hors-service':3,inconnu:4};
   const presOrder={confirme:0,'non-confirme':1,absent:2,retire:3};
   filtered=[...filtered].sort((a,b)=>{
+    // HS toujours en premier
+    const aHS=a.etat==='hors-service'?0:1;
+    const bHS=b.etat==='hors-service'?0:1;
+    if(aHS!==bHS) return aHS-bHS;
     if(S.sortReg==='nom') return a.nom.localeCompare(b.nom,'fr');
     if(S.sortReg==='etat') return (etatOrder[a.etat]??9)-(etatOrder[b.etat]??9);
     if(S.sortReg==='presence') return (presOrder[a.presence]??9)-(presOrder[b.presence]??9);
