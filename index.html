@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='112c';
+const APP_VERSION='112d';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -1615,7 +1615,10 @@ function renderChantierDetail(){
   renderTab();
   if(S.modal)setTimeout(bindModal,0);
 }
-function setTab(t){S.tab=t;renderTab();/* refresh tab styles */document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('on',el.dataset.tab===t));/* refresh fab */const fab=document.querySelector('.fab');if(fab)fab.style.display=(t==='registre'&&S.role==='chef')?'flex':'none';}
+function setTab(t){S.tab=t;
+  // Bloquer silentSync pendant la tournée CTE
+  window._tourneeEnCours=(t==='tournee');
+  renderTab();/* refresh tab styles */document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('on',el.dataset.tab===t));/* refresh fab */const fab=document.querySelector('.fab');if(fab)fab.style.display=(t==='registre'&&S.role==='chef')?'flex':'none';}
 
 function renderTab(){
   const el=document.getElementById('tab-content');if(!el)return;
@@ -5463,6 +5466,7 @@ async function silentSync(){
       S.page==='form' || 
       S.page==='ajout_mat' || 
       S.page==='nouveau_chantier' ||
+      S.tab==='tournee' ||
       document.getElementById('movl'); // modale ouverte
     if(formEnCours) return;
     if(S.page==='dashboard'&&!document.getElementById('movl')){
