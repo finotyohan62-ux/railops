@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='112b';
+const APP_VERSION='112c';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -1781,7 +1781,7 @@ function tabRegistre(el){
         <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="reg-search" class="fi" placeholder="Rechercher un article, ID, catégorie…" value="${S.searchReg}"
           style="padding-left:32px;padding-right:${S.searchReg?'32px':'12px'};font-size:13px" inputmode="text"
-          oninput="(function(inp){var v=inp.value;var p=inp.selectionStart;S.searchReg=v;renderTab();var ni=document.getElementById('reg-search');if(ni){ni.focus();try{ni.setSelectionRange(p,p);}catch(e){}}})(this)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          oninput="S.searchReg=this.value;updateRegList()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         ${S.searchReg?`<button onclick="S.searchReg='';renderTab()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;display:flex">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>`:''}
@@ -1826,10 +1826,28 @@ function tabRegistre(el){
         ${selCount>0?`<button onclick="deleteSelected()" style="background:rgba(226,75,74,.15);border:.5px solid rgba(226,75,74,.3);border-radius:8px;padding:6px 14px;font-size:12px;color:#F09595;cursor:pointer;font-family:inherit;font-weight:500">✗ Supprimer (${selCount})</button>`:''}
       </div>`:''}
       `:''}
-      ${filtered.length===0?`<div style="padding:30px 0;text-align:center;color:var(--text3);font-size:13px">${S.searchReg?"Aucun résultat pour \""+S.searchReg+"\"":"Aucun article dans ce filtre"}</div>`:
-        filtered.map(m=>regItemHTML(m)).join('')}
+      ${filtered.length===0?`<div id="reg-list" style="padding:30px 0;text-align:center;color:var(--text3);font-size:13px">${S.searchReg?"Aucun résultat pour \""+S.searchReg+"\"":"Aucun article dans ce filtre"}</div>`:
+        `<div id="reg-list">${filtered.map(m=>regItemHTML(m)).join('')}</div>`}
     </div>
   `;
+}
+
+function updateRegList(){
+  const list=document.getElementById('reg-list');if(!list)return;
+  const mats=matOfC(S.curC);
+  const q=S.searchReg.toLowerCase();
+  const etatOrder={'hors-service':0,degrade:1,acceptable:2,bon:3,inconnu:4};
+  let filtered=mats.filter(m=>!q||m.nom.toLowerCase().includes(q)||m.id.toLowerCase().includes(q)||m.cat.toLowerCase().includes(q));
+  if(S.filterPres.size>0) filtered=filtered.filter(m=>S.filterPres.has(m.presence));
+  filtered=[...filtered].sort((a,b)=>{
+    const aHS=a.etat==='hors-service'?0:1;
+    const bHS=b.etat==='hors-service'?0:1;
+    if(aHS!==bHS) return aHS-bHS;
+    return (b.scan||'').localeCompare(a.scan||'');
+  });
+  list.innerHTML=filtered.length===0
+    ?`<div style="padding:30px 0;text-align:center;color:var(--text3);font-size:13px">${S.searchReg?'Aucun résultat pour "'+S.searchReg+'"':'Aucun article dans ce filtre'}</div>`
+    :filtered.map(m=>regItemHTML(m)).join('');
 }
 
 function regItemHTML(m){
