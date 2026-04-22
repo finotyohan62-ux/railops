@@ -297,7 +297,7 @@ const S={
 // ══════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════
-const APP_VERSION='111';
+const APP_VERSION='112';
 
 const SUPA_URL='https://tbmzmmamaiftbbbuelgd.supabase.co';
 const SUPA_KEY='sb_publishable_guRNHQbRgEs0oGX32SG5tA_N8iO1-Lj';
@@ -1854,8 +1854,7 @@ function regItemHTML(m){
     </div>
     <div class="reg-body">
       <div style="display:flex;flex-direction:column;gap:3px">
-        ${m.scan?`<span style="font-size:11px;color:var(--text3)">Dernier scan : ${ago(m.scan)} · ${S.scans.filter(s=>s.materielId===m.id).slice(-1)[0]?.agentNom||''}</span>`:
-        `<span style="font-size:11px;color:${isAbsent?'#F09595':'var(--text3)'}">Jamais inspecté</span>`}
+        ${m.scan?``:''}
         ${m.echeance?`<span style="font-size:11px;color:${isDateWarning(m.echeance)?'#F09595':isDateSoon(m.echeance)?'#f5a623':'var(--text3)'}">
           ${isDateWarning(m.echeance)?'⚠ ':''}Échéance : ${m.echeance}${isDateWarning(m.echeance)?' — EXPIRÉE':isDateSoon(m.echeance)?' — Bientôt ⏰':''}
         </span>`:''}
@@ -5441,8 +5440,13 @@ async function silentSync(){
 
     setSyncStatus('connected');
     updateNotifBadge();
-    // Mettre à jour le dashboard en arrière-plan sans toucher aux modales ni à la tournée CTE
-    if(window._tourneeEnCours) return;
+    // Ne pas rafraîchir si un formulaire est en cours de saisie
+    const formEnCours = window._tourneeEnCours || 
+      S.page==='form' || 
+      S.page==='ajout_mat' || 
+      S.page==='nouveau_chantier' ||
+      document.getElementById('movl'); // modale ouverte
+    if(formEnCours) return;
     if(S.page==='dashboard'&&!document.getElementById('movl')){
       const pc=document.getElementById('pc');
       if(pc) pgDash(pc);
@@ -5480,8 +5484,8 @@ setInterval(()=>{
 // Retour au premier plan : reconnexion Realtime + sync immédiat
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible' && S.agent){
-    // Ne pas interrompre une saisie de tournée en cours
-    if(window._tourneeEnCours) return;
+    // Ne pas interrompre une saisie en cours
+    if(window._tourneeEnCours || S.page==='form' || S.page==='ajout_mat' || S.page==='nouveau_chantier') return;
     setupRealtime();
     silentSync();
   }
