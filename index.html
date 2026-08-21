@@ -1045,5 +1045,165 @@ window.RailOpsProductionV145={version:VERSION,parseSheet,workbookModel,analyzePl
 console.info('[RailOps] moteur registre production actif —',VERSION);
 })();
 </script>
+
+<script id="railops-v146-integrity-invariant">
+(function(){
+'use strict';
+const VERSION='146-integrite-registre-persistante';
+const hiddenPseudo=new Map();
+let running=false, scheduled=null;
+
+function st(){try{return typeof S!=='undefined'?S:null;}catch(e){return null;}}
+function titleLike(v){
+  return /^.+\(\s*\d+\s*(?:articles?|materiels?|matériels?|references?|références?|items?|équipements?|equipements?)\s*\)\s*$/i.test(String(v||'').trim());
+}
+function safePseudo(m){
+  if(!m)return false;
+  if(!(titleLike(m.id)||titleLike(m.nom)))return false;
+  const noActivity=!m.scan&&!m.verifLundi&&!m.verifSemaine&&!m.controle2m;
+  const neutral=(m.presence||'non-confirme')==='non-confirme'&&(m.etat||'inconnu')==='inconnu';
+  // Les anciens faux articles ont été créés comme lignes neutres. Une ligne ayant une activité réelle n'est jamais masquée automatiquement.
+  return noActivity&&neutral;
+}
+function remember(m){if(m?.id)hiddenPseudo.set(String(m.id),m);}
+function strip(rows){
+  const out=[];
+  for(const m of Array.isArray(rows)?rows:[]){if(safePseudo(m)){remember(m);continue;}out.push(m);}
+  return out;
+}
+function currentCandidates(){
+  const map=new Map(hiddenPseudo);
+  for(const m of (st()?.mat||[]))if(safePseudo(m))map.set(String(m.id),m);
+  return [...map.values()];
+}
+
+// Conserve un accès RAW pour vérifier ce que Supabase contient réellement.
+let rawFetch=null;
+try{
+  if(typeof fetchAllMats==='function'){
+    rawFetch=fetchAllMats;
+    const wrapped=async function(){
+      const r=await rawFetch.apply(this,arguments);
+      if(r&&!r.error&&Array.isArray(r.data))return {...r,data:strip(r.data)};
+      return r;
+    };
+    fetchAllMats=wrapped;window.fetchAllMats=wrapped;
+  }
+}catch(e){console.warn('[v146] wrapper fetch',e);}
+
+// Deuxième barrière : aucune pseudo-référence neutre ne peut rester dans S.mat, même si un ancien chemin d'import s'exécute.
+try{
+  if(typeof normMats==='function'){
+    const oldNorm=normMats;
+    normMats=function(rows){return oldNorm(strip(rows));};
+    window.normMats=normMats;
+  }
+}catch(e){}
+
+function sanitizeState(){
+  const s=st();if(!s)return 0;
+  const before=(s.mat||[]).length;s.mat=strip(s.mat||[]);
+  if(before!==s.mat.length){try{localStorage.setItem('ro3_m',JSON.stringify(s.mat));}catch(e){}}
+  return before-s.mat.length;
+}
+
+async function tombstoneIds(ids){
+  const errors=[];
+  for(const id of ids){
+    try{
+      if(typeof queueDelete==='function')queueDelete(id);
+      else {
+        // secours : même format que le mécanisme historique RailOps
+        const {error}=await db.from('deleted_ids').insert([{identifiant:id}]);
+        if(error&&error.code!=='23505')throw error;
+      }
+    }catch(e){errors.push(`${id}: ${e.message||e}`);}
+  }
+  try{if(typeof flushDeleteQueue==='function')await flushDeleteQueue();}catch(e){errors.push('flush: '+(e.message||e));}
+  return errors;
+}
+
+async function readRaw(){
+  try{
+    if(rawFetch){const r=await rawFetch();if(!r?.error&&Array.isArray(r?.data))return r.data;}
+  }catch(e){}
+  return (st()?.mat||[]).slice();
+}
+async function readTombstones(){
+  const set=new Set();
+  try{const {data,error}=await db.from('deleted_ids').select('*');if(!error)for(const x of data||[]){const id=String(x?.id||x?.identifiant||'').trim();if(id)set.add(id);}}catch(e){}
+  try{for(const id of (typeof getDeleteQueue==='function'?getDeleteQueue():[])||[])set.add(String(id));}catch(e){}
+  return set;
+}
+
+async function enforceIntegrity(opts={}){
+  if(running)return window.__RailOpsV146Last||null;
+  running=true;
+  try{
+    sanitizeState();
+    const rawBefore=await readRaw();
+    const candidates=rawBefore.filter(safePseudo);
+    candidates.forEach(remember);
+    const ids=[...new Set(candidates.map(m=>String(m.id)).filter(Boolean))];
+    const errors=ids.length?await tombstoneIds(ids):[];
+    const rawAfter=await readRaw();
+    const tomb=await readTombstones();
+    const rawRemaining=rawAfter.filter(safePseudo);
+    const visibleRemaining=rawRemaining.filter(m=>!tomb.has(String(m.id)));
+    const s=st();
+    if(s){
+      // Recharge par le fetch filtré : l'interface et tous les calculs repartent d'un état propre.
+      try{const r=typeof fetchAllMats==='function'?await fetchAllMats():null;if(r&&!r.error&&Array.isArray(r.data))s.mat=typeof normMats==='function'?normMats(r.data):strip(r.data);}catch(e){s.mat=strip(s.mat||[]);}
+      try{localStorage.setItem('ro3_m',JSON.stringify(s.mat));}catch(e){}
+      try{if(typeof render==='function')render();window.RailOpsDisplayV142?.apply?.();}catch(e){}
+    }
+    const report={version:VERSION,at:new Date().toISOString(),candidates:ids.length,rawRemaining:rawRemaining.length,tombstonedRemaining:rawRemaining.filter(m=>tomb.has(String(m.id))).length,visibleRemaining:visibleRemaining.length,errors};
+    window.__RailOpsV146Last=report;
+    if(!opts.silent){
+      if(visibleRemaining.length||errors.length)toast(`Intégrité registre : ${visibleRemaining.length} parasite(s) encore visible(s) · ${errors.length} erreur(s)`,'danger');
+      else if(ids.length)toast(`Intégrité registre : ${ids.length} ligne(s) parasite(s) neutralisée(s) définitivement ✓`,'ok');
+      else toast('Intégrité registre : aucune ligne parasite ✓','ok');
+    }
+    return report;
+  }finally{running=false;}
+}
+function schedule(ms=120){clearTimeout(scheduled);scheduled=setTimeout(()=>enforceIntegrity({silent:true}),ms);}
+
+// Tout rendu passe par l'invariant : les titres de sections ne peuvent jamais être comptés comme matériel.
+try{
+  const oldRender146=render;
+  render=function(){sanitizeState();const r=oldRender146.apply(this,arguments);if((st()?.mat||[]).some(safePseudo))schedule(80);return r;};
+  window.render=render;
+}catch(e){}
+
+// Après chargement, vérification réelle de la base + tombstones.
+try{
+  const oldLoad146=load;
+  load=async function(){const r=await oldLoad146.apply(this,arguments);sanitizeState();setTimeout(()=>enforceIntegrity({silent:true}),500);return r;};
+  window.load=load;
+}catch(e){}
+
+// Après sélection/import d'un registre, revérifie la base plusieurs fois pour couvrir aussi un ancien listener ou une synchro différée.
+document.addEventListener('change',ev=>{
+  const input=ev.target;
+  if(!(input instanceof HTMLInputElement)||input.type!=='file')return;
+  const name=input.files?.[0]?.name||'';
+  if(!/\.(?:xlsx|xls|xlsm|xlsb|ods|csv|txt)$/i.test(name))return;
+  setTimeout(()=>enforceIntegrity({silent:true}),900);
+  setTimeout(()=>enforceIntegrity({silent:true}),2500);
+},false);
+
+// Remplace le nettoyage v145 : il utilise désormais le mécanisme officiel queueDelete/deleted_ids et VERIFIE le résultat.
+try{
+  window.RailOpsProductionV146={version:VERSION,titleLike,safePseudo,enforceIntegrity,last:()=>window.__RailOpsV146Last||null};
+  if(window.RailOpsProductionV145){window.RailOpsProductionV145.cleanLegacySections=()=>enforceIntegrity({silent:false});}
+}catch(e){}
+
+sanitizeState();
+setTimeout(()=>enforceIntegrity({silent:true}),700);
+console.info('[RailOps] invariant registre persistant actif —',VERSION);
+})();
+</script>
+
 </body>
 </html>
