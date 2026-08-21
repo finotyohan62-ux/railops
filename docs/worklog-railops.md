@@ -71,3 +71,11 @@
 - Vérification fraîche : nouveaux fichiers relus depuis GitHub, `node --check tests/v150b2b-static-invariants.test.js` exécuté localement avec exit 0, Vercel `success` sur `61bf99078cfdbef968a66e981847f32e84ba74a2`.
 - Limite inchangée : le clone GitHub reste indisponible dans l'environnement (`Could not resolve host: github.com`), donc le lanceur complet n'a pas été réexécuté localement sur une copie fraîche ; aucune affirmation de passage complet de la suite n'est faite dans cette passe.
 - Aucun code de production, règle métier, permission, RLS, donnée, Import, Multi-chantier ou purge hebdomadaire n'a été modifié ; aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
+
+## 2026-08-22 — contrat de preview 00:16 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, `main` inchangé ; Supabase `railops` reste `ACTIVE_HEALTHY`. Le Security Advisor a été relu en lecture seule, sans appliquer de correction ni de migration.
+- Amélioration réversible : ajout de `tests/v150b2b-preview-contract.test.js` pour verrouiller le contrat technique de la preview : un seul build tag pour tous les adaptateurs, chaque script injecté une seule fois et dans l'ordre attendu, chargement frais de `index.html`, absence de référence directe aux migrations.
+- Le nouveau test est inclus dans `tests/run-v150b2b-checks.js`. Commits : `91e1a2c6308834a4df102e90a9a251da674d0d98` (`tests: lock preview adapter contract`) et `38ee6c06045ca4264aa8b35f710cd1593e190a4e` (`tests: include preview contract in local checks`).
+- Vérification fraîche : le test de contrat a été exécuté localement contre le `v150b2b-test.html` relu depuis la branche et renvoie `PASS: v150B-2B preview contract (150b2b10)`.
+- Aucun code de production, règle métier, permission, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Les points de sécurité déjà documentés restent volontairement en attente de validation humaine.
