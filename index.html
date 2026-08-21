@@ -969,27 +969,66 @@ select.fi{cursor:pointer}
     })).filter(x=>looksLikeBusinessRef(x.ref));
     try{localStorage.setItem(MANIFEST_KEY,JSON.stringify(mf));}catch(e){}
   }
+  // v138 : la vérification d'import doit refléter exactement ce que RailOps
+  // affichera après rechargement. Une ligne présente en base mais blacklistée
+  // dans deleted_ids n'est donc PAS considérée comme persistée.
+  async function importBlockedIds(){
+    const ids=new Set();
+    try{
+      if(typeof getDeleteQueue==='function'){
+        for(const id of (getDeleteQueue()||[])) if(id) ids.add(String(id));
+      }
+    }catch(e){}
+    try{
+      const {data,error}=await db.from('deleted_ids').select('*');
+      if(!error&&Array.isArray(data)){
+        for(const r of data){
+          const id=String(r?.id||r?.identifiant||'').trim();
+          if(id) ids.add(id);
+        }
+      }
+    }catch(e){console.warn('[RailOps v138] deleted_ids illisible pendant import',e);}
+    return ids;
+  }
+  function safeImportOccurrenceId(ref,chantierId,blocked){
+    const base=normRef(ref);
+    const used=new Set((S.mat||[]).map(m=>String(m?.id||'')).filter(Boolean));
+    // L'ID métier simple est réservé à la première occurrence.
+    if(!used.has(base)&&!blocked.has(base)) return base;
+    let id=technicalId(base,chantierId),n=1;
+    while(used.has(id)||blocked.has(id)){
+      id=base+MC_MARK+shortHash(chantierId+'|V138|'+(++n));
+    }
+    return id;
+  }
   async function verifyPersisted(expected){
     const list=(expected||[]).filter(x=>x?.ref&&x?.chantierId);
     if(!list.length) return {checked:false,total:0,present:0,missing:[]};
     try{
-      const {data,error}=await fetchAllMats();
+      const [{data,error},blocked]=await Promise.all([fetchAllMats(),importBlockedIds()]);
       if(error||!Array.isArray(data)) return {checked:false,total:list.length,present:0,missing:list};
-      const keys=new Set(data.map(m=>m.chantierId+'|'+businessRefOf(m)));
+      const keys=new Set(
+        data.filter(m=>m?.id&&!blocked.has(String(m.id)))
+            .map(m=>m.chantierId+'|'+businessRefOf(m))
+      );
       const missing=list.filter(x=>!keys.has(x.chantierId+'|'+normRef(x.ref)));
       return {checked:true,total:list.length,present:list.length-missing.length,missing};
     }catch(e){return {checked:false,total:list.length,present:0,missing:list};}
   }
   async function forceMissingOccurrences(missing){
     const created=[];
+    const blocked=await importBlockedIds();
     for(const x of (missing||[])){
       const ref=normRef(x.ref);
-      if(!ref||directOn(ref,x.chantierId)) continue;
+      if(!ref) continue;
+      // Ne considère comme valide qu'une occurrence réellement visible.
+      const already=(S.mat||[]).find(m=>m.chantierId===x.chantierId&&businessRefOf(m)===ref&&!blocked.has(String(m.id)));
+      if(already) continue;
       const src=allByRef(ref)[0] || x;
-      let id=ref;
-      if(S.mat.some(m=>m.id===id)) id=technicalId(ref,x.chantierId);
+      const id=safeImportOccurrenceId(ref,x.chantierId,blocked);
       const item=freshOccurrence({id:ref,nom:src.nom||x.nom||ref,cat:src.cat||x.cat||'Outillage',echeance:src.echeance||x.echeance||'',prix:src.prix??x.prix??null},x.chantierId,id);
       S.mat.push(item);created.push(item);
+      blocked.add(id);
     }
     if(created.length) await upsertMaterials(created);
     return created;
@@ -1515,6 +1554,41 @@ select.fi{cursor:pointer}
 
   window.RailOpsReferenceAudit={version:VERSION,reconcile,expected:expectedFromManifest,last:()=>window.__railopsLastReferenceAudit||null};
   console.info('[RailOps] Réconciliation références active —',VERSION);
+})();
+</script>
+<script id="railops-fix-step3e-import-native">
+/* RailOps v138 — ETAPE 3E
+   Le contrôle des doublons est désormais effectué dans le moteur d'import lui-même.
+   Ce garde-fou relance aussi l'audit après CHAQUE import, même si le manifeste
+   n'a pas changé, afin qu'un réimport identique puisse réparer une occurrence. */
+(function(){
+  'use strict';
+  const VERSION='138-step3e-import-native';
+  let lastSeen=Number(window._lastImport||0),busy=false;
+  async function auditAfterImport(){
+    const api=window.RailOpsReferenceAudit;
+    if(!api?.reconcile||busy) return;
+    busy=true;
+    try{
+      let r=await api.reconcile('v138-apres-import',true);
+      if(r?.remaining>0){
+        await new Promise(res=>setTimeout(res,900));
+        r=await api.reconcile('v138-apres-import-retry',true);
+      }
+      return r;
+    }finally{busy=false;}
+  }
+  const timer=setInterval(async()=>{
+    try{
+      const cur=Number(window._lastImport||0);
+      if(cur&&cur!==lastSeen&&!window._isImporting&&!window._importing){
+        lastSeen=cur;
+        await auditAfterImport();
+      }
+    }catch(e){console.warn('[RailOps v138] audit post-import',e);}
+  },900);
+  window.RailOpsImportNativeV138={version:VERSION,audit:auditAfterImport};
+  console.info('[RailOps] Import multi-chantier natif actif —',VERSION);
 })();
 </script>
 </body>
