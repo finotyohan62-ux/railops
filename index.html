@@ -645,5 +645,84 @@ console.info('[RailOps] moteur propre actif —',VERSION);
 })();
 
 </script>
+
+<script>
+(function(){
+  const VERSION='141-badges-libelles';
+  const getState=()=>{ try{return typeof S!=='undefined'?S:null;}catch(e){return null;} };
+  const getRows=()=> (getState()?.mat||[]);
+  const getChantiers=()=> (getState()?.chantiers||[]);
+  function rowItem(row){
+    const internal=(row.id||'').startsWith('ri-')?row.id.slice(3):'';
+    return getRows().find(x=>String(x.id)===internal)||null;
+  }
+  function visibleRef(m){
+    try{return (window.RailOpsStableV140?.businessRef?window.RailOpsStableV140.businessRef(m):(m?.reference||m?.id||''))||'';}catch(e){return String(m?.reference||m?.id||'');}
+  }
+  function localPathOf(cid){
+    const c=getChantiers().find(x=>x.id===cid); if(!c) return cid||'Chantier inconnu';
+    const p=c.parent_id?getChantiers().find(x=>x.id===c.parent_id):null;
+    return p?`${p.nom} › ${c.nom}`:(c.nom||cid);
+  }
+  function subtitleText(m){
+    const cat=String(m?.cat||'Outillage').trim();
+    const ref=visibleRef(m);
+    return ref ? `${cat} · ${ref}` : cat;
+  }
+  function candidateSubtitle(row,m){
+    const nodes=[...row.querySelectorAll('div,span,small,p')];
+    const id=String(m?.id||'');
+    const ref=String(visibleRef(m)||'');
+    const cat=String(m?.cat||'').trim();
+    let hit=nodes.find(el=>{const t=(el.textContent||'').trim(); return !!t && (t.includes(id) || t.includes('__MC__') || (ref && t.includes(ref)) || (cat && t.startsWith(cat+' · ')));});
+    if(hit) return hit;
+    const top=row.querySelector('.reg-top');
+    if(top){
+      const texts=[...top.querySelectorAll('div,span,small,p')].filter(el=>(el.textContent||'').trim());
+      if(texts.length>=2) return texts[1];
+    }
+    return null;
+  }
+  function paintBadgesAndLabels(){
+    try{ document.querySelectorAll('.ro-v141-mc').forEach(x=>x.remove()); }catch(e){}
+    const rows=document.querySelectorAll('.reg-item[id^="ri-"]');
+    for(const row of rows){
+      const m=rowItem(row); if(!m) continue;
+      const sub=candidateSubtitle(row,m);
+      if(sub) sub.textContent=subtitleText(m);
+      const ref=visibleRef(m);
+      let all=[];
+      try{ all=getRows().filter(x=> visibleRef(x)===ref); }catch(e){ all=[]; }
+      const loc=[...new Set(all.map(x=>x.chantierId).filter(Boolean))];
+      const others=loc.filter(cid=>cid!==m.chantierId).map(localPathOf);
+      if(!others.length) continue;
+      const anchor=row.querySelector('.reg-top') || row.firstElementChild || row;
+      const b=document.createElement('div');
+      b.className='ro-v140-mc ro-v141-mc';
+      b.textContent=`Multi-chantier · aussi sur ${[...new Set(others)].join(' · ')}`;
+      anchor.insertAdjacentElement('afterend',b);
+    }
+  }
+  function installObserver(){
+    if(window.__ro_v141_observer) return;
+    const root=document.getElementById('app') || document.body;
+    if(!root) return;
+    const obs=new MutationObserver(()=>{ clearTimeout(window.__ro_v141_t); window.__ro_v141_t=setTimeout(paintBadgesAndLabels,30); });
+    obs.observe(root,{childList:true,subtree:true});
+    window.__ro_v141_observer=obs;
+  }
+  try{
+    const oldRender=window.render;
+    if(typeof oldRender==='function' && !oldRender.__ro141){
+      const wrapped=function(){ const r=oldRender.apply(this,arguments); setTimeout(paintBadgesAndLabels,25); return r; };
+      wrapped.__ro141=true; window.render=wrapped;
+    }
+  }catch(e){}
+  setTimeout(()=>{installObserver(); paintBadgesAndLabels();},200);
+  setTimeout(()=>{installObserver(); paintBadgesAndLabels();},1200);
+  console.info('[RailOps] correctif badges/libellés actif —', VERSION);
+})();
+</script>
+
 </body>
 </html>
