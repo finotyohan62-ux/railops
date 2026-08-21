@@ -104,7 +104,9 @@
       const baseStatsFor=target.statsFor;
       target.statsFor=function(c){
         if(!ready())return baseStatsFor.apply(this,arguments);
-        return statsForState(stateOf(target),c);
+        const state=stateOf(target);
+        const ids=typeof target.descendants==='function'?target.descendants(c?.id):descendants(state,c?.id);
+        return aggregateChefChantierStats(state.chefChantierStats,ids);
       };
       installed=true;
     }
