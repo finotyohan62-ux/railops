@@ -39,7 +39,7 @@
 - Point bloquant identifié : `railops_upsert_material_admin(jsonb)` valide le chantier cible d'un Chef non Admin mais ne valide pas le chantier source lorsqu'un `id` existe déjà avant `ON CONFLICT(id) DO UPDATE`. Comme l'RPC est `SECURITY DEFINER`, un conflit d'identifiant hors scope pourrait écraser/déplacer une ligne d'un autre périmètre.
 - Autre point à décider : `saveChantier` conserve encore un chemin d'écriture directe, et la migration RLS stricte maintient des grants directs pour le supporter.
 - Documentation créée : `docs/v150b2b-write-scope-audit.md`.
-- Commit : `b290092632fbffc2f24a3eaf9594bba87b9366b1` (`docs: audit v150B2B write scope before strict RLS`).
+- Commit : `b290092632fbffc2f24a3eaf9594bba87b9366b1` (`docs: audit v150B-2B write scope before strict RLS`).
 - Aucune correction serveur/RLS appliquée : ce point est volontairement arrêté avant changement de sécurité ou de règle d'accès et nécessite validation explicite.
 
 ## 2026-08-21 — correction intégration Chef de chantier 21:57 Europe/Paris
@@ -62,3 +62,12 @@
 - Vérification : fichier relu depuis GitHub après commit ; syntaxe du lanceur vérifiée avec `node --check` (exit 0) ; Vercel `success` sur `dbb5c598700558f57802bbb8443690c749a16907`.
 - Limite de cette passe : le clone réseau GitHub est indisponible dans l'environnement d'exécution, donc le lanceur complet n'a pas pu être exécuté ici contre une copie locale fraîche du dépôt. Les tests individuels qu'il référence restent ceux déjà présents et vérifiés lors de la passe précédente.
 - Aucun point nécessitant une décision utilisateur supplémentaire n'a été introduit.
+
+## 2026-08-21 — invariants statiques de sécurité 23:13 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, base `main`, Vercel vert ; aucune action Supabase effectuée.
+- Amélioration réversible : ajout de `tests/v150b2b-static-invariants.test.js` pour détecter les régressions client évidentes (lecture/exposition de `users.mdp`, accès direct client à `users`, référence runtime à la migration RLS stricte, perte du chargement stats-only Chef de chantier ou mauvais ordre d'injection preview).
+- Le test a été ajouté au lanceur unifié `tests/run-v150b2b-checks.js`. Commits : `4e2a4318b8890b4f5d2d4f22eb3225c27a00d1e5` (`tests: add v150B-2B static safety invariants`) et `61bf99078cfdbef968a66e981847f32e84ba74a2` (`tests: include static safety invariants`).
+- Vérification fraîche : nouveaux fichiers relus depuis GitHub, `node --check tests/v150b2b-static-invariants.test.js` exécuté localement avec exit 0, Vercel `success` sur `61bf99078cfdbef968a66e981847f32e84ba74a2`.
+- Limite inchangée : le clone GitHub reste indisponible dans l'environnement (`Could not resolve host: github.com`), donc le lanceur complet n'a pas été réexécuté localement sur une copie fraîche ; aucune affirmation de passage complet de la suite n'est faite dans cette passe.
+- Aucun code de production, règle métier, permission, RLS, donnée, Import, Multi-chantier ou purge hebdomadaire n'a été modifié ; aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
