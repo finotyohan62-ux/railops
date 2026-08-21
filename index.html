@@ -660,6 +660,17 @@ console.info('[RailOps] moteur propre actif —',VERSION);
   const normSite=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'');
   const refOf=m=>{try{return window.RailOpsStableV140?.businessRef?.(m)||String(m?.reference||m?.id||'');}catch(e){return String(m?.reference||m?.id||'');}};
   function chantier(cid){return chantiers().find(c=>c.id===cid)||null;}
+  function activeTree142(cid){
+    let c=chantier(cid),seen=new Set();
+    while(c){
+      if(seen.has(String(c.id)))return false;seen.add(String(c.id));
+      const st=String(c.statut||'actif').toLowerCase();
+      if(st==='termine'||st==='terminé'||st==='archive'||st==='archivé'||st==='archivee'||st==='archivée')return false;
+      if(!c.parent_id)return true;
+      c=chantier(c.parent_id);
+    }
+    return false;
+  }
   function siteOf(cid){const c=chantier(cid);return normSite(c?.nom||c?.lieu||cid);}
   function pathOf142(cid){
     const c=chantier(cid);if(!c)return cid||'Chantier inconnu';
@@ -675,10 +686,11 @@ console.info('[RailOps] moteur propre actif —',VERSION);
     return n;
   }
   function destinationsFor(m){
+    if(!m||!activeTree142(m.chantierId))return [];
     const ref=refOf(m), currentSite=siteOf(m.chantierId);
     const bySite=new Map();
     for(const x of mats()){
-      if(x===m||refOf(x)!==ref||!x.chantierId)continue;
+      if(x===m||refOf(x)!==ref||!x.chantierId||!activeTree142(x.chantierId))continue;
       const sk=siteOf(x.chantierId);
       // Même site logique (ex. ancien LGV › VEMARS et CDG › VEMARS) : pas multi-chantier.
       if(!sk||sk===currentSite)continue;
@@ -1461,6 +1473,110 @@ const css=document.createElement('style');css.id='ro148-style';css.textContent=`
 
 window.RailOpsRole148={version:VERSION,masters:masterActive148,stats:stats148,open(id){if(!isCC148())return;const c=cById148(id);if(!c)return;S.curC=id;S.page='chantier_detail';render();},back(){S.curC=null;S.page='dashboard';render();}};
 console.info('[RailOps] vue Chef de chantier maîtres uniquement —',VERSION);
+})();
+</script>
+
+
+<script id="railops-v149-archive-obsoletes">
+(function(){
+'use strict';
+const VERSION='149-archivage-obsoletes-exclusion-globale';
+// Migration ponctuelle validée le 21/08/2026 : ces IDs sont les anciennes structures
+// confirmées comme obsolètes. Ce ne sont PAS des règles métier basées sur leurs noms.
+const CONFIRMED_OBSOLETE_ROOTS=['CH384853','CH3402791']; // LGV historique + chantier test "new"
+const MIGRATION_KEY='ro_v149_archived_confirmed_roots_v1';
+
+function state149(){try{return S||null;}catch(e){return null;}}
+function allC149(){return Array.isArray(state149()?.chantiers)?state149().chantiers:[];}
+function c149(id){return allC149().find(c=>String(c.id)===String(id))||null;}
+function inactiveStatus149(v){const s=String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();return s==='termine'||s==='archive'||s==='archivee';}
+function activeTree149(cid){
+  let c=c149(cid),seen=new Set();
+  while(c){
+    const id=String(c.id);if(seen.has(id))return false;seen.add(id);
+    if(inactiveStatus149(c.statut))return false;
+    if(!c.parent_id)return true;
+    c=c149(c.parent_id);
+  }
+  return false;
+}
+function descendants149(rootId){
+  const out=[],seen=new Set(),q=[String(rootId)];
+  while(q.length){const id=q.shift();if(seen.has(id))continue;seen.add(id);const c=c149(id);if(c)out.push(c);for(const x of allC149())if(String(x.parent_id||'')===id)q.push(String(x.id));}
+  return out;
+}
+function operationalIds149(){return new Set(allC149().filter(c=>activeTree149(c.id)).map(c=>String(c.id)));}
+function saveLocal149(){try{localStorage.setItem('ro3_c',JSON.stringify(allC149()));}catch(e){}}
+function notify149(msg,type='ok'){try{if(typeof toast==='function')toast(msg,type);}catch(e){}}
+
+async function persistArchive149(rows){
+  const errors=[];
+  for(const c of rows){
+    try{
+      const r=await db.from('chantiers').update({statut:'termine'}).eq('id',c.id);
+      if(r?.error)errors.push(`${c.nom||c.id}: ${r.error.message||r.error}`);
+    }catch(e){errors.push(`${c.nom||c.id}: ${e.message||e}`);}
+  }
+  return errors;
+}
+
+async function archiveConfirmed149(options={}){
+  const s=state149();if(!s||!allC149().length)return {changed:0,ids:[],errors:[]};
+  const rows=[];const seen=new Set();
+  for(const root of CONFIRMED_OBSOLETE_ROOTS){for(const c of descendants149(root)){if(seen.has(String(c.id)))continue;seen.add(String(c.id));if(!inactiveStatus149(c.statut))rows.push(c);}}
+  if(!rows.length){try{localStorage.setItem(MIGRATION_KEY,'done');}catch(e){}return {changed:0,ids:[...seen],errors:[]};}
+
+  // Optimistic local archive for immediate UI consistency; no material or scan is deleted.
+  const stamp=new Date().toISOString();
+  for(const c of rows){c.statut='termine';if(!c.dateTermine)c.dateTermine=stamp;}
+  saveLocal149();
+  const errors=await persistArchive149(rows);
+  if(errors.length){
+    console.warn('[RailOps v149] archivage partiel',errors);
+    notify149(`Archivage incomplet : ${errors.length} chantier(s) n'ont pas été confirmé(s) par la base.`,'danger');
+  }else{
+    try{localStorage.setItem(MIGRATION_KEY,'done');}catch(e){}
+    if(!options.silent)notify149(`${rows.length} ancienne(s) structure(s) archivée(s) · aucune donnée supprimée.`,'ok');
+  }
+  try{window.RailOpsDisplayV142?.apply?.();}catch(e){}
+  try{if(typeof render==='function')render();}catch(e){}
+  return {changed:rows.length,ids:rows.map(c=>c.id),errors};
+}
+
+// Operational hardening: a direct material/QR access may never reopen an archived branch.
+try{
+  const oldGetM149=typeof getM==='function'?getM:null;
+  if(oldGetM149){getM=function(id){const m=oldGetM149.call(this,id);if(!m)return null;if(state149()?.role==='admin')return m;return activeTree149(m.chantierId)?m:null;};window.getM=getM;}
+}catch(e){}
+try{
+  const oldOpenC149=typeof openC==='function'?openC:null;
+  if(oldOpenC149){openC=function(id){if(state149()?.role!=='admin'&&!activeTree149(id)){notify149('Ce chantier est archivé et n’est plus opérationnel.','danger');return;}return oldOpenC149.apply(this,arguments);};window.openC=openC;}
+}catch(e){}
+try{
+  const oldMatOfC149=typeof matOfC==='function'?matOfC:null;
+  if(oldMatOfC149){matOfC=function(cid){if(state149()?.role!=='admin'&&!activeTree149(cid))return [];return oldMatOfC149.apply(this,arguments);};window.matOfC=matOfC;}
+}catch(e){}
+
+// The Chef de chantier can only open active branches, including through the v148 helper object.
+try{
+  if(window.RailOpsRole148){
+    const oldOpenObj149=window.RailOpsRole148.open;
+    window.RailOpsRole148.open=function(id){if(!activeTree149(id)){notify149('Ce chantier est archivé.','danger');return;}return oldOpenObj149?.call(this,id);};
+  }
+}catch(e){}
+
+// Archive after every successful load so Supabase is the authority and old local caches cannot revive these roots.
+try{
+  const oldLoad149=load;
+  load=async function(){const r=await oldLoad149.apply(this,arguments);await archiveConfirmed149({silent:true});return r;};
+  window.load=load;
+}catch(e){}
+
+window.RailOpsArchive149={version:VERSION,activeTree:activeTree149,operationalIds:operationalIds149,archiveConfirmed:()=>archiveConfirmed149({silent:false}),roots:[...CONFIRMED_OBSOLETE_ROOTS]};
+setTimeout(()=>archiveConfirmed149({silent:true}),500);
+setTimeout(()=>archiveConfirmed149({silent:true}),1600);
+setTimeout(()=>archiveConfirmed149({silent:true}),4000);
+console.info('[RailOps] archivage obsolètes + exclusion opérationnelle actif —',VERSION);
 })();
 </script>
 
