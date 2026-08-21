@@ -9,22 +9,33 @@
 - [x] Agent : écriture état terrain autorisée, métadonnées/création matériel bloquées (test transactionnel rollbacké).
 - [x] CTE : écriture état terrain autorisée, métadonnées/création matériel bloquées (test transactionnel rollbacké).
 - [x] Chef de chantier : accès/écriture matériel bloqués (test transactionnel rollbacké).
-- [x] Propriétaire Admin : accès global conservé (test transactionnel rollbacké).
+- [x] Propriétaire : rôle métier `chef` conservé et privilège `is_admin=true` séparé.
+- [x] Propriétaire en mode Chef : périmètre serveur validé à 9 chantiers / 740 matériels.
+- [x] Propriétaire en mode Administration : périmètre serveur global validé à 22 chantiers / 1689 matériels.
 - [x] Chef de chantier : RPC lecture renvoie 0 matériel/scan et statistiques d'arbre uniquement.
 - [x] Suppressions serveur : tombstones nouveaux cloisonnés par `chantier_id`; anciens tombstones conservés.
 - [x] Build locale complète : 18 scripts JavaScript, 0 erreur `node --check`.
 - [x] Build locale complète : 0 occurrence insensible à la casse de `sferis`.
 
-## Test 1 — Propriétaire Admin
+## Test 1 — Propriétaire (Chef par défaut + Administration explicite)
 
-- [ ] Connexion avec les identifiants habituels.
-- [ ] Dashboard et tous les chantiers disponibles.
+### Mode Chef — validé fonctionnellement
+
+- [x] Connexion avec les identifiants habituels ouvre le mode Chef.
+- [x] Le propriétaire retrouve uniquement son périmètre métier attendu.
+- [x] L'interface Chef habituelle reste utilisable.
+
+### Mode Administration — à valider explicitement
+
+- [ ] Le bouton `Administration` bascule vers le périmètre global.
+- [ ] Dashboard et tous les chantiers globaux disponibles uniquement dans ce mode.
 - [ ] Gestion comptes accessible.
 - [ ] Modifier temporairement un rôle/badge de compte de test puis remettre sa valeur.
 - [ ] Catalogue prix lisible et modifiable.
-- [ ] Import registre possible.
+- [ ] Import registre possible dans le contexte prévu.
 - [ ] Suppression d'une référence de TEST crée une suppression persistante.
-- [ ] Déconnexion / reconnexion OK.
+- [ ] Le bouton `← Mode Chef` revient au périmètre métier sans reconnexion.
+- [ ] Déconnexion / reconnexion revient bien en mode Chef par défaut.
 
 ## Test 2 — Chef non propriétaire
 
