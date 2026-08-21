@@ -1,0 +1,40 @@
+name: Apply RailOps auth patch
+
+on:
+  push:
+    paths:
+      - '.github/workflows/railops-auth-fix-v2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject auth patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          t=p.read_text(encoding='utf-8')
+          marker='railops-v153-auth-session-fix'
+          if marker not in t:
+              js='''\n<script id="railops-v153-auth-session-fix">\n(function(){\n'use strict';\nconst VERSION='153-auth-session-fix';\nasync function railopsAuthenticatedLogin(){\n  const login=String(document.getElementById('ln')?.value||'').trim();\n  const password=String(document.getElementById('lp')?.value||'');\n  if(!login||!password){toast('Veuillez renseigner votre nom ou badge et votre mot de passe','danger');return;}\n  const btn=document.querySelector('#app button[onclick*="doLogin"]');\n  const oldText=btn?.textContent||'';\n  if(btn){btn.disabled=true;btn.textContent='Connexion…';}\n  try{\n    const {data,error}=await db.functions.invoke('railops-auth-bridge',{body:{login,password}});\n    if(error||!data?.ok||!data?.session?.access_token||!data?.session?.refresh_token){\n      console.warn('[RailOps auth]',error||data?.code||'AUTH_FAILED');\n      toast('Identifiant ou mot de passe incorrect','danger');return;\n    }\n    const {error:sessionError}=await db.auth.setSession({access_token:data.session.access_token,refresh_token:data.session.refresh_token});\n    if(sessionError)throw sessionError;\n    const {data:authCheck,error:authError}=await db.auth.getUser();\n    if(authError||!authCheck?.user)throw authError||new Error('Session Supabase non établie');\n    const profile=data.profile||{};\n    if(!profile.nom||!profile.role)throw new Error('Profil RailOps incomplet');\n    localStorage.removeItem('ro3_c');localStorage.removeItem('ro3_m');localStorage.removeItem('ro3_u');\n    S.agent=profile.nom;S.role=profile.role;S.page='dashboard';\n    localStorage.setItem('ro3_a',JSON.stringify({agent:S.agent,role:S.role}));\n    await load();render();setupRealtime();setTimeout(flushOfflineQueue,2000);\n  }catch(err){console.error('[RailOps auth] connexion impossible',err);toast('Connexion impossible. Réessayez dans quelques instants.','danger');}\n  finally{if(btn&&document.contains(btn)){btn.disabled=false;btn.textContent=oldText||'Se connecter';}}\n}\ndoLogin=railopsAuthenticatedLogin;\nwindow.RailOpsAuthFix={version:VERSION,login:railopsAuthenticatedLogin};\nconsole.info('[RailOps] Correctif Auth actif —',VERSION);\n})();\n</script>\n'''
+              pos=t.lower().rfind('</body>')
+              if pos<0: raise SystemExit('missing body close')
+              t=t[:pos]+js+'\n'+t[pos:]
+              p.write_text(t,encoding='utf-8')
+          if t.count('id="railops-v153-auth-session-fix"') != 1: raise SystemExit('bad patch count')
+          if "db.functions.invoke('railops-auth-bridge'" not in t: raise SystemExit('bridge missing')
+          if 'db.auth.setSession' not in t: raise SystemExit('setSession missing')
+          print('RailOps auth patch ready')
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'railops-bot'
+          git config user.email 'railops-bot@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix: use Supabase Auth bridge for login' || exit 0
+          git push
