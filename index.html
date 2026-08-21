@@ -1580,5 +1580,120 @@ console.info('[RailOps] archivage obsolètes + exclusion opérationnelle actif �
 })();
 </script>
 
+
+
+<script id="railops-v150a-auth-transition">
+(function(){
+'use strict';
+const VERSION='150A-transition-auth';
+const BRIDGE='railops-auth-bridge';
+const oldDoLogin150=typeof doLogin==='function'?doLogin:null;
+const oldDoLogout150=typeof doLogout==='function'?doLogout:null;
+const oldDoInscription150=typeof doInscription==='function'?doInscription:null;
+
+function notify150(msg,type='info'){try{if(typeof toast==='function')toast(msg,type);}catch(e){}}
+function adminLogin150(){try{return atob(a0ax(0x356));}catch(e){return null;}}
+function clearAppSession150(){
+  try{localStorage.removeItem('ro3_a');}catch(e){}
+  try{S.agent=null;S.role=null;S.page='login';S.modal=null;S.curC=null;S.curM=null;}catch(e){}
+}
+async function finishBusinessLogin150(profile,session,migrated){
+  const {error:setErr}=await db.auth.setSession({access_token:session.access_token,refresh_token:session.refresh_token});
+  if(setErr)throw setErr;
+  try{localStorage.removeItem('ro3_c');localStorage.removeItem('ro3_m');localStorage.removeItem('ro3_u');}catch(e){}
+  S.agent=profile.nom;
+  S.role=profile.role;
+  S.page='dashboard';
+  localStorage.setItem('ro3_a',JSON.stringify({agent:S.agent,role:S.role,auth:true,userId:profile.id}));
+  await load();
+  render();
+  try{setupRealtime();}catch(e){}
+  try{setTimeout(flushOfflineQueue,1250);}catch(e){}
+  if(migrated)notify150('Compte sécurisé avec Supabase Auth ✓','ok');
+}
+
+async function secureLogin150(login,password){
+  const {data,error}=await db.functions.invoke(BRIDGE,{body:{login,password}});
+  if(error){
+    console.error('[RailOps v150A] bridge indisponible',error);
+    throw new Error('BRIDGE_UNAVAILABLE');
+  }
+  if(!data?.ok||!data?.session||!data?.profile)throw new Error(data?.code||'AUTH_FAILED');
+  await finishBusinessLogin150(data.profile,data.session,!!data.migrated);
+}
+
+if(oldDoLogin150){
+  doLogin=async function(){
+    const login=document.getElementById('ln')?.value?.trim();
+    const password=document.getElementById('lp')?.value||'';
+    if(!login||!password){notify150('Veuillez renseigner vos identifiants.','danger');return;}
+
+    // L'Admin propriétaire reste volontairement sur le mécanisme historique
+    // pendant la Phase A. Il sera migré séparément avant les RLS stricts.
+    if(adminLogin150()&&login===adminLogin150()){
+      try{await db.auth.signOut();}catch(e){}
+      return oldDoLogin150.apply(this,arguments);
+    }
+
+    const btn=document.querySelector('#login button,button[onclick="doLogin()"]');
+    if(btn){btn.disabled=true;btn.dataset.ro150Old=btn.textContent||'';btn.textContent='Connexion sécurisée…';}
+    try{
+      await secureLogin150(login,password);
+    }catch(e){
+      if(String(e?.message)==='BRIDGE_UNAVAILABLE'){
+        notify150('Passerelle Supabase Auth non installée. Revenez à la v149 jusqu’au déploiement de la fonction v150A.','danger');
+      }else{
+        notify150('Identifiant ou mot de passe incorrect.','danger');
+      }
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent=btn.dataset.ro150Old||'Se connecter';delete btn.dataset.ro150Old;}
+    }
+  };
+  window.doLogin=doLogin;
+}
+
+if(oldDoLogout150){
+  doLogout=async function(){
+    try{await db.auth.signOut();}catch(e){}
+    return oldDoLogout150.apply(this,arguments);
+  };
+  window.doLogout=doLogout;
+}
+
+if(oldDoInscription150){
+  doInscription=async function(){
+    await oldDoInscription150.apply(this,arguments);
+    // L'ancien formulaire est conservé pendant la transition. Un nouveau compte
+    // doit repasser par l'écran de connexion afin d'être créé dans Supabase Auth.
+    if(S?.agent&&S?.role&&S.role!=='admin'){
+      try{await db.auth.signOut();}catch(e){}
+      const who=S.agent;
+      clearAppSession150();
+      render();
+      notify150(`Compte ${who} créé. Reconnectez-vous une fois pour sécuriser le compte.`,'ok');
+    }
+  };
+  window.doInscription=doInscription;
+}
+
+// Une ancienne session locale ne doit pas permettre à un compte métier de
+// contourner la migration Auth. On force simplement une reconnexion une fois.
+setTimeout(async()=>{
+  try{
+    if(!S?.agent||S?.role==='admin'||S?.page==='login'||S?.page==='inscription')return;
+    const {data}=await db.auth.getSession();
+    if(!data?.session){
+      clearAppSession150();
+      render();
+      notify150('Reconnectez-vous pour sécuriser votre compte RailOps.','info');
+    }
+  }catch(e){console.warn('[RailOps v150A] contrôle session',e);}
+},600);
+
+window.RailOpsAuthV150={version:VERSION,bridge:BRIDGE,phase:'A'};
+console.info('[RailOps] v150A — transition Supabase Auth chargée');
+})();
+</script>
+
 </body>
 </html>
