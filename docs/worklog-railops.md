@@ -79,3 +79,11 @@
 - Le nouveau test est inclus dans `tests/run-v150b2b-checks.js`. Commits : `91e1a2c6308834a4df102e90a9a251da674d0d98` (`tests: lock preview adapter contract`) et `38ee6c06045ca4264aa8b35f710cd1593e190a4e` (`tests: include preview contract in local checks`).
 - Vérification fraîche : le test de contrat a été exécuté localement contre le `v150b2b-test.html` relu depuis la branche et renvoie `PASS: v150B-2B preview contract (150b2b10)`.
 - Aucun code de production, règle métier, permission, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Les points de sécurité déjà documentés restent volontairement en attente de validation humaine.
+
+## 2026-08-22 — couverture du lanceur de vérifications 01:14 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, base `main` inchangée ; Supabase `railops` `ACTIVE_HEALTHY`. Security Advisor relu en lecture seule, sans migration ni modification de droits/RLS.
+- Amélioration réversible : ajout de `tests/v150b2b-runner-coverage.test.js`, qui vérifie que chaque module JavaScript chargé par `v150b2b-test.html` est bien présent dans les contrôles de syntaxe du lanceur agrégé et que ce garde-fou est lui-même exécuté par le lanceur.
+- Cycle rouge/vert vérifié localement : le nouveau test échouait d'abord car il n'était pas référencé par `tests/run-v150b2b-checks.js`, puis passe après son ajout (`PASS: aggregate runner covers 7 preview JavaScript modules`).
+- Commits : `434fb953d52d839f54905ccf08b472ff28ec7fc3` (`tests: guard aggregate preview check coverage`) et `1896a4a41509f09711660ea20c72c438d0178b1a` (`tests: include aggregate runner coverage guard`).
+- Aucun code de production, règle métier, permission, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
