@@ -290,6 +290,11 @@ select.fi{cursor:pointer}
       const row=Array.isArray(rows[r])?rows[r]:[];
       const rawRef=String(row[a.refCol] ?? '').trim();
       if(!rawRef || /^[📍📦↩]/u.test(rawRef)) continue;
+      // v143 : les lignes de séparation du registre (ex. "PERCHE 4NRJ BAMBOU (20 articles)")
+      // ne sont jamais des références. On ne les ignore que si les autres colonnes sont vides.
+      const otherCells=row.filter((_,idx)=>idx!==a.refCol).map(v=>String(v??'').trim());
+      const isSectionTitle=/^.+\(\s*\d+\s+articles?\s*\)\s*$/i.test(rawRef) && otherCells.every(v=>!v);
+      if(isSectionTitle) continue;
       const id=roNormalizeRef(rawRef);
       if(!id) continue;
 
@@ -723,6 +728,56 @@ console.info('[RailOps] moteur propre actif —',VERSION);
   setTimeout(apply,150);setTimeout(apply,1000);
   window.RailOpsDisplayV142={version:VERSION,apply,destinationsFor};
   console.info('[RailOps] affichage multi-chantier corrigé —',VERSION);
+})();
+</script>
+
+
+<script id="railops-v143-lison-cleanup">
+(function(){
+  const VERSION='143-lison-titres';
+  function state(){try{return typeof S!=='undefined'?S:null;}catch(e){return null;}}
+  function norm(v){return String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'');}
+  function isSectionMaterial(m){
+    if(!m) return false;
+    const raw=String(m.nom||m.id||'').trim();
+    const rawId=String(m.id||'').trim();
+    // Les anciens imports ont supprimé les espaces mais gardé (Narticle[s]).
+    const title=/^.+\(\s*\d+\s*articles?\s*\)$/i;
+    if(!(title.test(raw)||title.test(rawId))) return false;
+    // Sécurité : uniquement les pseudo-articles sans historique ni état utile.
+    return !m.scan && !m.verifLundi && !m.verifSemaine && !m.controle2m && (m.presence||'non-confirme')==='non-confirme' && (m.etat||'inconnu')==='inconnu';
+  }
+  function getLison(){const s=state();return (s?.chantiers||[]).find(c=>norm(c.nom)==='DPI3053LISON'||c.id==='CH624773')||null;}
+  function candidates(){const s=state(),c=getLison();if(!s||!c)return[];return (s.mat||[]).filter(m=>m.chantierId===c.id&&isSectionMaterial(m));}
+  async function clean(){
+    const s=state(),c=getLison(),list=candidates(); if(!s||!c||!list.length)return {removed:0,errors:[]};
+    const errors=[]; let removed=0;
+    for(const m of list){
+      try{
+        const {error}=await db.from('materiels').delete().eq('id',m.id);
+        if(error) throw error;
+        s.mat=s.mat.filter(x=>x.id!==m.id);
+        removed++;
+      }catch(e){errors.push(`${m.id}: ${e.message||e}`);}
+    }
+    try{localStorage.setItem('ro3_m',JSON.stringify(s.mat));}catch(e){}
+    try{if(typeof render==='function')render();}catch(e){}
+    return {removed,errors};
+  }
+  function offer(){
+    if(document.getElementById('ro-v143-lison-clean'))return;
+    const list=candidates(); if(!list.length)return;
+    const c=getLison();
+    const d=document.createElement('div');d.id='ro-v143-lison-clean';d.className='moverlay';
+    const preview=list.slice(0,6).map(m=>`<div style="font-size:11px;padding:3px 0">• ${String(m.nom||m.id)}</div>`).join('');
+    d.innerHTML=`<div class="msheet"><div class="mhandle"></div><div style="font-size:18px;font-weight:600">Nettoyage Lison</div><div style="font-size:12px;color:var(--text2);margin:6px 0 12px">${list.length} ligne(s) de titre du registre ont été importées comme articles sur <strong>${c.nom}</strong>.</div><div style="background:var(--bg3);border-radius:10px;padding:10px 12px;margin-bottom:12px">${preview}${list.length>6?`<div style="font-size:11px;color:var(--text2);padding-top:4px">… et ${list.length-6} autre(s)</div>`:''}</div><div style="font-size:11px;color:var(--text2);margin-bottom:12px">Aucune vraie référence, vérification ou scan ne sera supprimé. DSH391 n'est pas concerné par cette étape.</div><button id="ro-v143-clean-go" class="btn btn-accent">Nettoyer ${list.length} faux article(s)</button><button class="btn btn-outline" style="margin-top:8px" onclick="document.getElementById('ro-v143-lison-clean').remove()">Plus tard</button></div>`;
+    document.getElementById('app')?.appendChild(d);
+    document.getElementById('ro-v143-clean-go').onclick=async()=>{const b=document.getElementById('ro-v143-clean-go');b.disabled=true;b.textContent='Nettoyage…';const r=await clean();d.remove();if(r.errors.length)toast(`${r.removed} nettoyé(s), ${r.errors.length} erreur(s)`,'danger');else toast(`${r.removed} faux article(s) Lison supprimé(s) ✓`,'ok');};
+  }
+  setTimeout(offer,1200);
+  try{const oldLoad=load;load=async function(){const r=await oldLoad.apply(this,arguments);setTimeout(offer,900);return r;};}catch(e){}
+  window.RailOpsLisonV143={version:VERSION,candidates,clean,offer};
+  console.info('[RailOps] correctif Lison actif —',VERSION);
 })();
 </script>
 
