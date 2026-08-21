@@ -728,7 +728,7 @@ select.fi{cursor:pointer}
 
 
 <script id="railops-fix-step3-multichantier">
-/* RailOps v134 — ETAPE 3 : multi-chantier persistant.
+/* RailOps v135 — ETAPE 3B : multi-chantier réellement persistant.
    - Une référence peut exister dans plusieurs chantiers sans être déplacée.
    - Chaque occurrence chantier possède sa propre vérification hebdomadaire.
    - Les occurrences supplémentaires ont un ID technique invisible dans l'interface.
@@ -736,7 +736,7 @@ select.fi{cursor:pointer}
    - Ne modifie pas la purge hebdomadaire. */
 (function(){
   'use strict';
-  const VERSION='134-step3-multichantier';
+  const VERSION='135-step3b-multichantier-reel';
   const MC_MARK='__MC__';
 
   function normRef(v){
@@ -790,21 +790,65 @@ select.fi{cursor:pointer}
     return c.nom || chantierId;
   }
   function instanceLocations(ref){
-    const ids=new Set(allByRef(ref).map(m=>m.chantierId).filter(Boolean));
-    // Compatibilité avec les anciennes associations locales, sans créer de doublon visuel.
+    // v135 : une pastille Multi-chantier n'est affichée que pour des occurrences
+    // réellement présentes dans S.mat / Supabase. Les anciennes liaisons locales
+    // ro3_mc / ro3_ext ne sont plus considérées comme une preuve de présence.
+    return [...new Set(allByRef(ref).map(m=>m.chantierId).filter(Boolean))];
+  }
+
+  async function repairLegacyMultiLinks(){
+    if(window.__railopsMcRepairing) return {created:0,skipped:0};
+    if(!Array.isArray(S?.mat)||!Array.isArray(S?.chantiers)||!S.mat.length||!S.chantiers.length) return {created:0,skipped:0};
+    window.__railopsMcRepairing=true;
+    let created=0,skipped=0;
     try{
-      const mc=JSON.parse(localStorage.getItem('ro3_mc')||'{}');
-      for(const [key,arr] of Object.entries(mc)){
-        if(canonicalRef(key)===normRef(ref)) (arr||[]).forEach(id=>ids.add(id));
+      let mc={},ext={};
+      try{mc=JSON.parse(localStorage.getItem('ro3_mc')||'{}')||{};}catch(e){}
+      try{ext=JSON.parse(localStorage.getItem('ro3_ext')||'{}')||{};}catch(e){}
+
+      // Sauvegarde de secours avant migration. On ne jette donc aucune ancienne liaison.
+      try{if(!localStorage.getItem('ro3_mc_backup_v135')) localStorage.setItem('ro3_mc_backup_v135',JSON.stringify(mc));}catch(e){}
+      try{if(!localStorage.getItem('ro3_ext_backup_v135')) localStorage.setItem('ro3_ext_backup_v135',JSON.stringify(ext));}catch(e){}
+
+      const validChantiers=new Set(S.chantiers.map(c=>c.id).filter(Boolean));
+      const wanted=new Map();
+      const want=(ref,cid)=>{
+        const r=normRef(ref);if(!r||!cid||!validChantiers.has(cid))return;
+        if(!wanted.has(r))wanted.set(r,new Set());
+        wanted.get(r).add(cid);
+      };
+
+      // Les occurrences déjà persistantes servent de point de départ.
+      for(const m of S.mat) want(canonicalRef(m.id),m.chantierId);
+      // Ancien format ro3_mc : {reference/id: [chantierId, ...]}
+      for(const [ref,cids] of Object.entries(mc)) for(const cid of (Array.isArray(cids)?cids:[])) want(ref,cid);
+      // Ancien format ro3_ext : {chantierId: [reference/id, ...]}
+      for(const [cid,refs] of Object.entries(ext)) for(const ref of (Array.isArray(refs)?refs:[])) want(ref,cid);
+
+      const inserts=[];
+      for(const [ref,cids] of wanted){
+        const actual=allByRef(ref);
+        if(!actual.length){skipped++;continue;}
+        const src=actual.slice().sort((a,b)=>{
+          const score=x=>(x.scan?4:0)+(x.verifLundi?3:0)+(x.verifSemaine?3:0)+(x.controle2m?2:0)+(x.etat&&x.etat!=='inconnu'?1:0);
+          return score(b)-score(a);
+        })[0];
+        for(const cid of cids){
+          if(directOn(ref,cid)) continue;
+          const id=technicalId(ref,cid);
+          const copy=freshOccurrence({id:ref,nom:src.nom||ref,cat:src.cat||'Outillage',echeance:src.echeance||'',prix:src.prix??null},cid,id);
+          S.mat.push(copy);inserts.push(copy);created++;
+        }
       }
-    }catch(e){}
-    try{
-      const ext=JSON.parse(localStorage.getItem('ro3_ext')||'{}');
-      for(const [cid,arr] of Object.entries(ext)){
-        if((arr||[]).some(id=>canonicalRef(id)===normRef(ref))) ids.add(cid);
-      }
-    }catch(e){}
-    return [...ids];
+
+      if(inserts.length) await upsertMaterials(inserts);
+      try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
+      // Après migration, les anciennes tables locales ne pilotent plus l'affichage.
+      // Les backups v135 restent disponibles pour retour arrière/diagnostic.
+      try{localStorage.setItem('ro3_mc','{}');}catch(e){}
+      try{localStorage.setItem('ro3_ext','{}');}catch(e){}
+      return {created,skipped};
+    }finally{window.__railopsMcRepairing=false;}
   }
   function stripTechnicalIds(root=document){
     if(!root || typeof document==='undefined') return;
@@ -1116,7 +1160,27 @@ select.fi{cursor:pointer}
   ensureStyle();
   setTimeout(decorateMultiBadges,0);
   window.RailOpsMultiChantier={version:VERSION,canonicalRef,allByRef,pathForChantier,technicalId,decorate:decorateMultiBadges};
-  console.info('[RailOps] Correctif multi-chantier actif —',VERSION);
+  // Migration automatique des anciennes liaisons locales vers de vraies occurrences.
+  // On attend que le chargement Supabase soit terminé afin de ne pas créer de faux doublons.
+  let __mcRepairTry=0;
+  const __mcRepairTimer=setInterval(async()=>{
+    __mcRepairTry++;
+    if(Array.isArray(S?.chantiers)&&S.chantiers.length&&Array.isArray(S?.mat)&&S.mat.length){
+      clearInterval(__mcRepairTimer);
+      try{
+        const r=await repairLegacyMultiLinks();
+        if(r.created){
+          render();
+          setTimeout(decorateMultiBadges,0);
+          toast(r.created+' liaison(s) multi-chantier restaurée(s) ✓','ok');
+        }else setTimeout(decorateMultiBadges,0);
+        console.info('[RailOps v135] Migration multi-chantier',r);
+      }catch(e){console.warn('[RailOps v135] Migration multi-chantier impossible',e);}
+    }else if(__mcRepairTry>=30) clearInterval(__mcRepairTimer);
+  },500);
+
+  window.RailOpsMultiChantier.repairLegacy=repairLegacyMultiLinks;
+  console.info('[RailOps] Correctif multi-chantier réel actif —',VERSION);
 })();
 
 </script>
