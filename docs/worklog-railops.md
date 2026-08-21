@@ -53,3 +53,12 @@
 - Contrôle Supabase lecture seule : les 9 chantiers actifs totalisent actuellement 740 matériels et `retired_count=0`, donc le RPC et l'ancien calcul donnent aujourd'hui le même total sur ce point. Le RPC ne filtre toutefois pas encore explicitement `presence='retire'`; aucune migration serveur n'a été appliquée pour corriger ce cas latent.
 - Commits principaux de cette correction : `5fb38c033f301aa2969bc42f973178c2444982e1` (test rouge), `43d45b7132b77a44c50d7727add9453ace2ec7f6` (chargement stats-only), `cb03eb07f55b839a16455cf93b628f111a84c9ea` puis `df1a7ff124aa1d486f1ff723e01527505c51cb47` (rendu sécurisé + contrat legacy), avec build preview `150b2b10` via `e3861c0f72f684c10c037783c8f202dc357a9592` / `4f82c68a22a69f06045554fddf44c42317b34fc7`.
 - À valider humainement : connexion réelle Chef de chantier sur la preview pour confirmer visuellement les compteurs, la navigation maître/sous-chantier et l'absence totale de références/QR/scans. La fermeture RLS reste interdite avant les smoke-tests complets.
+
+## 2026-08-21 — vérifications locales unifiées 22:15 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, base `main`, dernier déploiement Vercel vert ; aucune action Supabase ni modification de `main`.
+- Amélioration réversible : ajout de `tests/run-v150b2b-checks.js`, un lanceur unique qui enchaîne les quatre tests Node existants puis `node --check` sur les sept adaptateurs v150B-2B. Aucun code de production, comportement métier, permission, Import, Multi-chantier ou purge hebdomadaire modifié.
+- Commit : `dbb5c598700558f57802bbb8443690c749a16907` (`tests: add unified v150B-2B verification runner`).
+- Vérification : fichier relu depuis GitHub après commit ; syntaxe du lanceur vérifiée avec `node --check` (exit 0) ; Vercel `success` sur `dbb5c598700558f57802bbb8443690c749a16907`.
+- Limite de cette passe : le clone réseau GitHub est indisponible dans l'environnement d'exécution, donc le lanceur complet n'a pas pu être exécuté ici contre une copie locale fraîche du dépôt. Les tests individuels qu'il référence restent ceux déjà présents et vérifiés lors de la passe précédente.
+- Aucun point nécessitant une décision utilisateur supplémentaire n'a été introduit.
