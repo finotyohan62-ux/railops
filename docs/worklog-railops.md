@@ -31,3 +31,13 @@
 - Déploiement preview : Vercel `success` sur `449366e22510a3420e8b870d2ad09bcff81171da`.
 - Garde-fous respectés : aucune donnée Supabase, migration, policy, RLS, règle de rôle, Import, Multi-chantier ou purge hebdomadaire modifiés ; `main` n'a pas été fusionné.
 - À valider humainement plus tard : connexion réelle Chef de chantier sur la preview pour confirmer visuellement les compteurs et l'absence totale de références/QR/scans.
+
+## 2026-08-21 — audit scope d'écriture 21:55 Europe/Paris
+
+- Audit en lecture seule de la couche d'écriture, du mode propriétaire, des tombstones et de la migration RLS stricte préparée.
+- Constat : les lectures propriétaire distinguent bien Chef/Admin, mais plusieurs écritures continuent à traiter `is_admin=true` comme privilège global. Cela nécessite de décider si le mode Chef est seulement un mode d'interface ou s'il doit aussi borner les écritures serveur du propriétaire.
+- Point bloquant identifié : `railops_upsert_material_admin(jsonb)` valide le chantier cible d'un Chef non Admin mais ne valide pas le chantier source lorsqu'un `id` existe déjà avant `ON CONFLICT(id) DO UPDATE`. Comme l'RPC est `SECURITY DEFINER`, un conflit d'identifiant hors scope pourrait écraser/déplacer une ligne d'un autre périmètre.
+- Autre point à décider : `saveChantier` conserve encore un chemin d'écriture directe, et la migration RLS stricte maintient des grants directs pour le supporter.
+- Documentation créée : `docs/v150b2b-write-scope-audit.md`.
+- Commit : `b290092632fbffc2f24a3eaf9594bba87b9366b1` (`docs: audit v150B2B write scope before strict RLS`).
+- Aucune correction serveur/RLS appliquée : ce point est volontairement arrêté avant changement de sécurité ou de règle d'accès et nécessite validation explicite.
