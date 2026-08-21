@@ -13,9 +13,12 @@
 - [x] Propriétaire en mode Chef : périmètre serveur validé à 9 chantiers / 740 matériels.
 - [x] Propriétaire en mode Administration : périmètre serveur global validé à 22 chantiers / 1689 matériels.
 - [x] Chef de chantier : RPC lecture renvoie 0 matériel/scan et statistiques d'arbre uniquement.
+- [x] Chef de chantier : adaptateur de rendu testé — agrège uniquement les lignes statistiques serveur du maître + descendants et laisse les autres rôles inchangés (`node tests/v150b2b-chef-chantier-stats.test.js`).
+- [x] Harness preview : neutralisation legacy fail-closed testée et câblage des adaptateurs vérifié (`node tests/v150b2b-harness-core.test.js` + `node tests/v150b2b-harness.test.js`).
 - [x] Suppressions serveur : tombstones nouveaux cloisonnés par `chantier_id`; anciens tombstones conservés.
 - [x] Build locale complète : 18 scripts JavaScript, 0 erreur `node --check`.
 - [x] Build locale complète : 0 occurrence insensible à la casse de `sferis`.
+- [x] Preview Vercel verte après câblage de l'adaptateur Chef de chantier (build `150b2b9`).
 
 ## Test 1 — Propriétaire (Chef par défaut + Administration explicite)
 
@@ -64,7 +67,7 @@
 
 ## Test 5 — Chef de chantier
 
-- [ ] Voit les maîtres actifs et sous-chantiers statistiques.
+- [ ] Voit les maîtres actifs et sous-chantiers statistiques avec des compteurs non nuls cohérents avec les statistiques serveur.
 - [ ] Voit l'avancement global des vérifications.
 - [ ] Ne voit aucune référence matérielle.
 - [ ] Ne voit aucun QR / détail / scan individuel.
