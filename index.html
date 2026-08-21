@@ -420,1408 +420,230 @@ select.fi{cursor:pointer}
 })();
 </script>
 
-<script id="railops-fix-step2-dpi-master">
-/* RailOps v133 — ETAPE 2 : import hiérarchique stable pour registres type DPI.
-   - INVENTAIRE = source de vérité pour l'affectation actuelle.
-   - Réutilise le chantier maître et les sous-chantiers existants.
-   - Ne supprime aucune référence absente du nouvel inventaire.
-   - Ne modifie pas la purge hebdomadaire des vérifications. */
+<script id="railops-v140-clean-engine">
+/* RailOps v140 — base propre v132 + moteur unique multi-chantier
+   - 1 seule occurrence par référence métier et par chantier/sous-chantier
+   - même référence autorisée sur plusieurs chantiers
+   - import DPI: INVENTAIRE = source de vérité
+   - dédoublonnage contrôlé des doublons techniques existants
+   - aucune modification de la purge hebdomadaire des vérifications
+*/
 (function(){
-  'use strict';
-  const VERSION='133-step2-dpi';
-  const previousImportCSV=importCSV;
+'use strict';
+const VERSION='140-clean-multichantier';
+const MC='__MC__';
+let seq=0;
 
-  function txt(v){
-    return String(v ?? '').trim().toLowerCase().normalize('NFD')
-      .replace(/[\u0300-\u036f]/g,'')
-      .replace(/[‐‑‒–—−]/g,'-')
-      .replace(/\s+/g,' ');
+function normRef(v){
+  if(window.RailOpsImportFix?.normalizeReference) return window.RailOpsImportFix.normalizeReference(v);
+  return String(v??'').normalize('NFKC').trim().toUpperCase()
+    .replace(/[‐‑‒–—−]/g,'-').replace(/\s+/g,'')
+    .replace(/[^A-Z0-9._\/-]/g,'-').replace(/-{2,}/g,'-').replace(/^-+|-+$/g,'');
+}
+function looksRef(v){
+  const r=normRef(v); if(!r||r.length>100)return false;
+  if(/ARTICLE|ARTICLES/.test(r))return false;
+  return /\d/.test(r)||/[-_/.]/.test(r);
+}
+function businessRef(m){
+  if(!m)return '';
+  if(m.reference&&looksRef(m.reference))return normRef(m.reference);
+  const id=String(m.id||'');
+  const p=id.lastIndexOf(MC); if(p>0)return normRef(id.slice(0,p));
+  const nid=normRef(id), nnom=normRef(m.nom);
+  if(looksRef(nnom)&&nid!==nnom&&nid.startsWith(nnom+'-')&&/^\d{1,5}$/.test(nid.slice(nnom.length+1)))return nnom;
+  return nid;
+}
+function siteKey(v){return String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'');}
+function canonSite(v){
+  const k=siteKey(v);
+  const map={ROISSY:'ROISSY',VEMARS:'VEMARS',PRA152:'PRA 152',GCP:'GCP',CONTAINER:'CONTAINER-01',CONTAINER01:'CONTAINER-01',RETOUR:'RETOUR',RETOURS:'RETOUR',NONAFFECTE:'NON AFFECTÉ',NONAFFECTEE:'NON AFFECTÉ'};
+  return map[k]||String(v??'').trim().toUpperCase();
+}
+function parentIdOf(cid){const c=(S.chantiers||[]).find(x=>x.id===cid);return c?.parent_id||null;}
+function topMasterId(cid){let c=(S.chantiers||[]).find(x=>x.id===cid);if(!c)return cid;while(c?.parent_id){const p=(S.chantiers||[]).find(x=>x.id===c.parent_id);if(!p)break;c=p;}return c?.id||cid;}
+function pathOf(cid){const c=(S.chantiers||[]).find(x=>x.id===cid);if(!c)return cid||'Chantier inconnu';const p=c.parent_id?(S.chantiers||[]).find(x=>x.id===c.parent_id):null;return p?`${p.nom} › ${c.nom}`:(c.nom||cid);}
+function direct(ref,cid,arr=S.mat||[]){const r=normRef(ref);return arr.find(m=>m.chantierId===cid&&businessRef(m)===r)||null;}
+function allByRef(ref,arr=S.mat||[]){const r=normRef(ref);return arr.filter(m=>businessRef(m)===r);}
+function cleanDb(m){return {id:m.id,nom:m.nom||'',cat:m.cat||'Outillage',chantierId:m.chantierId,etat:m.etat||'inconnu',scan:m.scan||null,presence:m.presence||'non-confirme',echeance:m.echeance||'',verifLundi:m.verifLundi||null,verifSemaine:m.verifSemaine||null,controle2m:m.controle2m||null};}
+async function fetchRows(){if(typeof fetchAllMats==='function'){const r=await fetchAllMats();if(!r?.error&&Array.isArray(r?.data))return r.data;}return (S.mat||[]).slice();}
+async function blockedIds(){const s=new Set();try{for(const id of (typeof getDeleteQueue==='function'?getDeleteQueue():[])||[])if(id)s.add(String(id));}catch(e){}try{const {data,error}=await db.from('deleted_ids').select('*');if(!error)for(const x of data||[]){const id=String(x?.id||x?.identifiant||'').trim();if(id)s.add(id);}}catch(e){}return s;}
+function hash(v){let h=2166136261;for(const ch of String(v??'')){h^=ch.charCodeAt(0);h=Math.imul(h,16777619);}return (h>>>0).toString(36).toUpperCase();}
+function stableTechId(ref,cid,used,blocked){
+  const base=normRef(ref).slice(0,82);let salt=0,id='';
+  do{id=`${base}${MC}${hash(cid+(salt?'#'+salt:''))}`.slice(0,120);salt++;}while(used.has(id)||blocked.has(id));
+  used.add(id);return id;
+}
+function score(m){return (m?.scan?8:0)+(m?.verifLundi?6:0)+(m?.verifSemaine?6:0)+(m?.controle2m?4:0)+(m?.presence==='confirme'?3:0)+(m?.etat&&m.etat!=='inconnu'?2:0);}
+function newerObj(a,b){if(!a)return b||null;if(!b)return a;const da=new Date(a.date||0).getTime()||0,dbb=new Date(b.date||0).getTime()||0;return dbb>da?b:a;}
+function mergedKeeper(keeper,group){
+  const out={...keeper};
+  for(const m of group){
+    if(!out.nom&&m.nom)out.nom=m.nom;if((!out.cat||out.cat==='Outillage')&&m.cat)out.cat=m.cat;
+    if(!out.echeance&&m.echeance)out.echeance=m.echeance;
+    if((!out.etat||out.etat==='inconnu')&&m.etat&&m.etat!=='inconnu')out.etat=m.etat;
+    if(m.presence==='confirme')out.presence='confirme';
+    if(m.scan&&(!out.scan||new Date(m.scan)>new Date(out.scan)))out.scan=m.scan;
+    out.verifLundi=newerObj(out.verifLundi,m.verifLundi);
+    out.verifSemaine=newerObj(out.verifSemaine,m.verifSemaine);
+    if(!out.controle2m&&m.controle2m)out.controle2m=m.controle2m;
   }
-  function compact(v){return txt(v).replace(/[^a-z0-9]+/g,'');}
-  function normRef(v){
-    if(window.RailOpsImportFix?.normalizeReference) return window.RailOpsImportFix.normalizeReference(v);
-    return String(v ?? '').normalize('NFKC').trim().toUpperCase()
-      .replace(/[‐‑‒–—−]/g,'-').replace(/\s+/g,'')
-      .replace(/[^A-Z0-9._\/-]/g,'-').replace(/-{2,}/g,'-').replace(/^-+|-+$/g,'');
-  }
-  function headerKind(v){
-    const h=compact(v);
-    if(!h) return null;
-    if(/^(ref|refs|reference|references|id|identifiant|numero|num|code|matricule)$/.test(h) || h.includes('referencemateriel')) return 'ref';
-    if(h.includes('site') || h.includes('affectation') || h.includes('emplacement') || h.includes('localisation')) return 'site';
-    if(h.includes('designation') || h.includes('libelle') || h==='nom' || h.includes('description') || h==='materiel') return 'name';
-    if(h.includes('categorie') || h==='cat' || h==='type' || h.includes('famille')) return 'cat';
-    if(h.includes('validite') || h.includes('echeance') || h.includes('expiration') || h.includes('date')) return 'date';
-    return null;
-  }
-  function canonicalSite(raw){
-    const h=compact(raw);
-    if(!h) return 'NON AFFECTÉ';
-    if(h.includes('roissy')) return 'ROISSY';
-    if(h.includes('vemars')) return 'VEMARS';
-    if(h.includes('pra152') || (h.includes('pra')&&h.includes('152'))) return 'PRA 152';
-    if(h==='gcp' || h.includes('gcp')) return 'GCP';
-    if(h.includes('container')) return 'CONTAINER-01';
-    if(h.includes('retour')) return 'RETOUR';
-    if(h.includes('nonaffect') || h.includes('nonattribu') || h.includes('sansaffect')) return 'NON AFFECTÉ';
-    return String(raw ?? '').trim().toUpperCase() || 'NON AFFECTÉ';
-  }
-  function siteKey(v){return compact(canonicalSite(v));}
-  function formatDate(v){
-    if(v===null || v===undefined || v==='') return '';
-    if(v instanceof Date && !isNaN(v)) return v.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
-    if(typeof v==='number' && v>1000){
-      const d=new Date(Date.UTC(1899,11,30)+v*86400000);
-      return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'UTC'});
+  return out;
+}
+function visibleCurrentRows(arr=S.mat||[]){const valid=new Set((S.chantiers||[]).map(c=>c.id));return arr.filter(m=>m?.chantierId&&valid.has(m.chantierId));}
+function duplicateGroups(arr=S.mat||[]){
+  const map=new Map();
+  for(const m of visibleCurrentRows(arr)){const r=businessRef(m);if(!r)continue;const k=m.chantierId+'|'+r;if(!map.has(k))map.set(k,[]);map.get(k).push(m);}
+  return [...map.entries()].filter(([,g])=>g.length>1).map(([key,group])=>({key,group,ref:businessRef(group[0]),chantierId:group[0].chantierId,extra:group.length-1}));
+}
+async function repairDuplicates(groups=duplicateGroups()){
+  if(window.__v140Repairing)return {removed:0,groups:0};window.__v140Repairing=true;
+  let removed=0,done=0,errors=[];
+  try{
+    for(const g of groups){
+      const exact=g.group.find(m=>String(m.id)===g.ref);
+      const keeper=exact||g.group.slice().sort((a,b)=>score(b)-score(a))[0];
+      const merged=mergedKeeper(keeper,g.group);
+      try{const {error}=await db.from('materiels').update(cleanDb(merged)).eq('id',keeper.id);if(error)throw error;Object.assign(keeper,merged);}catch(e){errors.push(`${g.ref}: ${e.message||e}`);continue;}
+      for(const extra of g.group){if(extra.id===keeper.id)continue;
+        try{await db.from('scans').update({materielId:keeper.id,chantierId:keeper.chantierId}).eq('materielId',extra.id);}catch(e){}
+        try{const {error}=await db.from('materiels').delete().eq('id',extra.id);if(error)throw error;S.scans=(S.scans||[]).map(s=>s.materielId===extra.id?{...s,materielId:keeper.id,chantierId:keeper.chantierId}:s);S.mat=(S.mat||[]).filter(m=>m.id!==extra.id);removed++;}catch(e){errors.push(`${extra.id}: ${e.message||e}`);}
+      }
+      done++;
     }
-    return String(v).trim();
-  }
-  function parseInventoryRows(rows){
-    let header=-1, cols={ref:-1,site:-1,name:-1,cat:-1,date:-1};
-    for(let r=0;r<Math.min(rows.length,30);r++){
-      const kinds=(rows[r]||[]).map(headerKind);
-      const rc=kinds.indexOf('ref'), sc=kinds.indexOf('site');
-      if(rc>=0 && sc>=0){
-        header=r; cols={ref:rc,site:sc,name:kinds.indexOf('name'),cat:kinds.indexOf('cat'),date:kinds.indexOf('date')};
-        break;
-      }
-    }
-    if(header<0) return null;
-    const map=new Map(), siteCounts={};
-    for(let r=header+1;r<rows.length;r++){
-      const row=rows[r]||[];
-      const ref=normRef(row[cols.ref]);
-      if(!ref) continue;
-      const site=canonicalSite(row[cols.site]);
-      const nom=cols.name>=0 && String(row[cols.name]??'').trim()?String(row[cols.name]).trim():ref;
-      const cat=cols.cat>=0 && String(row[cols.cat]??'').trim()?String(row[cols.cat]).trim():'Outillage';
-      const echeance=cols.date>=0?formatDate(row[cols.date]):'';
-      map.set(ref,{reference:ref,nom,cat,echeance,site});
-    }
-    for(const item of map.values()) siteCounts[item.site]=(siteCounts[item.site]||0)+1;
-    return {items:[...map.values()],siteCounts,header,cols};
-  }
-  function detectDpiWorkbook(wb){
-    if(!wb?.SheetNames?.length) return null;
-    const invName=wb.SheetNames.find(n=>compact(n)==='inventaire' || compact(n).startsWith('inventaire'));
-    if(!invName) return null;
-    const rows=XLSX.utils.sheet_to_json(wb.Sheets[invName],{header:1,defval:'',raw:false,dateNF:'dd/mm/yyyy',blankrows:false});
-    const parsed=parseInventoryRows(rows);
-    if(!parsed || parsed.items.length<10) return null;
-    const lead=rows.slice(0,4).flat().map(v=>String(v??'')).join(' ');
-    const m=lead.match(/\bDPI\s*[-_ ]?\s*(\d{3,8})\b/i);
-    if(!m) return null;
-    const code='DPI'+m[1];
-    return {...parsed,code,parentName:code,inventorySheet:invName,fileWorkbook:wb};
-  }
-  function parentCandidates(data){
-    const code=compact(data.code);
-    return S.chantiers.filter(c=>!c.parent_id && c.statut!=='termine').sort((a,b)=>{
-      const aa=compact(a.nom),bb=compact(b.nom);
-      const sa=(aa.includes(code)?10:0), sb=(bb.includes(code)?10:0);
-      return sb-sa;
-    });
-  }
-  function showDpiModal(data,fileName){
-    document.getElementById('movl')?.remove();
-    const modal=document.createElement('div');
-    modal.id='movl'; modal.className='moverlay';
-    const candidates=parentCandidates(data);
-    let best=candidates.find(c=>compact(c.nom).includes(compact(data.code))) || null;
-    const opts=candidates.map(c=>`<option value="${c.id}" ${best&&best.id===c.id?'selected':''}>${c.nom}</option>`).join('');
-    const counts=Object.entries(data.siteCounts).map(([s,n])=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:.5px solid var(--border)"><span>${s}</span><strong>${n}</strong></div>`).join('');
-    modal.innerHTML=`<div class="msheet">
-      <div class="mhandle"></div>
-      <div style="font-size:18px;font-weight:600;margin-bottom:4px">Import hiérarchique ${data.code}</div>
-      <div style="font-size:11px;color:var(--text2);margin-bottom:14px">${fileName} · ${data.items.length} références uniques détectées</div>
-      <div style="background:rgba(29,158,117,.08);border:.5px solid rgba(29,158,117,.25);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--text2)">
-        <strong style="color:#5DCAA5">INVENTAIRE sera la source de vérité.</strong><br>
-        Les onglets ROISSY/VEMARS/etc. ne déplaceront plus les références. Aucune référence absente de ce fichier ne sera supprimée.
-      </div>
-      <label class="fl" style="margin-top:0">Chantier maître</label>
-      <select id="dpi-parent-choice" class="fi" style="margin-bottom:12px">
-        <option value="__create__" ${best?'':'selected'}>+ Créer / retrouver automatiquement ${data.code}</option>
-        ${opts}
-      </select>
-      <div style="background:var(--bg3);border-radius:10px;padding:10px 12px;margin-bottom:14px">
-        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:6px">Répartition détectée</div>${counts}
-      </div>
-      <button id="dpi-import-confirm" class="btn btn-accent" style="margin-bottom:8px">Importer sans perte</button>
-      <button class="btn btn-outline" onclick="document.getElementById('movl').remove()">Annuler</button>
-    </div>`;
-    document.getElementById('app').appendChild(modal);
-    window.__railopsDpiPending=data;
-    document.getElementById('dpi-import-confirm').onclick=()=>applyDpiImport(data,document.getElementById('dpi-parent-choice').value);
-  }
-  function stableChildId(parentId,site){
-    const slug=canonicalSite(site).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'');
-    return `${parentId}_${slug}`.slice(0,110);
-  }
-  function chooseChild(parentId,site){
-    const key=siteKey(site);
-    const matches=S.chantiers.filter(c=>c.parent_id===parentId && siteKey(c.nom)===key);
-    if(!matches.length) return null;
-    matches.sort((a,b)=>{
-      const ca=S.mat.filter(m=>m.chantierId===a.id).length;
-      const cb=S.mat.filter(m=>m.chantierId===b.id).length;
-      return cb-ca;
-    });
-    return matches[0];
-  }
-  async function upsertChantiers(rows){
-    if(!rows.length) return;
-    const payload=rows.map(c=>({id:c.id,nom:c.nom||'',lieu:c.lieu||'',chef:Array.isArray(c.chefs)?(c.chefs[0]||c.chef||''):(c.chef||''),chefs:c.chefs||[],statut:c.statut||'actif',desc:c.desc||'',dateDebut:c.dateDebut||'',dateFin:c.dateFin||'',agents:c.agents||[],parent_id:c.parent_id||null}));
-    const {error}=await db.from('chantiers').upsert(payload,{onConflict:'id'});
-    if(error) throw new Error('Chantiers : '+error.message);
-  }
-  function scoreExisting(m){
-    let s=0;
-    if(m.scan) s+=4;
-    if(m.verifLundi) s+=3;
-    if(m.verifSemaine) s+=3;
-    if(m.controle2m) s+=2;
-    if(m.presence&&m.presence!=='non-confirme') s+=1;
-    if(m.etat&&m.etat!=='inconnu') s+=1;
-    return s;
-  }
-  function clearLegacyMultiLinks(refs){
-    const keys=new Set(refs.map(normRef));
-    try{
-      const mc=JSON.parse(localStorage.getItem('ro3_mc')||'{}');
-      Object.keys(mc).forEach(k=>{if(keys.has(normRef(k))) delete mc[k];});
-      localStorage.setItem('ro3_mc',JSON.stringify(mc));
-    }catch(e){}
-    try{
-      const ext=JSON.parse(localStorage.getItem('ro3_ext')||'{}');
-      Object.keys(ext).forEach(cid=>{ext[cid]=(ext[cid]||[]).filter(id=>!keys.has(normRef(id)));if(!ext[cid].length) delete ext[cid];});
-      localStorage.setItem('ro3_ext',JSON.stringify(ext));
-    }catch(e){}
-  }
-  async function applyDpiImport(data,parentChoice){
-    const btn=document.getElementById('dpi-import-confirm');
-    if(btn){btn.disabled=true;btn.textContent='Import en cours…';}
-    window._isImporting=true; window._lastImport=Date.now();
-    try{
-      let parent=null, newParent=false;
-      if(parentChoice && parentChoice!=='__create__') parent=S.chantiers.find(c=>c.id===parentChoice)||null;
-      if(!parent){
-        parent=S.chantiers.find(c=>!c.parent_id && compact(c.nom).includes(compact(data.code)))||null;
-      }
-      if(!parent){
-        let id='CH_'+data.code;
-        if(S.chantiers.some(c=>c.id===id)) id=newId('CH');
-        parent={id,nom:data.parentName,lieu:data.parentName,chef:S.agent,chefs:[S.agent],statut:'actif',desc:'Registre maître '+data.code,dateDebut:'',dateFin:'',agents:[],parent_id:null};
-        newParent=true;
-      }
-
-      const siteNames=Object.keys(data.siteCounts);
-      const children=[], created=[];
-      for(const site of siteNames){
-        let child=chooseChild(parent.id,site);
-        if(!child){
-          let id=stableChildId(parent.id,site);
-          if(S.chantiers.some(c=>c.id===id)) id=newId('CH');
-          child={id,nom:site,lieu:site,chef:S.agent,chefs:[S.agent],statut:'actif',desc:'Sous-chantier '+data.code,dateDebut:'',dateFin:'',agents:[],parent_id:parent.id};
-          created.push(child);
-        }
-        children.push(child);
-      }
-      await upsertChantiers([...(newParent?[parent]:[]),...created]);
-
-      const childBySite=new Map(children.map(c=>[siteKey(c.nom),c]));
-      const existingGroups=new Map();
-      S.mat.forEach((m,idx)=>{
-        const k=normRef(m.id);
-        if(!existingGroups.has(k)) existingGroups.set(k,[]);
-        existingGroups.get(k).push({m,idx});
-      });
-
-      const updates=[], localOps=[];
-      let moved=0,added=0,duplicates=0;
-      for(const src of data.items){
-        const child=childBySite.get(siteKey(src.site));
-        if(!child) continue;
-        const group=existingGroups.get(src.reference)||[];
-        if(group.length>1) duplicates+=group.length-1;
-        let chosen=null;
-        if(group.length){
-          chosen=group.slice().sort((a,b)=>{
-            const exactA=a.m.id===src.reference?10:0, exactB=b.m.id===src.reference?10:0;
-            return (exactB+scoreExisting(b.m))-(exactA+scoreExisting(a.m));
-          })[0];
-        }
-        let item;
-        if(chosen){
-          item={...chosen.m};
-          if(item.chantierId!==child.id) moved++;
-          item.chantierId=child.id;
-          if(src.nom) item.nom=src.nom;
-          if(src.cat) item.cat=src.cat;
-          if(src.echeance) item.echeance=src.echeance;
-          delete item.autreChantier; delete item._externe;
-          localOps.push({type:'update',idx:chosen.idx,item});
-        }else{
-          item={id:src.reference,nom:src.nom||src.reference,cat:src.cat||'Outillage',chantierId:child.id,etat:'inconnu',scan:null,presence:'non-confirme',echeance:src.echeance||'',verifLundi:null,verifSemaine:null,controle2m:null};
-          localOps.push({type:'add',item}); added++;
-        }
-        const {prix,autreChantier,_externe,...remote}=item;
-        updates.push(remote);
-      }
-
-      const chunk=100;
-      for(let i=0;i<updates.length;i+=chunk){
-        const part=updates.slice(i,i+chunk);
-        const {error}=await db.from('materiels').upsert(part,{onConflict:'id'});
-        if(error) throw new Error('Références '+(i+1)+'-'+(i+part.length)+' : '+error.message);
-      }
-
-      if(newParent) S.chantiers.push(parent);
-      created.forEach(c=>S.chantiers.push(c));
-      localOps.forEach(op=>{if(op.type==='update') S.mat[op.idx]=op.item; else S.mat.push(op.item);});
-      clearLegacyMultiLinks(data.items.map(i=>i.reference));
-      try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-      try{restoreMultiChantier?.();}catch(e){}
-      document.getElementById('movl')?.remove();
-      render();
-      toast(`${data.items.length} références ${data.code} synchronisées · ${added} ajoutée(s) · ${moved} réaffectée(s)`,'ok');
-      if(duplicates) setTimeout(()=>toast(`${duplicates} ancien(s) doublon(s) de référence détecté(s) — aucune suppression automatique`,'warn'),500);
-      console.info('[RailOps DPI]',{version:VERSION,parent:parent.id,sites:data.siteCounts,total:data.items.length,added,moved,duplicates,createdChildren:created.map(c=>c.nom)});
-    }catch(err){
-      console.error('[RailOps DPI]',err);
-      toast('Import DPI interrompu : '+(err?.message||err),'danger');
-      if(btn){btn.disabled=false;btn.textContent='Réessayer l’import';}
-    }finally{
-      window._isImporting=false; window._lastImport=Date.now();
-    }
-  }
-
-  importCSV=function(input){
-    const file=input?.files?.[0];
-    if(!file) return previousImportCSV(input);
-    const ext=(file.name.split('.').pop()||'').toLowerCase();
-    if(!['xlsx','xls','xlsm','xlsb'].includes(ext) || typeof XLSX==='undefined') return previousImportCSV(input);
-    const reader=new FileReader();
-    reader.onload=e=>{
-      try{
-        const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
-        const dpi=detectDpiWorkbook(wb);
-        if(!dpi){
-          // Laisse le lecteur fiable de l'étape 1 gérer tous les autres registres.
-          previousImportCSV(input);
-          return;
-        }
-        input.value='';
-        showDpiModal(dpi,file.name);
-      }catch(err){
-        console.warn('[RailOps DPI detect]',err);
-        previousImportCSV(input);
-      }
-    };
-    reader.onerror=()=>previousImportCSV(input);
-    reader.readAsArrayBuffer(file);
-  };
-
-  window.RailOpsDPIImport={version:VERSION,detect:detectDpiWorkbook,parseInventoryRows,canonicalSite,apply:applyDpiImport};
-  console.info('[RailOps] Correctif DPI étape 2 actif —',VERSION);
-})();
-</script>
-
-
-<script id="railops-fix-step3-multichantier">
-/* RailOps v136 — ETAPE 3C : multi-chantier global et contrôlé.
-   - Une référence peut exister dans plusieurs chantiers sans être déplacée.
-   - Chaque occurrence chantier possède sa propre vérification hebdomadaire.
-   - Les occurrences supplémentaires ont un ID technique invisible dans l'interface.
-   - Les QR continuent d'utiliser la référence métier normale.
-   - Ne modifie pas la purge hebdomadaire. */
-(function(){
-  'use strict';
-  const VERSION='136-step3c-multichantier-global';
-  const MC_MARK='__MC__';
-
-  function normRef(v){
-    if(window.RailOpsImportFix?.normalizeReference) return window.RailOpsImportFix.normalizeReference(v);
-    return String(v??'').normalize('NFKC').trim().toUpperCase()
-      .replace(/[‐‑‒–—−]/g,'-').replace(/\s+/g,'')
-      .replace(/[^A-Z0-9._\/-]/g,'-').replace(/-{2,}/g,'-').replace(/^-+|-+$/g,'');
-  }
-  function canonicalRef(id){
-    const s=String(id??'');
-    const i=s.lastIndexOf(MC_MARK);
-    return normRef(i>0?s.slice(0,i):s);
-  }
-  function looksLikeBusinessRef(v){
-    const r=normRef(v);
-    if(!r || r.length>80) return false;
-    if(/ARTICLE|ARTICLES/.test(r)) return false;
-    return /\d/.test(r) || /[-_/.]/.test(r);
-  }
-  function businessRefOf(m){
-    if(!m) return '';
-    if(m.reference && looksLikeBusinessRef(m.reference)) return normRef(m.reference);
-    const id=String(m.id??'');
-    if(id.includes(MC_MARK)) return canonicalRef(id);
-    const nid=normRef(id);
-    const nnom=normRef(m.nom);
-    // Ancien RailOps créait parfois des IDs du type REF-29 tout en gardant REF dans nom.
-    if(looksLikeBusinessRef(nnom) && nid!==nnom && nid.startsWith(nnom+'-')){
-      const suffix=nid.slice(nnom.length+1);
-      if(/^\d{1,5}$/.test(suffix)) return nnom;
-    }
-    return nid;
-  }
-  function shortHash(v){
-    let h=2166136261;
-    const s=String(v??'');
-    for(let i=0;i<s.length;i++){
-      h^=s.charCodeAt(i);
-      h=Math.imul(h,16777619);
-    }
-    return (h>>>0).toString(36).toUpperCase();
-  }
-  function technicalId(ref,chantierId){
-    const base=normRef(ref);
-    let id=base+MC_MARK+shortHash(chantierId);
-    let n=1;
-    while(S.mat.some(m=>m.id===id && (businessRefOf(m)!==base || m.chantierId!==chantierId))){
-      id=base+MC_MARK+shortHash(chantierId+'#'+(++n));
-    }
-    return id;
-  }
-  function allByRef(ref){
-    const c=normRef(ref);
-    return S.mat.filter(m=>businessRefOf(m)===c);
-  }
-  function directOn(ref,chantierId){
-    const c=normRef(ref);
-    return S.mat.find(m=>m.chantierId===chantierId && businessRefOf(m)===c) || null;
-  }
-  function parentOfChantier(chantierId){
-    const c=S.chantiers.find(x=>x.id===chantierId);
-    return c?.parent_id || null;
-  }
-  function pathForChantier(chantierId){
-    const c=S.chantiers.find(x=>x.id===chantierId);
-    if(!c) return chantierId || 'Chantier inconnu';
-    if(c.parent_id){
-      const p=S.chantiers.find(x=>x.id===c.parent_id);
-      return p ? `${p.nom} › ${c.nom}` : c.nom;
-    }
-    return c.nom || chantierId;
-  }
-  function instanceLocations(ref){
-    // v135 : une pastille Multi-chantier n'est affichée que pour des occurrences
-    // réellement présentes dans S.mat / Supabase. Les anciennes liaisons locales
-    // ro3_mc / ro3_ext ne sont plus considérées comme une preuve de présence.
-    return [...new Set(allByRef(ref).map(m=>m.chantierId).filter(Boolean))];
-  }
-
-  async function repairLegacyMultiLinks(){
-    if(window.__railopsMcRepairing) return {created:0,skipped:0};
-    if(!Array.isArray(S?.mat)||!Array.isArray(S?.chantiers)||!S.mat.length||!S.chantiers.length) return {created:0,skipped:0};
-    window.__railopsMcRepairing=true;
-    let created=0,skipped=0;
-    try{
-      let mc={},ext={};
-      try{mc=JSON.parse(localStorage.getItem('ro3_mc')||'{}')||{};}catch(e){}
-      try{ext=JSON.parse(localStorage.getItem('ro3_ext')||'{}')||{};}catch(e){}
-
-      // Sauvegarde de secours avant migration. On ne jette donc aucune ancienne liaison.
-      try{if(!localStorage.getItem('ro3_mc_backup_v135')) localStorage.setItem('ro3_mc_backup_v135',JSON.stringify(mc));}catch(e){}
-      try{if(!localStorage.getItem('ro3_ext_backup_v135')) localStorage.setItem('ro3_ext_backup_v135',JSON.stringify(ext));}catch(e){}
-
-      const validChantiers=new Set(S.chantiers.map(c=>c.id).filter(Boolean));
-      const wanted=new Map();
-      const want=(ref,cid)=>{
-        const r=normRef(ref);if(!r||!cid||!validChantiers.has(cid))return;
-        if(!wanted.has(r))wanted.set(r,new Set());
-        wanted.get(r).add(cid);
-      };
-
-      // Les occurrences déjà persistantes servent de point de départ.
-      for(const m of S.mat) want(businessRefOf(m),m.chantierId);
-      // Ancien format ro3_mc : {reference/id: [chantierId, ...]}
-      for(const [ref,cids] of Object.entries(mc)) for(const cid of (Array.isArray(cids)?cids:[])) want(ref,cid);
-      // Ancien format ro3_ext : {chantierId: [reference/id, ...]}
-      for(const [cid,refs] of Object.entries(ext)) for(const ref of (Array.isArray(refs)?refs:[])) want(ref,cid);
-
-      const inserts=[];
-      for(const [ref,cids] of wanted){
-        const actual=allByRef(ref);
-        if(!actual.length){skipped++;continue;}
-        const src=actual.slice().sort((a,b)=>{
-          const score=x=>(x.scan?4:0)+(x.verifLundi?3:0)+(x.verifSemaine?3:0)+(x.controle2m?2:0)+(x.etat&&x.etat!=='inconnu'?1:0);
-          return score(b)-score(a);
-        })[0];
-        for(const cid of cids){
-          if(directOn(ref,cid)) continue;
-          const id=technicalId(ref,cid);
-          const copy=freshOccurrence({id:ref,nom:src.nom||ref,cat:src.cat||'Outillage',echeance:src.echeance||'',prix:src.prix??null},cid,id);
-          S.mat.push(copy);inserts.push(copy);created++;
-        }
-      }
-
-      if(inserts.length) await upsertMaterials(inserts);
-      try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-      // Après migration, les anciennes tables locales ne pilotent plus l'affichage.
-      // Les backups v135 restent disponibles pour retour arrière/diagnostic.
-      try{localStorage.setItem('ro3_mc','{}');}catch(e){}
-      try{localStorage.setItem('ro3_ext','{}');}catch(e){}
-      return {created,skipped};
-    }finally{window.__railopsMcRepairing=false;}
-  }
-  function stripTechnicalIds(root=document){
-    if(!root || typeof document==='undefined') return;
-    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
-    const nodes=[];
-    while(walker.nextNode()) nodes.push(walker.currentNode);
-    for(const node of nodes){
-      const t=node.nodeValue||'';
-      if(!t.includes(MC_MARK)) continue;
-      node.nodeValue=t.replace(/([A-Z0-9._\/-]+)__MC__[A-Z0-9]+/gi,(m,ref)=>canonicalRef(ref));
-    }
-  }
-  function decorateMultiBadges(){
-    if(typeof document==='undefined') return;
-    document.querySelectorAll('.ro-mc-badge').forEach(e=>e.remove());
-    const rows=document.querySelectorAll('.reg-item[id^="ri-"]');
-    rows.forEach(row=>{
-      const internalId=row.id.slice(3);
-      const matById=S.mat.find(m=>m.id===internalId);
-      const ref=matById?businessRefOf(matById):canonicalRef(internalId);
-      const current=S.curC || S.chantiers.find(c=>c.id===directOn(ref,c?.id)?.chantierId)?.id;
-      const mat=S.mat.find(m=>m.id===internalId) || directOn(ref,S.curC) || allByRef(ref)[0];
-      if(!mat) return;
-      const currentCid=S.curC || mat.chantierId;
-      const locations=instanceLocations(ref);
-      const others=locations.filter(cid=>cid!==currentCid).map(pathForChantier);
-      const unique=[...new Set(others)];
-      if(!unique.length) return;
-      const badge=document.createElement('div');
-      badge.className='ro-mc-badge';
-      badge.title='Référence également présente sur : '+unique.join(' · ');
-      badge.innerHTML='<span style="font-weight:700">Multi-chantier</span><span style="opacity:.9"> · aussi sur '+unique.map(x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')).join(' · ')+'</span>';
-      const top=row.querySelector('.reg-top');
-      if(top) top.insertAdjacentElement('afterend',badge); else row.prepend(badge);
-    });
-    stripTechnicalIds(document.getElementById('app')||document);
-  }
-  function ensureStyle(){
-    if(document.getElementById('ro-mc-style')) return;
-    const st=document.createElement('style');
-    st.id='ro-mc-style';
-    st.textContent=`.ro-mc-badge{display:inline-flex;align-items:center;gap:2px;max-width:calc(100% - 42px);margin:7px 0 0 42px;padding:4px 8px;border-radius:999px;background:rgba(245,166,35,.13);border:.5px solid rgba(245,166,35,.42);color:#d99000;font-size:10px;line-height:1.2;white-space:normal}.theme-light .ro-mc-badge,.theme-sferis .ro-mc-badge{color:#9a6500}`;
-    document.head.appendChild(st);
-  }
-
-  // matOfC : évite les doublons d'affichage quand une ancienne association locale
-  // coexiste avec une occurrence persistante v134.
-  const legacyMatOfC=matOfC;
-  matOfC=function(chantierId){
-    const direct=S.mat.filter(m=>m.chantierId===chantierId);
-    const seen=new Set(direct.map(m=>businessRefOf(m)));
-    try{
-      const ext=JSON.parse(localStorage.getItem('ro3_ext')||'{}');
-      for(const oldId of (ext[chantierId]||[])){
-        const ref=canonicalRef(oldId);
-        if(seen.has(ref)) continue;
-        const src=S.mat.find(m=>m.id===oldId) || allByRef(ref)[0];
-        if(src){direct.push({...src,_externe:true,autreChantier:src.chantierId});seen.add(ref);}
-      }
-    }catch(e){}
-    return direct;
-  };
-
-  // Supprime uniquement une ancienne liaison locale devenue inutile lorsqu'une vraie
-  // occurrence persistante existe désormais sur le chantier cible.
-  function removeLegacyExt(ref,chantierId){
-    const c=normRef(ref);
-    try{
-      const ext=JSON.parse(localStorage.getItem('ro3_ext')||'{}');
-      if(ext[chantierId]){
-        ext[chantierId]=ext[chantierId].filter(id=>canonicalRef(id)!==c);
-        if(!ext[chantierId].length) delete ext[chantierId];
-        localStorage.setItem('ro3_ext',JSON.stringify(ext));
-      }
-    }catch(e){}
-  }
-
-  async function upsertMaterials(items){
-    const clean=items.map(item=>{
-      const {prix,autreChantier,_externe,...r}=item;
-      return r;
-    });
-    const chunk=100;
-    for(let i=0;i<clean.length;i+=chunk){
-      const part=clean.slice(i,i+chunk);
-      const {error}=await db.from('materiels').upsert(part,{onConflict:'id'});
-      if(error) throw new Error(error.message);
-    }
-  }
-  const MANIFEST_KEY='ro_registry_manifest_v136';
-  function loadManifest(){try{return JSON.parse(localStorage.getItem(MANIFEST_KEY)||'{}')||{};}catch(e){return {};}}
-  function saveManifestFor(chantierId,items){
-    if(!chantierId) return;
-    const mf=loadManifest();
-    mf[chantierId]=(items||[]).map(x=>({
-      ref:normRef(x.ref||x.id||x.reference),
-      nom:x.nom||'',cat:x.cat||'Outillage',echeance:x.echeance||'',prix:x.prix??null
-    })).filter(x=>looksLikeBusinessRef(x.ref));
-    try{localStorage.setItem(MANIFEST_KEY,JSON.stringify(mf));}catch(e){}
-  }
-  // v138 : la vérification d'import doit refléter exactement ce que RailOps
-  // affichera après rechargement. Une ligne présente en base mais blacklistée
-  // dans deleted_ids n'est donc PAS considérée comme persistée.
-  async function importBlockedIds(){
-    const ids=new Set();
-    try{
-      if(typeof getDeleteQueue==='function'){
-        for(const id of (getDeleteQueue()||[])) if(id) ids.add(String(id));
-      }
-    }catch(e){}
-    try{
-      const {data,error}=await db.from('deleted_ids').select('*');
-      if(!error&&Array.isArray(data)){
-        for(const r of data){
-          const id=String(r?.id||r?.identifiant||'').trim();
-          if(id) ids.add(id);
-        }
-      }
-    }catch(e){console.warn('[RailOps v138] deleted_ids illisible pendant import',e);}
-    return ids;
-  }
-  function safeImportOccurrenceId(ref,chantierId,blocked){
-    const base=normRef(ref);
-    const used=new Set((S.mat||[]).map(m=>String(m?.id||'')).filter(Boolean));
-    // L'ID métier simple est réservé à la première occurrence.
-    if(!used.has(base)&&!blocked.has(base)) return base;
-    let id=technicalId(base,chantierId),n=1;
-    while(used.has(id)||blocked.has(id)){
-      id=base+MC_MARK+shortHash(chantierId+'|V138|'+(++n));
-    }
-    return id;
-  }
-  async function verifyPersisted(expected){
-    const list=(expected||[]).filter(x=>x?.ref&&x?.chantierId);
-    if(!list.length) return {checked:false,total:0,present:0,missing:[]};
-    try{
-      const [{data,error},blocked]=await Promise.all([fetchAllMats(),importBlockedIds()]);
-      if(error||!Array.isArray(data)) return {checked:false,total:list.length,present:0,missing:list};
-      const keys=new Set(
-        data.filter(m=>m?.id&&!blocked.has(String(m.id)))
-            .map(m=>m.chantierId+'|'+businessRefOf(m))
-      );
-      const missing=list.filter(x=>!keys.has(x.chantierId+'|'+normRef(x.ref)));
-      return {checked:true,total:list.length,present:list.length-missing.length,missing};
-    }catch(e){return {checked:false,total:list.length,present:0,missing:list};}
-  }
-  async function forceMissingOccurrences(missing){
-    const created=[];
-    const blocked=await importBlockedIds();
-    for(const x of (missing||[])){
-      const ref=normRef(x.ref);
-      if(!ref) continue;
-      // Ne considère comme valide qu'une occurrence réellement visible.
-      const already=(S.mat||[]).find(m=>m.chantierId===x.chantierId&&businessRefOf(m)===ref&&!blocked.has(String(m.id)));
-      if(already) continue;
-      const src=allByRef(ref)[0] || x;
-      const id=safeImportOccurrenceId(ref,x.chantierId,blocked);
-      const item=freshOccurrence({id:ref,nom:src.nom||x.nom||ref,cat:src.cat||x.cat||'Outillage',echeance:src.echeance||x.echeance||'',prix:src.prix??x.prix??null},x.chantierId,id);
-      S.mat.push(item);created.push(item);
-      blocked.add(id);
-    }
-    if(created.length) await upsertMaterials(created);
-    return created;
-  }
-  function applyMetadata(target,src){
-    if(src.nom) target.nom=src.nom;
-    if(src.cat) target.cat=src.cat;
-    if(src.echeance) target.echeance=src.echeance;
-    if(src.prix!==undefined && src.prix!==null) target.prix=src.prix;
-    return target;
-  }
-  function freshOccurrence(src,chantierId,id){
-    return {
-      id,
-      nom:src.nom||normRef(src.id||src.reference),
-      cat:src.cat||'Outillage',
-      chantierId,
-      etat:'inconnu',
-      scan:null,
-      presence:'non-confirme',
-      echeance:src.echeance||'',
-      prix:src.prix??null,
-      verifLundi:null,
-      verifSemaine:null,
-      controle2m:null
-    };
-  }
-
-  // IMPORT SIMPLE : la référence métier reste sur chaque chantier où son registre la déclare.
-  processRows=async function(rows){
-    const chantierId=S.curC;
-    if(!chantierId){toast('Aucun chantier sélectionné','danger');return;}
-    const raw=window.RailOpsImportFix?.parseRows?.(Array.isArray(rows)?rows:[],chantierId) || [];
-    const byRef=new Map();
-    for(const src of raw){
-      const ref=normRef(src.id);
-      if(!looksLikeBusinessRef(ref)) continue;
-      if(!byRef.has(ref)) byRef.set(ref,{...src,id:ref});
-      else applyMetadata(byRef.get(ref),src);
-    }
-    const parsed=[...byRef.values()];
-    if(!parsed.length){toast('Aucune référence détectée dans ce registre','danger');return;}
-    window._isImporting=true;window._lastImport=Date.now();
-    let added=0,updated=0,multi=0;
-    const changed=[],expected=[];
-    try{
-      for(const src of parsed){
-        const ref=normRef(src.id);
-        expected.push({ref,chantierId,nom:src.nom,cat:src.cat,echeance:src.echeance,prix:src.prix});
-        let target=directOn(ref,chantierId);
-        if(target){applyMetadata(target,src);updated++;changed.push(target);continue;}
-        const elsewhere=allByRef(ref);
-        let id=ref;
-        if(elsewhere.length || S.mat.some(m=>m.id===id)){id=technicalId(ref,chantierId);if(elsewhere.length)multi++;}
-        target=freshOccurrence(src,chantierId,id);
-        S.mat.push(target);changed.push(target);added++;
-        removeLegacyExt(ref,chantierId);
-      }
-      await upsertMaterials(changed);
-      saveManifestFor(chantierId,parsed.map(x=>({ref:x.id,...x})));
-      let check=await verifyPersisted(expected);
-      if(check.checked&&check.missing.length){
-        await forceMissingOccurrences(check.missing);
-        check=await verifyPersisted(expected);
-      }
-      try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-      renderTab();setTimeout(decorateMultiBadges,0);
-      const verifyTxt=check.checked?` · base ${check.present}/${check.total}`:'';
-      if(check.checked&&check.missing.length) toast(`${check.missing.length} référence(s) n'ont pas pu être persistées`,'danger');
-      else toast(`${parsed.length} référence(s) · ${added} ajoutée(s) · ${updated} mise(s) à jour${multi?' · '+multi+' multi-chantier(s)':''}${verifyTxt}`,'ok');
-    }catch(err){
-      console.error('[RailOps v136 import simple]',err);
-      toast('Import interrompu : '+(err?.message||err),'danger');
-    }finally{window._isImporting=false;window._lastImport=Date.now();}
-  };
-
-  // DPI : garde la source de vérité INVENTAIRE à l'intérieur du chantier maître,
-  // mais ne vole plus une référence à un autre chantier maître (ex. Lison).
-  function compact(v){return String(v??'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'');}
-  function canonicalSite(raw){return window.RailOpsDPIImport?.canonicalSite?.(raw) || String(raw??'').trim().toUpperCase();}
-  function siteKey(raw){return compact(canonicalSite(raw));}
-  function parentCandidates(data){
-    const code=compact(data.code);
-    return S.chantiers.filter(c=>!c.parent_id&&c.statut!=='termine').sort((a,b)=>((compact(b.nom).includes(code)?10:0)-(compact(a.nom).includes(code)?10:0)));
-  }
-  function chooseChild(parentId,site){
-    const key=siteKey(site);
-    const matches=S.chantiers.filter(c=>c.parent_id===parentId&&siteKey(c.nom)===key);
-    if(!matches.length) return null;
-    matches.sort((a,b)=>S.mat.filter(m=>m.chantierId===b.id).length-S.mat.filter(m=>m.chantierId===a.id).length);
-    return matches[0];
-  }
-  function stableChildId(parentId,site){
-    const slug=canonicalSite(site).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'');
-    return `${parentId}_${slug}`.slice(0,110);
-  }
-  async function upsertChantiers(rows){
-    if(!rows.length) return;
-    const payload=rows.map(c=>({id:c.id,nom:c.nom||'',lieu:c.lieu||'',chef:Array.isArray(c.chefs)?(c.chefs[0]||c.chef||''):(c.chef||''),chefs:c.chefs||[],statut:c.statut||'actif',desc:c.desc||'',dateDebut:c.dateDebut||'',dateFin:c.dateFin||'',agents:c.agents||[],parent_id:c.parent_id||null}));
-    const {error}=await db.from('chantiers').upsert(payload,{onConflict:'id'});
-    if(error) throw new Error('Chantiers : '+error.message);
-  }
-  function showDpiMultiModal(data,fileName){
-    document.getElementById('movl')?.remove();
-    const modal=document.createElement('div');modal.id='movl';modal.className='moverlay';
-    const candidates=parentCandidates(data);
-    const best=candidates.find(c=>compact(c.nom).includes(compact(data.code)))||null;
-    const opts=candidates.map(c=>`<option value="${c.id}" ${best&&best.id===c.id?'selected':''}>${c.nom}</option>`).join('');
-    const counts=Object.entries(data.siteCounts||{}).map(([s,n])=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:.5px solid var(--border)"><span>${s}</span><strong>${n}</strong></div>`).join('');
-    modal.innerHTML=`<div class="msheet"><div class="mhandle"></div>
-      <div style="font-size:18px;font-weight:600;margin-bottom:4px">Import hiérarchique ${data.code}</div>
-      <div style="font-size:11px;color:var(--text2);margin-bottom:14px">${fileName} · ${data.items.length} références uniques détectées</div>
-      <div style="background:rgba(245,166,35,.08);border:.5px solid rgba(245,166,35,.25);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--text2)">
-        <strong style="color:#d99000">Multi-chantier protégé.</strong><br>Une référence déjà présente sur Lison ou un autre chantier sera conservée là-bas et une occurrence séparée sera créée ici.
-      </div>
-      <label class="fl" style="margin-top:0">Chantier maître</label>
-      <select id="dpi-parent-choice-v134" class="fi" style="margin-bottom:12px"><option value="__create__" ${best?'':'selected'}>+ Créer / retrouver automatiquement ${data.code}</option>${opts}</select>
-      <div style="background:var(--bg3);border-radius:10px;padding:10px 12px;margin-bottom:14px"><div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:6px">Répartition détectée</div>${counts}</div>
-      <button id="dpi-import-confirm-v134" class="btn btn-accent" style="margin-bottom:8px">Importer sans déplacer les doublons</button>
-      <button class="btn btn-outline" onclick="document.getElementById('movl').remove()">Annuler</button></div>`;
-    document.getElementById('app').appendChild(modal);
-    document.getElementById('dpi-import-confirm-v134').onclick=()=>applyDpiMulti(data,document.getElementById('dpi-parent-choice-v134').value);
-  }
-  async function applyDpiMulti(data,parentChoice){
-    const btn=document.getElementById('dpi-import-confirm-v134');if(btn){btn.disabled=true;btn.textContent='Import en cours…';}
-    window._isImporting=true;window._lastImport=Date.now();
-    try{
-      let parent=null,newParent=false;
-      if(parentChoice&&parentChoice!=='__create__') parent=S.chantiers.find(c=>c.id===parentChoice)||null;
-      if(!parent) parent=S.chantiers.find(c=>!c.parent_id&&compact(c.nom).includes(compact(data.code)))||null;
-      if(!parent){
-        let id='CH_'+data.code;if(S.chantiers.some(c=>c.id===id)) id=newId('CH');
-        parent={id,nom:data.parentName||data.code,lieu:data.parentName||data.code,chef:S.agent,chefs:[S.agent],statut:'actif',desc:'Registre maître '+data.code,dateDebut:'',dateFin:'',agents:[],parent_id:null};newParent=true;
-      }
-      const children=[],created=[];
-      for(const site of Object.keys(data.siteCounts||{})){
-        let child=chooseChild(parent.id,site);
-        if(!child){let id=stableChildId(parent.id,site);if(S.chantiers.some(c=>c.id===id))id=newId('CH');child={id,nom:site,lieu:site,chef:S.agent,chefs:[S.agent],statut:'actif',desc:'Sous-chantier '+data.code,dateDebut:'',dateFin:'',agents:[],parent_id:parent.id};created.push(child);}
-        children.push(child);
-      }
-      await upsertChantiers([...(newParent?[parent]:[]),...created]);
-      if(newParent) S.chantiers.push(parent);created.forEach(c=>S.chantiers.push(c));
-      const childBySite=new Map(children.map(c=>[siteKey(c.nom),c]));
-      const changed=[],expected=[],manifestByChild=new Map();
-      let added=0,movedWithin=0,multi=0,updated=0;
-      for(const src of data.items){
-        const ref=normRef(src.reference||src.id);const child=childBySite.get(siteKey(src.site));if(!looksLikeBusinessRef(ref)||!child)continue;
-        expected.push({ref,chantierId:child.id,nom:src.nom,cat:src.cat,echeance:src.echeance,prix:src.prix});
-        if(!manifestByChild.has(child.id))manifestByChild.set(child.id,[]);
-        manifestByChild.get(child.id).push({ref,nom:src.nom,cat:src.cat,echeance:src.echeance,prix:src.prix});
-        let target=directOn(ref,child.id);
-        if(target){applyMetadata(target,{...src,id:ref});updated++;changed.push(target);removeLegacyExt(ref,child.id);continue;}
-        const candidates=allByRef(ref);
-        const sameMaster=candidates.filter(m=>parentOfChantier(m.chantierId)===parent.id);
-        if(sameMaster.length){
-          // INVENTAIRE est la source de vérité à l'intérieur du même chantier maître.
-          target=sameMaster[0];
-          target.chantierId=child.id;applyMetadata(target,{...src,id:ref});movedWithin++;changed.push(target);removeLegacyExt(ref,child.id);continue;
-        }
-        if(candidates.length){
-          const id=technicalId(ref,child.id);
-          target=freshOccurrence({id:ref,nom:src.nom,cat:src.cat,echeance:src.echeance,prix:src.prix},child.id,id);
-          S.mat.push(target);changed.push(target);added++;multi++;removeLegacyExt(ref,child.id);
-        }else{
-          let id=ref;if(S.mat.some(m=>m.id===id))id=technicalId(ref,child.id);
-          target=freshOccurrence({id:ref,nom:src.nom,cat:src.cat,echeance:src.echeance,prix:src.prix},child.id,id);
-          S.mat.push(target);changed.push(target);added++;
-        }
-      }
-      await upsertMaterials(changed);
-      for(const [cid,items] of manifestByChild) saveManifestFor(cid,items);
-      let check=await verifyPersisted(expected);
-      if(check.checked&&check.missing.length){
-        console.warn('[RailOps v136] Références DPI manquantes après 1er passage',check.missing);
-        await forceMissingOccurrences(check.missing);
-        check=await verifyPersisted(expected);
-      }
-      try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-      document.getElementById('movl')?.remove();render();setTimeout(decorateMultiBadges,0);
-      if(check.checked&&check.missing.length){
-        toast(`${check.missing.length} référence(s) ${data.code} restent absentes de leur sous-chantier`,'danger');
-      }else{
-        const verifyTxt=check.checked?` · base ${check.present}/${check.total}`:'';
-        toast(`${data.items.length} références ${data.code} synchronisées · ${multi} multi-chantier(s)${verifyTxt}`,'ok');
-      }
-      console.info('[RailOps v136 DPI]',{parent:parent.id,total:data.items.length,added,updated,movedWithin,multi,verification:check});
-    }catch(err){console.error('[RailOps v136 DPI]',err);toast('Import DPI interrompu : '+(err?.message||err),'danger');if(btn){btn.disabled=false;btn.textContent='Réessayer';}}
-    finally{window._isImporting=false;window._lastImport=Date.now();}
-  }
-
-  // Intercepte les registres DPI avant la v133. Les autres formats restent traités par le lecteur v132/v133.
-  const previousImportCSV=importCSV;
-  importCSV=function(input){
-    const file=input?.files?.[0];
-    if(!file) return previousImportCSV(input);
-    const ext=(file.name.split('.').pop()||'').toLowerCase();
-    if(!['xlsx','xls','xlsm','xlsb'].includes(ext)||typeof XLSX==='undefined'||!window.RailOpsDPIImport?.detect) return previousImportCSV(input);
-    const reader=new FileReader();
-    reader.onload=e=>{
-      try{
-        const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
-        const dpi=window.RailOpsDPIImport.detect(wb);
-        if(!dpi){previousImportCSV(input);return;}
-        input.value='';showDpiMultiModal(dpi,file.name);
-      }catch(err){console.warn('[RailOps v134 detect]',err);previousImportCSV(input);}
-    };
-    reader.onerror=()=>previousImportCSV(input);
-    reader.readAsArrayBuffer(file);
-  };
-
-  // QR : le code physique reste RAILOPS:MAT:<référence>, jamais l'ID technique.
-  const oldGetM=getM;
-  getM=function(id){
-    const direct=oldGetM(id);if(direct)return direct;
-    const ref=normRef(id);
-    return directOn(ref,S.curC) || allByRef(ref)[0] || null;
-  };
-  const oldGenQR=genQR;
-  genQR=function(id){const m=S.mat.find(x=>x.id===id);return oldGenQR(m?businessRefOf(m):canonicalRef(id));};
-  const oldPrintQR=printQR;
-  printQR=function(id,name){const m=S.mat.find(x=>x.id===id);return oldPrintQR(m?businessRefOf(m):canonicalRef(id),name);};
-
-  processQR=function(payload){
-    stopCam();
-    if(!String(payload||'').startsWith('RAILOPS:MAT:')){toast('QR invalide','danger');return;}
-    const ref=normRef(String(payload).replace('RAILOPS:MAT:',''));
-    const matches=allByRef(ref);
-    if(!matches.length){toast('Matériel introuvable','danger');return;}
-    let chosen=directOn(ref,S.curC);
-    if(!chosen && S.curC){
-      const cur=S.chantiers.find(c=>c.id===S.curC);
-      if(cur && !cur.parent_id){
-        const under=matches.filter(m=>parentOfChantier(m.chantierId)===cur.id);
-        if(under.length===1) chosen=under[0];
-      }
-    }
-    if(chosen || matches.length===1){startInspect((chosen||matches[0]).id);return;}
-    document.getElementById('movl')?.remove();
-    const modal=document.createElement('div');modal.id='movl';modal.className='moverlay';
-    modal.innerHTML=`<div class="msheet"><div class="mhandle"></div><div style="font-size:18px;font-weight:600;margin-bottom:4px">${ref}</div><div style="font-size:12px;color:var(--text2);margin-bottom:14px">Cette référence est présente sur plusieurs chantiers.</div><div style="display:flex;flex-direction:column;gap:8px">${matches.map(m=>`<button class="btn btn-ghost ro-mc-choose" data-id="${m.id.replace(/"/g,'&quot;')}">${pathForChantier(m.chantierId)}</button>`).join('')}</div><button class="btn btn-outline" style="margin-top:12px" onclick="document.getElementById('movl').remove()">Annuler</button></div>`;
-    document.getElementById('app').appendChild(modal);
-    modal.querySelectorAll('.ro-mc-choose').forEach(b=>b.onclick=()=>{const id=b.dataset.id;modal.remove();startInspect(id);});
-  };
-
-  // Affichage : pastille uniforme + masquage de l'ID technique.
-  const originalRegItemHTML=regItemHTML;
-  regItemHTML=function(a){
-    const clean={...a};delete clean.autreChantier;delete clean._externe;
-    return originalRegItemHTML(clean);
-  };
-  const originalRenderTab=renderTab;
-  renderTab=function(){const r=originalRenderTab.apply(this,arguments);setTimeout(decorateMultiBadges,0);return r;};
-  const originalRender=render;
-  render=function(){const r=originalRender.apply(this,arguments);setTimeout(()=>{ensureStyle();decorateMultiBadges();},0);return r;};
-
-  ensureStyle();
-  setTimeout(decorateMultiBadges,0);
-  window.RailOpsMultiChantier={version:VERSION,canonicalRef,businessRefOf,allByRef,directOn,pathForChantier,technicalId,decorate:decorateMultiBadges,verifyPersisted};
-  // Migration automatique des anciennes liaisons locales vers de vraies occurrences.
-  // On attend que le chargement Supabase soit terminé afin de ne pas créer de faux doublons.
-  let __mcRepairTry=0;
-  const __mcRepairTimer=setInterval(async()=>{
-    __mcRepairTry++;
-    if(Array.isArray(S?.chantiers)&&S.chantiers.length&&Array.isArray(S?.mat)&&S.mat.length){
-      clearInterval(__mcRepairTimer);
-      try{
-        const r=await repairLegacyMultiLinks();
-        if(r.created){
-          render();
-          setTimeout(decorateMultiBadges,0);
-          toast(r.created+' liaison(s) multi-chantier restaurée(s) ✓','ok');
-        }else setTimeout(decorateMultiBadges,0);
-        console.info('[RailOps v136] Migration multi-chantier',r);
-      }catch(e){console.warn('[RailOps v136] Migration multi-chantier impossible',e);}
-    }else if(__mcRepairTry>=30) clearInterval(__mcRepairTimer);
-  },500);
-
-  window.RailOpsMultiChantier.repairLegacy=repairLegacyMultiLinks;
-  console.info('[RailOps] Correctif multi-chantier réel actif —',VERSION);
-})();
-
-</script>
-
-
-<script id="railops-fix-step3d-reconcile">
-/* RailOps v137 — ETAPE 3D : réconciliation réelle des références attendues.
-   Corrige le cas où une référence existe dans Supabase mais reste invisible car son ID
-   est encore présent dans deleted_ids / la file locale de suppression.
-   Ne supprime rien et ne modifie pas la purge hebdomadaire. */
-(function(){
-  'use strict';
-  const VERSION='137-step3d-visible-reconcile';
-  const MANIFEST_KEY='ro_registry_manifest_v136';
-  const MC_MARK='__MC__';
-  let running=false;
-  let lastManifestSignature='';
-  let bootDone=false;
-
-  function norm(v){
-    if(window.RailOpsImportFix?.normalizeReference) return window.RailOpsImportFix.normalizeReference(v);
-    return String(v??'').normalize('NFKC').trim().toUpperCase()
-      .replace(/[‐‑‒–—−]/g,'-').replace(/\s+/g,'')
-      .replace(/[^A-Z0-9._\/-]/g,'-').replace(/-{2,}/g,'-').replace(/^-+|-+$/g,'');
-  }
-  function localBusinessRef(m){
-    if(window.RailOpsMultiChantier?.businessRefOf) return window.RailOpsMultiChantier.businessRefOf(m);
-    const id=String(m?.id??'');
-    const pos=id.lastIndexOf(MC_MARK);
-    if(pos>0) return norm(id.slice(0,pos));
-    const nid=norm(id), nnom=norm(m?.nom);
-    if(nnom && nid.startsWith(nnom+'-') && /^\d{1,5}$/.test(nid.slice(nnom.length+1))) return nnom;
-    return nid;
-  }
-  function loadManifest(){
-    try{return JSON.parse(localStorage.getItem(MANIFEST_KEY)||'{}')||{};}catch(e){return {};}
-  }
-  function manifestSignature(mf){
-    try{
-      const parts=[];
-      Object.keys(mf).sort().forEach(cid=>{
-        const refs=(mf[cid]||[]).map(x=>norm(x?.ref||x?.id||x?.reference)).filter(Boolean).sort();
-        parts.push(cid+':'+refs.join(','));
-      });
-      return parts.join('|');
-    }catch(e){return '';}
-  }
-  function expectedFromManifest(){
-    const mf=loadManifest();
-    const valid=new Set((S?.chantiers||[]).map(c=>c.id));
-    const map=new Map();
-    for(const [cid,items] of Object.entries(mf)){
-      if(!valid.has(cid) || !Array.isArray(items)) continue;
-      for(const x of items){
-        const ref=norm(x?.ref||x?.id||x?.reference);
-        if(!ref) continue;
-        const key=cid+'|'+ref;
-        if(!map.has(key)) map.set(key,{chantierId:cid,ref,nom:x?.nom||ref,cat:x?.cat||'Outillage',echeance:x?.echeance||'',prix:x?.prix??null});
-      }
-    }
-    return [...map.values()];
-  }
-  async function readTombstones(){
-    const ids=new Set();
-    try{
-      const {data,error}=await db.from('deleted_ids').select('*');
-      if(!error && Array.isArray(data)) for(const r of data){
-        const id=String(r?.id||r?.identifiant||'').trim();
-        if(id) ids.add(id);
-      }
-    }catch(e){console.warn('[RailOps v137] deleted_ids illisible',e);}
-    try{
-      if(typeof getDeleteQueue==='function') for(const id of (getDeleteQueue()||[])) if(id) ids.add(String(id));
-    }catch(e){}
-    return ids;
-  }
-  async function readAllDbMaterials(){
-    try{
-      if(typeof fetchAllMats==='function'){
-        const r=await fetchAllMats();
-        if(!r?.error && Array.isArray(r?.data)) return r.data;
-      }
-    }catch(e){console.warn('[RailOps v137] lecture complète impossible',e);}
-    return Array.isArray(S?.mat)?S.mat.slice():[];
-  }
-  function hash(v){
-    let h=2166136261; const s=String(v??'');
-    for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}
-    return (h>>>0).toString(36).toUpperCase();
-  }
-  function safeTechnicalId(ref,cid,used,tomb){
-    const base=norm(ref);
-    let n=0,id='';
-    do{
-      const salt=n?cid+'|RESTORE|'+n:cid+'|RESTORE';
-      id=base+MC_MARK+hash(salt);
-      n++;
-    }while(used.has(id)||tomb.has(id));
-    used.add(id);
-    return id;
-  }
-  function freshOccurrence(exp,id,src){
-    return {
-      id,
-      nom:exp.nom||src?.nom||exp.ref,
-      cat:exp.cat||src?.cat||'Outillage',
-      chantierId:exp.chantierId,
-      etat:'inconnu',
-      scan:null,
-      presence:'non-confirme',
-      echeance:exp.echeance||src?.echeance||'',
-      prix:exp.prix??src?.prix??null,
-      verifLundi:null,
-      verifSemaine:null,
-      controle2m:null
-    };
-  }
-  function cleanForDb(item){
-    const {prix,autreChantier,_externe,reference,...r}=item;
-    return r;
-  }
-  async function upsertBatch(items){
-    for(let i=0;i<items.length;i+=100){
-      const part=items.slice(i,i+100).map(cleanForDb);
-      const {error}=await db.from('materiels').upsert(part,{onConflict:'id'});
-      if(error) throw new Error(error.message||String(error));
-    }
-  }
-  function visiblePairSet(dbRows,tomb){
-    const set=new Set();
-    for(const m of (dbRows||[])){
-      if(!m?.id || tomb.has(String(m.id))) continue;
-      const ref=localBusinessRef(m);
-      if(ref && m.chantierId) set.add(m.chantierId+'|'+ref);
-    }
-    return set;
-  }
-  function sourceForRef(ref,dbRows){
-    const local=(S?.mat||[]).find(m=>localBusinessRef(m)===ref);
-    if(local) return local;
-    return (dbRows||[]).find(m=>localBusinessRef(m)===ref)||null;
-  }
-  function pathFor(cid){
-    if(window.RailOpsMultiChantier?.pathForChantier) return window.RailOpsMultiChantier.pathForChantier(cid);
-    const c=(S?.chantiers||[]).find(x=>x.id===cid);return c?.nom||cid;
-  }
-  async function reconcile(reason='manuel',showSuccess=false){
-    if(running || !Array.isArray(S?.mat) || !Array.isArray(S?.chantiers) || !S.chantiers.length) return null;
-    const expected=expectedFromManifest();
-    if(!expected.length) return {reason,expected:0,created:0,remaining:0,missing:[]};
-    running=true;
-    try{
-      const tomb=await readTombstones();
-      let dbRows=await readAllDbMaterials();
-      let visible=visiblePairSet(dbRows,tomb);
-      const missing=expected.filter(x=>!visible.has(x.chantierId+'|'+x.ref));
-      if(!missing.length){
-        if(showSuccess) toast(`Références vérifiées : ${expected.length}/${expected.length} ✓`,'ok');
-        return {reason,expected:expected.length,created:0,remaining:0,missing:[]};
-      }
-
-      const used=new Set(dbRows.map(m=>String(m?.id||'')).filter(Boolean));
-      (S.mat||[]).forEach(m=>m?.id&&used.add(String(m.id)));
-      const created=[];
-      for(const exp of missing){
-        // Une occurrence déjà visible localement est prioritaire. Si elle n'est simplement
-        // pas encore en base, on la republie sans toucher à ses vérifications.
-        const localDirect=(S.mat||[]).find(m=>m.chantierId===exp.chantierId && localBusinessRef(m)===exp.ref && !tomb.has(String(m.id)));
-        if(localDirect){created.push(localDirect);continue;}
-
-        // Si l'ID historique est blacklisté, on ne le ressuscite pas : on crée une occurrence
-        // par chantier avec un nouvel ID technique qui ne peut pas être filtré au prochain load().
-        const src=sourceForRef(exp.ref,dbRows);
-        const id=safeTechnicalId(exp.ref,exp.chantierId,used,tomb);
-        const item=freshOccurrence(exp,id,src);
-        S.mat.push(item);created.push(item);
-      }
-
-      if(created.length) await upsertBatch(created);
-      try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-
-      // Contrôle réel : on refait une lecture DB ET on réapplique deleted_ids,
-      // exactement comme l'application le fait au chargement.
-      dbRows=await readAllDbMaterials();
-      const tomb2=await readTombstones();
-      visible=visiblePairSet(dbRows,tomb2);
-      const remaining=expected.filter(x=>!visible.has(x.chantierId+'|'+x.ref));
-
-      try{
-        if(typeof render==='function') render();
-        else if(typeof renderTab==='function') renderTab();
-        setTimeout(()=>window.RailOpsMultiChantier?.decorate?.(),0);
-      }catch(e){}
-
-      const result={reason,expected:expected.length,created:created.length,remaining:remaining.length,missing:remaining};
-      window.__railopsLastReferenceAudit=result;
-      if(remaining.length){
-        const sample=remaining.slice(0,5).map(x=>`${x.ref} (${pathFor(x.chantierId)})`).join(', ');
-        console.error('[RailOps v137] références toujours absentes',remaining);
-        toast(`${remaining.length} référence(s) restent invisibles après réparation${sample?' · '+sample:''}`,'danger');
-      }else if(created.length){
-        toast(`${created.length} référence(s) restaurée(s) sur leur chantier ✓`,'ok');
-      }else if(showSuccess){
-        toast(`Références vérifiées : ${expected.length}/${expected.length} ✓`,'ok');
-      }
-      console.info('[RailOps v137] audit références',result);
-      return result;
-    }catch(err){
-      console.error('[RailOps v137] réconciliation impossible',err);
-      toast('Réparation des références impossible : '+(err?.message||err),'danger');
-      return {reason,error:String(err?.message||err)};
-    }finally{running=false;}
-  }
-
-  // Tout import simple est suivi d'un audit réel. On ne remplace pas le moteur v136,
-  // on ajoute uniquement le contrôle qui tient compte de deleted_ids.
-  if(typeof processRows==='function'){
-    const processRowsV136=processRows;
-    processRows=async function(rows){
-      const r=await processRowsV136(rows);
-      await reconcile('import-simple',true);
-      return r;
-    };
-  }
-
-  // Les imports DPI sont gérés dans l'IIFE v136. Leur manifeste change à la fin de l'import.
-  // Ce surveillant déclenche alors automatiquement la même réconciliation globale.
-  const timer=setInterval(async()=>{
-    try{
-      if(!Array.isArray(S?.chantiers)||!S.chantiers.length||!Array.isArray(S?.mat)) return;
-      const mf=loadManifest();
-      const sig=manifestSignature(mf);
-      if(!bootDone){
-        bootDone=true;lastManifestSignature=sig;
-        if(sig) await reconcile('demarrage',false);
-        return;
-      }
-      if(sig && sig!==lastManifestSignature && !window._isImporting && !window._importing){
-        lastManifestSignature=sig;
-        await reconcile('manifest-modifie',true);
-      }
-    }catch(e){console.warn('[RailOps v137] surveillance manifeste',e);}
-  },1200);
-
-  window.RailOpsReferenceAudit={version:VERSION,reconcile,expected:expectedFromManifest,last:()=>window.__railopsLastReferenceAudit||null};
-  console.info('[RailOps] Réconciliation références active —',VERSION);
-})();
-</script>
-<script id="railops-fix-step3e-import-native">
-/* RailOps v138 — ETAPE 3E
-   Le contrôle des doublons est désormais effectué dans le moteur d'import lui-même.
-   Ce garde-fou relance aussi l'audit après CHAQUE import, même si le manifeste
-   n'a pas changé, afin qu'un réimport identique puisse réparer une occurrence. */
-(function(){
-  'use strict';
-  const VERSION='138-step3e-import-native';
-  let lastSeen=Number(window._lastImport||0),busy=false;
-  async function auditAfterImport(){
-    const api=window.RailOpsReferenceAudit;
-    if(!api?.reconcile||busy) return;
-    busy=true;
-    try{
-      let r=await api.reconcile('v138-apres-import',true);
-      if(r?.remaining>0){
-        await new Promise(res=>setTimeout(res,900));
-        r=await api.reconcile('v138-apres-import-retry',true);
-      }
-      return r;
-    }finally{busy=false;}
-  }
-  const timer=setInterval(async()=>{
-    try{
-      const cur=Number(window._lastImport||0);
-      if(cur&&cur!==lastSeen&&!window._isImporting&&!window._importing){
-        lastSeen=cur;
-        await auditAfterImport();
-      }
-    }catch(e){console.warn('[RailOps v138] audit post-import',e);}
-  },900);
-  window.RailOpsImportNativeV138={version:VERSION,audit:auditAfterImport};
-  console.info('[RailOps] Import multi-chantier natif actif —',VERSION);
-})();
-</script>
-
-<script id="railops-fix-step3f-dpi-guaranteed">
-/* RailOps v139 — ETAPE 3F
-   Import DPI déterministe : aucune référence n'est déplacée hors d'un autre chantier maître.
-   Une occurrence manquante est créée avec un ID technique NEUF par INSERT (pas par upsert
-   d'un ancien ID potentiellement blacklisté). Après import, la base est relue et doit
-   contenir chaque paire sous-chantier + référence attendue. Ne touche pas à la purge hebdo. */
-(function(){
-  'use strict';
-  const VERSION='139-step3f-dpi-guaranteed';
-  const MC='__MC__';
-  const MANIFEST_KEY='ro_registry_manifest_v136';
-  let seq=0;
-
-  const api=()=>window.RailOpsMultiChantier||{};
-  function normRef(v){
-    if(window.RailOpsImportFix?.normalizeReference) return window.RailOpsImportFix.normalizeReference(v);
-    return String(v??'').normalize('NFKC').trim().toUpperCase().replace(/[‐‑‒–—−]/g,'-').replace(/\s+/g,'').replace(/[^A-Z0-9._\/-]/g,'-').replace(/-{2,}/g,'-').replace(/^-+|-+$/g,'');
-  }
-  function businessRef(m){
-    if(api().businessRefOf) return api().businessRefOf(m);
-    const id=String(m?.id||''); const p=id.lastIndexOf(MC);
-    return normRef(p>0?id.slice(0,p):id);
-  }
-  function siteKey(v){
-    return String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'');
-  }
-  function canonicalSite(v){
-    return window.RailOpsDPIImport?.canonicalSite?.(v)||String(v??'').trim().toUpperCase();
-  }
-  function parentOf(cid){
-    const c=(S.chantiers||[]).find(x=>x.id===cid); return c?.parent_id||null;
-  }
-  function pathOf(cid){
-    if(api().pathForChantier) return api().pathForChantier(cid);
-    const c=(S.chantiers||[]).find(x=>x.id===cid); if(!c)return cid;
-    const p=c.parent_id?(S.chantiers||[]).find(x=>x.id===c.parent_id):null;
-    return p?`${p.nom} › ${c.nom}`:(c.nom||cid);
-  }
-  function direct(ref,cid,arr=S.mat||[]){
-    const r=normRef(ref); return arr.find(m=>m.chantierId===cid&&businessRef(m)===r)||null;
-  }
-  function all(ref,arr=S.mat||[]){
-    const r=normRef(ref); return arr.filter(m=>businessRef(m)===r);
-  }
-  async function allDb(){
-    if(typeof fetchAllMats==='function'){
-      const r=await fetchAllMats(); if(!r?.error&&Array.isArray(r?.data)) return r.data;
-      if(r?.error) throw new Error(r.error.message||'Lecture matériels impossible');
-    }
-    return (S.mat||[]).slice();
-  }
-  async function blockedIds(){
-    const set=new Set();
-    try{if(typeof getDeleteQueue==='function')for(const id of (getDeleteQueue()||[]))if(id)set.add(String(id));}catch(e){}
-    try{
-      const {data,error}=await db.from('deleted_ids').select('*');
-      if(!error&&Array.isArray(data)) for(const x of data){const id=String(x?.id||x?.identifiant||'').trim();if(id)set.add(id);}
-    }catch(e){console.warn('[v139] deleted_ids non lisible',e);}
-    return set;
-  }
-  function cleanForDb(x){
-    return {id:x.id,nom:x.nom||'',cat:x.cat||'Outillage',chantierId:x.chantierId,etat:x.etat||'inconnu',scan:x.scan||null,presence:x.presence||'non-confirme',echeance:x.echeance||'',verifLundi:x.verifLundi||null,verifSemaine:x.verifSemaine||null,controle2m:x.controle2m||null};
-  }
-  function fresh(exp,id){
-    return {id,nom:exp.nom||exp.ref,cat:exp.cat||'Outillage',chantierId:exp.chantierId,etat:'inconnu',scan:null,presence:'non-confirme',echeance:exp.echeance||'',verifLundi:null,verifSemaine:null,controle2m:null};
-  }
-  function rnd(){
-    try{const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0].toString(36).toUpperCase();}catch(e){return Math.floor(Math.random()*0xffffffff).toString(36).toUpperCase();}
-  }
-  function freshTechnicalId(ref,cid,used,blocked){
-    const base=normRef(ref).slice(0,78);
-    let id='';
-    do{id=`${base}${MC}N${Date.now().toString(36).toUpperCase()}${(++seq).toString(36).toUpperCase()}${rnd().slice(0,5)}`.slice(0,120);}while(used.has(id)||blocked.has(id));
-    used.add(id); return id;
-  }
-  async function insertFresh(exp,used,blocked,dbRows){
-    // Vérifie encore une fois juste avant l'INSERT afin d'éviter un doublon de course.
-    const visible=direct(exp.ref,exp.chantierId,dbRows.filter(m=>!blocked.has(String(m.id))));
-    if(visible) return {item:visible,created:false};
-    let lastErr=null;
-    for(let attempt=0;attempt<6;attempt++){
-      const id=freshTechnicalId(exp.ref,exp.chantierId,used,blocked);
-      const item=fresh(exp,id);
-      try{
-        const {error}=await db.from('materiels').insert([cleanForDb(item)]);
-        if(!error){dbRows.push(item);S.mat.push(item);return {item,created:true};}
-        lastErr=error;
-        console.warn('[v139] INSERT occurrence refusé',exp.ref,pathOf(exp.chantierId),error);
-      }catch(e){lastErr=e;console.warn('[v139] INSERT occurrence erreur',exp.ref,e);}
-    }
-    throw new Error(`${exp.ref} → ${pathOf(exp.chantierId)} : ${lastErr?.message||lastErr||'INSERT refusé'}`);
-  }
-  async function updateExisting(item,exp,move=false){
-    const patch={};
-    if(exp.nom)patch.nom=exp.nom;if(exp.cat)patch.cat=exp.cat;if(exp.echeance)patch.echeance=exp.echeance;
-    if(move)patch.chantierId=exp.chantierId;
-    if(!Object.keys(patch).length)return;
-    const {error}=await db.from('materiels').update(patch).eq('id',item.id);
-    if(error) throw new Error(`${exp.ref} : ${error.message}`);
-    Object.assign(item,patch);
-  }
-  function manifestWrite(byChild){
-    let mf={};try{mf=JSON.parse(localStorage.getItem(MANIFEST_KEY)||'{}')||{};}catch(e){}
-    for(const [cid,items] of byChild) mf[cid]=items.map(x=>({ref:x.ref,nom:x.nom||'',cat:x.cat||'Outillage',echeance:x.echeance||'',prix:x.prix??null}));
-    try{localStorage.setItem(MANIFEST_KEY,JSON.stringify(mf));}catch(e){}
-  }
-  async function upsertChildren(rows){
-    if(!rows.length)return;
-    const payload=rows.map(c=>({id:c.id,nom:c.nom||'',lieu:c.lieu||'',chef:c.chef||'',chefs:c.chefs||[],statut:c.statut||'actif',desc:c.desc||'',dateDebut:c.dateDebut||'',dateFin:c.dateFin||'',agents:c.agents||[],parent_id:c.parent_id||null}));
-    const {error}=await db.from('chantiers').upsert(payload,{onConflict:'id'});if(error)throw new Error('Sous-chantiers : '+error.message);
-  }
-  function stableChildId(parentId,site){const slug=canonicalSite(site).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'');return `${parentId}_${slug}`.slice(0,110);}
-  function candidateParents(data){
-    const sites=new Set(Object.keys(data.siteCounts||{}).map(siteKey));
-    return (S.chantiers||[]).filter(c=>!c.parent_id&&c.statut!=='termine').map(p=>{
-      const kids=(S.chantiers||[]).filter(c=>c.parent_id===p.id);
-      let score=kids.filter(k=>sites.has(siteKey(k.nom))).length*20;
-      score+=kids.filter(k=>String(k.desc||'').toUpperCase().includes(String(data.code||'').toUpperCase())).length*50;
-      if(siteKey(p.nom).includes(siteKey(data.code)))score+=30;
-      return {p,score};
-    }).sort((a,b)=>b.score-a.score);
-  }
-  function getChild(parent,site,created){
-    const key=siteKey(site);
-    let child=(S.chantiers||[]).filter(c=>c.parent_id===parent.id&&siteKey(c.nom)===key).sort((a,b)=>(S.mat||[]).filter(m=>m.chantierId===b.id).length-(S.mat||[]).filter(m=>m.chantierId===a.id).length)[0];
-    if(child)return child;
-    let id=stableChildId(parent.id,site);let n=1;while((S.chantiers||[]).some(c=>c.id===id))id=stableChildId(parent.id,site)+'_'+(++n);
-    child={id,nom:canonicalSite(site),lieu:canonicalSite(site),chef:S.agent||'',chefs:S.agent?[S.agent]:[],statut:'actif',desc:'Sous-chantier '+(window.__v139DpiCode||'DPI'),dateDebut:'',dateFin:'',agents:[],parent_id:parent.id};
-    created.push(child);return child;
-  }
-  function expectedSet(dbRows,blocked){
-    const s=new Set();for(const m of dbRows){if(!m?.id||blocked.has(String(m.id)))continue;const r=businessRef(m);if(r&&m.chantierId)s.add(m.chantierId+'|'+r);}return s;
-  }
-  async function reloadVisible(){
-    const [rows,blocked]=await Promise.all([allDb(),blockedIds()]);
-    const vis=rows.filter(m=>m?.id&&!blocked.has(String(m.id)));
-    S.mat=typeof normMats==='function'?normMats(vis):vis;
     try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
-    return {rows,blocked};
+    if(typeof render==='function')render();setTimeout(decorate,30);
+    return {removed,groups:done,errors};
+  }finally{window.__v140Repairing=false;}
+}
+function showRepairOffer(){
+  const groups=duplicateGroups();if(!groups.length)return;
+  const extras=groups.reduce((n,g)=>n+g.extra,0);
+  document.getElementById('ro-v140-repair')?.remove();
+  const d=document.createElement('div');d.id='ro-v140-repair';d.className='moverlay';
+  d.innerHTML=`<div class="msheet"><div class="mhandle"></div><div style="font-size:18px;font-weight:600">Réparation des doublons</div><div style="font-size:12px;color:var(--text2);margin:6px 0 14px">RailOps v140 détecte <strong>${extras}</strong> ligne(s) en trop sur <strong>${groups.length}</strong> référence(s), uniquement lorsque la même référence apparaît plusieurs fois dans le même chantier.</div><div style="background:rgba(29,158,117,.09);border:.5px solid rgba(29,158,117,.3);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px">La réparation conserve une occurrence, fusionne les vérifications/états utiles et rattache les scans avant de supprimer uniquement les doublons.</div><button id="ro-v140-repair-go" class="btn btn-accent">Réparer ${extras} doublon(s)</button><button class="btn btn-outline" style="margin-top:8px" onclick="document.getElementById('ro-v140-repair').remove()">Plus tard</button></div>`;
+  document.getElementById('app')?.appendChild(d);
+  document.getElementById('ro-v140-repair-go').onclick=async()=>{const b=document.getElementById('ro-v140-repair-go');b.disabled=true;b.textContent='Réparation en cours…';const r=await repairDuplicates(groups);d.remove();toast(`${r.removed} doublon(s) supprimé(s) · données conservées`,'ok');};
+}
+async function refresh(){const [rows,blocked]=await Promise.all([fetchRows(),blockedIds()]);const vis=rows.filter(m=>!blocked.has(String(m.id)));S.mat=typeof normMats==='function'?normMats(vis):vis;try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}return {rows:vis,blocked};}
+function makeItem(exp,id){return {id,nom:exp.nom||exp.ref,cat:exp.cat||'Outillage',chantierId:exp.chantierId,etat:'inconnu',scan:null,presence:'non-confirme',echeance:exp.echeance||'',verifLundi:null,verifSemaine:null,controle2m:null};}
+async function updateMeta(item,exp,move){const patch={};if(exp.nom)patch.nom=exp.nom;if(exp.cat)patch.cat=exp.cat;patch.echeance=exp.echeance||'';if(move)patch.chantierId=exp.chantierId;const {error}=await db.from('materiels').update(patch).eq('id',item.id);if(error)throw error;Object.assign(item,patch);}
+async function ensureOccurrence(exp,masterId,rows,blocked,used){
+  let hit=direct(exp.ref,exp.chantierId,rows);if(hit){await updateMeta(hit,exp,false);return {type:'existing',item:hit};}
+  const sameMaster=allByRef(exp.ref,rows).find(m=>topMasterId(m.chantierId)===masterId);
+  if(sameMaster){await updateMeta(sameMaster,exp,true);return {type:'moved',item:sameMaster};}
+  const elsewhere=allByRef(exp.ref,rows);
+  let id=normRef(exp.ref);
+  if(used.has(id)||blocked.has(id)||elsewhere.length)id=stableTechId(exp.ref,exp.chantierId,used,blocked);else used.add(id);
+  const item=makeItem(exp,id);const {error}=await db.from('materiels').insert([cleanDb(item)]);if(error)throw error;rows.push(item);S.mat.push(item);return {type:elsewhere.length?'multi':'created',item};
+}
+async function importIntoTarget(items,targetCid,label){
+  await repairDuplicates(duplicateGroups().filter(g=>g.chantierId===targetCid));
+  let {rows,blocked}=await refresh();const used=new Set(rows.map(m=>String(m.id)));let created=0,multi=0,existing=0,errors=[];
+  const master=topMasterId(targetCid);
+  for(const src of items){const exp={ref:normRef(src.id||src.reference),nom:src.nom||src.designation||src.id,cat:src.cat||src.categorie||'Outillage',echeance:src.echeance||'',chantierId:targetCid};if(!exp.ref)continue;try{const r=await ensureOccurrence(exp,master,rows,blocked,used);if(r.type==='multi')multi++;else if(r.type==='created')created++;else existing++;}catch(e){errors.push(`${exp.ref}: ${e.message||e}`);}}
+  await refresh();await repairDuplicates(duplicateGroups().filter(g=>g.chantierId===targetCid));await refresh();
+  const present=new Set((S.mat||[]).filter(m=>m.chantierId===targetCid).map(businessRef));const expected=[...new Set(items.map(x=>normRef(x.id||x.reference)).filter(Boolean))];const missing=expected.filter(r=>!present.has(r));
+  if(typeof render==='function')render();setTimeout(decorate,30);
+  if(missing.length)toast(`${label}: ${expected.length-missing.length}/${expected.length} · ${missing.length} manquante(s)`,'danger');else toast(`${label}: ${expected.length}/${expected.length} ✓${multi?' · '+multi+' multi-chantier(s)':''}`,'ok');
+  return {total:expected.length,present:expected.length-missing.length,missing,created,multi,existing,errors};
+}
+function activeOptions(includeChildren=true){return (S.chantiers||[]).filter(c=>c.statut!=='termine'&&(includeChildren||!c.parent_id)).map(c=>`<option value="${String(c.id).replace(/"/g,'&quot;')}">${pathOf(c.id)}</option>`).join('');}
+function showSimpleModal(items,fileName){
+  document.getElementById('movl')?.remove();const d=document.createElement('div');d.id='movl';d.className='moverlay';
+  d.innerHTML=`<div class="msheet"><div class="mhandle"></div><div style="font-size:18px;font-weight:600">Import registre — moteur v140</div><div style="font-size:11px;color:var(--text2);margin:4px 0 12px">${fileName||'Registre'} · ${items.length} référence(s) unique(s)</div><label class="fl" style="margin-top:0">Chantier cible</label><select id="ro-v140-target" class="fi">${activeOptions(true)}</select><button id="ro-v140-simple-go" class="btn btn-accent" style="margin-top:14px">Importer sans déplacer les doublons</button><button class="btn btn-outline" style="margin-top:8px" onclick="document.getElementById('movl').remove()">Annuler</button></div>`;
+  document.getElementById('app')?.appendChild(d);if(S.curC&&document.getElementById('ro-v140-target'))document.getElementById('ro-v140-target').value=S.curC;
+  document.getElementById('ro-v140-simple-go').onclick=async()=>{const b=document.getElementById('ro-v140-simple-go');b.disabled=true;b.textContent='Import en cours…';const cid=document.getElementById('ro-v140-target').value;try{await importIntoTarget(items,cid,'Import registre');d.remove();}catch(e){toast('Import interrompu : '+(e.message||e),'danger');b.disabled=false;b.textContent='Réessayer';}};
+}
+function detectDpi(wb){
+  const name=(wb.SheetNames||[]).find(n=>siteKey(n)==='INVENTAIRE');if(!name)return null;
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:'',raw:false,dateNF:'dd/mm/yyyy',blankrows:false});
+  let hi=-1,ref=-1,nom=-1,site=-1,cat=-1,date=-1;
+  for(let i=0;i<Math.min(rows.length,30);i++){const h=(rows[i]||[]).map(x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim());const ri=h.findIndex(x=>x.includes('ref'));const si=h.findIndex(x=>x==='site'||x.includes('site'));if(ri>=0&&si>=0){hi=i;ref=ri;site=si;nom=h.findIndex(x=>x.includes('designation')||x.includes('materiel')||x.includes('libelle'));cat=h.findIndex(x=>x.includes('categorie')||x==='type');date=h.findIndex(x=>x.includes('validite')||x.includes('echeance'));break;}}
+  if(hi<0)return null;const map=new Map();
+  for(let i=hi+1;i<rows.length;i++){const r=rows[i]||[];const rr=normRef(r[ref]);if(!rr)continue;const st=canonSite(r[site]);if(!st)continue;map.set(rr,{reference:rr,nom:nom>=0?String(r[nom]||rr).trim():rr,cat:cat>=0?String(r[cat]||'Outillage').trim():'Outillage',echeance:date>=0?String(r[date]||'').trim():'',site:st});}
+  const items=[...map.values()];if(items.length<20)return null;const counts={};for(const x of items)counts[x.site]=(counts[x.site]||0)+1;return {items,counts,code:'DPI2455'};
+}
+function stableChildId(parentId,site){return `${parentId}_${canonSite(site).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'')}`.slice(0,110);}
+async function ensureChild(parent,site){
+  const key=siteKey(site);let c=(S.chantiers||[]).filter(x=>x.parent_id===parent.id&&siteKey(x.nom)===key).sort((a,b)=>new Set((S.mat||[]).filter(m=>m.chantierId===b.id).map(businessRef)).size-new Set((S.mat||[]).filter(m=>m.chantierId===a.id).map(businessRef)).size)[0];if(c)return c;
+  let id=stableChildId(parent.id,site),n=1;while((S.chantiers||[]).some(x=>x.id===id))id=stableChildId(parent.id,site)+'_'+(++n);
+  c={id,nom:canonSite(site),lieu:canonSite(site),chef:S.agent||'',chefs:S.agent?[S.agent]:[],statut:'actif',desc:'Sous-chantier DPI2455',dateDebut:'',dateFin:'',agents:[],parent_id:parent.id};
+  const payload={id:c.id,nom:c.nom,lieu:c.lieu,chef:c.chef,chefs:c.chefs,statut:c.statut,desc:c.desc,dateDebut:'',dateFin:'',agents:[],parent_id:c.parent_id};const {error}=await db.from('chantiers').upsert([payload],{onConflict:'id'});if(error)throw error;S.chantiers.push(c);return c;
+}
+async function importDpi(data,parentId){
+  let parent=(S.chantiers||[]).find(c=>c.id===parentId&&!c.parent_id);if(!parent)throw new Error('Chantier maître introuvable');
+  const childMap=new Map();for(const site of Object.keys(data.counts)){childMap.set(siteKey(site),await ensureChild(parent,site));}
+  const childIds=new Set([...childMap.values()].map(c=>c.id));await repairDuplicates(duplicateGroups().filter(g=>childIds.has(g.chantierId)));
+  let {rows,blocked}=await refresh();const used=new Set(rows.map(m=>String(m.id)));let created=0,multi=0,moved=0,errors=[];
+  for(const src of data.items){const child=childMap.get(siteKey(src.site));if(!child)continue;const exp={ref:src.reference,nom:src.nom,cat:src.cat,echeance:src.echeance,chantierId:child.id};try{const r=await ensureOccurrence(exp,parent.id,rows,blocked,used);if(r.type==='multi')multi++;else if(r.type==='moved')moved++;else if(r.type==='created')created++;}catch(e){errors.push(`${exp.ref}: ${e.message||e}`);}}
+  await refresh();await repairDuplicates(duplicateGroups().filter(g=>childIds.has(g.chantierId)));await refresh();
+  const actual={};let total=0;for(const [site,count] of Object.entries(data.counts)){const c=childMap.get(siteKey(site));const n=new Set((S.mat||[]).filter(m=>m.chantierId===c.id).map(businessRef)).size;actual[site]=n;total+=n;}
+  const missing=[];for(const src of data.items){const c=childMap.get(siteKey(src.site));if(!direct(src.reference,c.id,S.mat||[]))missing.push(`${src.reference} → ${canonSite(src.site)}`);}
+  try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}if(typeof render==='function')render();setTimeout(decorate,30);
+  if(missing.length)toast(`DPI2455 : ${data.items.length-missing.length}/${data.items.length} · ${missing.length} manquante(s)`,'danger');else toast(`DPI2455 : ${total}/${data.items.length} ✓ · base stabilisée`,'ok');
+  window.__railopsV140Report={expected:data.counts,actual,total,missing,created,multi,moved,errors};return window.__railopsV140Report;
+}
+function showDpiModal(data,fileName){
+  document.getElementById('movl')?.remove();const masters=(S.chantiers||[]).filter(c=>!c.parent_id&&c.statut!=='termine');const counts=Object.entries(data.counts).map(([s,n])=>`<span style="display:inline-block;margin:2px 8px 2px 0">${s}: <strong>${n}</strong></span>`).join('');const d=document.createElement('div');d.id='movl';d.className='moverlay';
+  d.innerHTML=`<div class="msheet"><div class="mhandle"></div><div style="font-size:18px;font-weight:600">Import DPI2455 — moteur propre v140</div><div style="font-size:11px;color:var(--text2);margin:4px 0 12px">${fileName} · ${data.items.length} références uniques</div><div style="background:var(--bg3);border-radius:10px;padding:9px 12px;margin-bottom:12px;font-size:11px">${counts}</div><label class="fl" style="margin-top:0">Chantier maître</label><select id="ro-v140-parent" class="fi">${masters.map(c=>`<option value="${c.id}">${c.nom}</option>`).join('')}</select><div style="font-size:11px;color:var(--text2);margin:10px 0">L'onglet INVENTAIRE est la seule source d'affectation. Un import ne peut pas créer deux fois la même référence dans le même sous-chantier.</div><button id="ro-v140-dpi-go" class="btn btn-accent">Stabiliser puis importer 666 références</button><button class="btn btn-outline" style="margin-top:8px" onclick="document.getElementById('movl').remove()">Annuler</button></div>`;
+  document.getElementById('app')?.appendChild(d);const sel=document.getElementById('ro-v140-parent');const likely=masters.find(c=>siteKey(c.nom)==='CDG')||masters.find(c=>(S.chantiers||[]).filter(k=>k.parent_id===c.id).some(k=>siteKey(k.nom)==='VEMARS'));if(likely)sel.value=likely.id;
+  document.getElementById('ro-v140-dpi-go').onclick=async()=>{const b=document.getElementById('ro-v140-dpi-go');b.disabled=true;b.textContent='Stabilisation en cours…';try{const r=await importDpi(data,sel.value);d.remove();console.info('[RailOps v140]',r);}catch(e){toast('Import DPI interrompu : '+(e.message||e),'danger');b.disabled=false;b.textContent='Réessayer';}};
+}
+
+async function createGenericChantier(name,parentId){
+  const clean=String(name||'Chantier').trim()||'Chantier';
+  if(parentId){
+    const parent=(S.chantiers||[]).find(c=>c.id===parentId);if(!parent)throw new Error('Parent introuvable');
+    const existing=(S.chantiers||[]).find(c=>c.parent_id===parentId&&siteKey(c.nom)===siteKey(clean));if(existing)return existing;
+    return ensureChild(parent,clean);
   }
-  async function runImport(data,parentId){
-    window._isImporting=true;window._lastImport=Date.now();window.__v139DpiCode=data.code;
-    const errors=[];let createdCount=0,movedCount=0,updatedCount=0,multiCount=0;
-    try{
-      let parent=(S.chantiers||[]).find(c=>c.id===parentId&&!c.parent_id)||null;
-      if(!parent){
-        let id='CH_'+String(data.code||'DPI').replace(/[^A-Z0-9_]+/gi,'_');if((S.chantiers||[]).some(c=>c.id===id))id=typeof newId==='function'?newId('CH'):`CH${Date.now()}`;
-        parent={id,nom:data.parentName||data.code||'Chantier maître',lieu:data.parentName||data.code||'',chef:S.agent||'',chefs:S.agent?[S.agent]:[],statut:'actif',desc:'Registre maître '+(data.code||''),dateDebut:'',dateFin:'',agents:[],parent_id:null};
-        await upsertChildren([parent]);S.chantiers.push(parent);
-      }
-      const createdChildren=[];const childBySite=new Map();
-      for(const site of Object.keys(data.siteCounts||{})){const c=getChild(parent,site,createdChildren);childBySite.set(siteKey(site),c);}
-      if(createdChildren.length){await upsertChildren(createdChildren);createdChildren.forEach(c=>S.chantiers.push(c));}
+  const existing=(S.chantiers||[]).find(c=>!c.parent_id&&siteKey(c.nom)===siteKey(clean));if(existing)return existing;
+  const id=typeof newId==='function'?newId('CH'):`CH${Date.now()}${(++seq).toString(36)}`;
+  const c={id,nom:clean,lieu:clean,chef:S.agent||'',chefs:S.agent?[S.agent]:[],statut:'actif',desc:'',dateDebut:'',dateFin:'',agents:[],parent_id:null};
+  const payload={id:c.id,nom:c.nom,lieu:c.lieu,chef:c.chef,chefs:c.chefs,statut:c.statut,desc:'',dateDebut:'',dateFin:'',agents:[],parent_id:null};
+  const {error}=await db.from('chantiers').upsert([payload],{onConflict:'id'});if(error)throw error;S.chantiers.push(c);return c;
+}
+function showGenericMultiModal(sheets,fileName){
+  const parsed=sheets.map(x=>({name:x.n,items:window.RailOpsImportFix?.parseRows?window.RailOpsImportFix.parseRows(x.rows,'__TARGET__'):[]})).filter(x=>x.items.length);
+  if(!parsed.length){toast('Aucun onglet exploitable trouvé','danger');return;}
+  document.getElementById('movl')?.remove();const d=document.createElement('div');d.id='movl';d.className='moverlay';
+  const masters=(S.chantiers||[]).filter(c=>!c.parent_id&&c.statut!=='termine');
+  const rows=parsed.map((x,i)=>{const match=(S.chantiers||[]).find(c=>c.statut!=='termine'&&siteKey(c.nom)===siteKey(x.name));return `<div style="background:var(--bg3);border-radius:10px;padding:10px 12px;margin-bottom:8px"><div style="font-size:12px;font-weight:600;margin-bottom:6px">${x.name} · ${x.items.length} réf.</div><select id="ro-v140-generic-${i}" class="fi" style="font-size:12px"><option value="__ignore__">Ignorer</option><option value="__create__" ${match?'':'selected'}>Créer / réutiliser « ${x.name} »</option>${(S.chantiers||[]).filter(c=>c.statut!=='termine').map(c=>`<option value="${c.id}" ${match&&match.id===c.id?'selected':''}>${pathOf(c.id)}</option>`).join('')}</select></div>`;}).join('');
+  d.innerHTML=`<div class="msheet"><div class="mhandle"></div><div style="font-size:18px;font-weight:600">Import multi-onglets — moteur v140</div><div style="font-size:11px;color:var(--text2);margin:4px 0 12px">${fileName} · ${parsed.length} onglet(s)</div><label class="fl" style="margin-top:0">Chantier maître optionnel</label><select id="ro-v140-generic-parent" class="fi"><option value="">Chantiers indépendants</option>${masters.map(c=>`<option value="${c.id}">${c.nom}</option>`).join('')}</select><div style="margin-top:12px;max-height:48vh;overflow:auto">${rows}</div><button id="ro-v140-generic-go" class="btn btn-accent" style="margin-top:10px">Importer sans supprimer</button><button class="btn btn-outline" style="margin-top:8px" onclick="document.getElementById('movl').remove()">Annuler</button></div>`;
+  document.getElementById('app')?.appendChild(d);
+  document.getElementById('ro-v140-generic-go').onclick=async()=>{const b=document.getElementById('ro-v140-generic-go');b.disabled=true;b.textContent='Import en cours…';const parentId=document.getElementById('ro-v140-generic-parent').value;let total=0;try{for(let i=0;i<parsed.length;i++){const choice=document.getElementById(`ro-v140-generic-${i}`).value;if(choice==='__ignore__')continue;let target;if(choice==='__create__')target=await createGenericChantier(parsed[i].name,parentId||null);else target=(S.chantiers||[]).find(c=>c.id===choice);if(!target)continue;const r=await importIntoTarget(parsed[i].items,target.id,parsed[i].name);total+=r.present;}try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}d.remove();if(typeof render==='function')render();toast(`${total} référence(s) importée(s) · aucune suppression`,'ok');}catch(e){toast('Import interrompu : '+(e.message||e),'danger');b.disabled=false;b.textContent='Réessayer';}};
+}
+function decorate(){
+  document.querySelectorAll('.ro-v140-mc').forEach(x=>x.remove());
+  const rows=document.querySelectorAll('.reg-item[id^="ri-"]');for(const row of rows){const internal=row.id.slice(3);const m=(S.mat||[]).find(x=>x.id===internal);if(!m)continue;const ref=businessRef(m);const loc=[...new Set(allByRef(ref).map(x=>x.chantierId).filter(Boolean))];const others=loc.filter(cid=>cid!==m.chantierId).map(pathOf);if(!others.length)continue;const b=document.createElement('div');b.className='ro-v140-mc';b.innerHTML=`<strong>Multi-chantier</strong> · aussi sur ${[...new Set(others)].join(' · ')}`;row.querySelector('.reg-top')?.insertAdjacentElement('afterend',b);}
+}
+if(!document.getElementById('ro-v140-style')){const st=document.createElement('style');st.id='ro-v140-style';st.textContent='.ro-v140-mc{display:inline-block;margin:7px 0 0 42px;padding:4px 8px;border-radius:999px;background:rgba(245,166,35,.13);border:.5px solid rgba(245,166,35,.42);color:#d99000;font-size:10px;line-height:1.2}';document.head.appendChild(st);}
 
-      let dbRows=await allDb();const blocked=await blockedIds();const used=new Set(dbRows.map(m=>String(m?.id||'')).filter(Boolean));
-      const byChild=new Map(),expected=[];
-      for(const src of (data.items||[])){
-        const ref=normRef(src.reference||src.id);const child=childBySite.get(siteKey(src.site));
-        if(!ref||!child)continue;
-        const exp={ref,chantierId:child.id,nom:src.nom||src.designation||ref,cat:src.cat||src.categorie||'Outillage',echeance:src.echeance||'',prix:src.prix??null};
-        expected.push(exp);if(!byChild.has(child.id))byChild.set(child.id,[]);byChild.get(child.id).push(exp);
+// Désactive les anciennes liaisons fantômes stockées seulement dans le navigateur.
+try{if(!localStorage.getItem('ro3_mc_backup_v140'))localStorage.setItem('ro3_mc_backup_v140',localStorage.getItem('ro3_mc')||'{}');if(!localStorage.getItem('ro3_ext_backup_v140'))localStorage.setItem('ro3_ext_backup_v140',localStorage.getItem('ro3_ext')||'{}');localStorage.setItem('ro3_mc','{}');localStorage.setItem('ro3_ext','{}');}catch(e){}
+try{saveMultiChantier=function(){};restoreMultiChantier=function(){};}catch(e){}
+try{matOfC=function(cid){return (S.mat||[]).filter(m=>m.chantierId===cid);};}catch(e){}
+try{getM=function(id){const ref=normRef(id);if(S.curC){const d=direct(ref,S.curC);if(d)return d;}return (S.mat||[]).find(m=>m.id===id)||allByRef(ref)[0]||null;};}catch(e){}
 
-        const visibleRows=dbRows.filter(m=>!blocked.has(String(m?.id||'')));
-        let target=direct(ref,child.id,visibleRows);
-        if(target){try{await updateExisting(target,exp,false);updatedCount++;}catch(e){errors.push(e.message);}continue;}
+// Toute lecture simple passe par le moteur v140.
+try{processRows=async function(rows){const items=window.RailOpsImportFix?.parseRows?window.RailOpsImportFix.parseRows(rows,'__TARGET__'):[];if(!items.length){toast('Aucune référence exploitable trouvée','danger');return;}showSimpleModal(items,'Registre');};}catch(e){}
 
-        const occurrences=all(ref,visibleRows);
-        const sameMaster=occurrences.find(m=>parentOf(m.chantierId)===parent.id);
-        if(sameMaster){
-          try{await updateExisting(sameMaster,exp,true);sameMaster.chantierId=child.id;movedCount++;}catch(e){errors.push(e.message);}
-          continue;
-        }
-        if(occurrences.length) multiCount++;
-        try{const r=await insertFresh(exp,used,blocked,dbRows);if(r.created)createdCount++;}catch(e){errors.push(e.message);}
-      }
-      manifestWrite(byChild);
+const previousImportCSV=typeof importCSV==='function'?importCSV:null;
+importCSV=function(input){
+  const file=input?.files?.[0];if(!file)return;const ext=(file.name.split('.').pop()||'').toLowerCase();input.value='';if(ext==='pdf'){toast('Import PDF non supporté','warn');return;}if(typeof XLSX==='undefined'){toast('Bibliothèque XLSX indisponible','danger');return;}
+  const reader=new FileReader();reader.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:['csv','txt'].includes(ext)?'string':'array',cellDates:true});const dpi=detectDpi(wb);if(dpi){showDpiModal(dpi,file.name);return;}const usable=(wb.SheetNames||[]).map(n=>({n,rows:XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:'',raw:false,dateNF:'dd/mm/yyyy',blankrows:false})})).filter(x=>x.rows.some(r=>Array.isArray(r)&&r.some(v=>String(v??'').trim())));if(usable.length===1){const items=window.RailOpsImportFix?.parseRows?window.RailOpsImportFix.parseRows(usable[0].rows,'__TARGET__'):[];if(!items.length){toast('Aucune référence exploitable trouvée','danger');return;}showSimpleModal(items,file.name);return;}showGenericMultiModal(usable,file.name);return;}catch(err){console.error('[v140 import]',err);toast('Erreur lecture registre : '+(err.message||err),'danger');}};
+  reader.onerror=()=>toast('Erreur de lecture du fichier','danger');if(['csv','txt'].includes(ext))reader.readAsText(file,'utf-8');else reader.readAsArrayBuffer(file);
+};
 
-      // Vérification forte et réparation jusqu'à 3 passages avec un ID NEUF à chaque fois.
-      let missing=[];
-      for(let pass=0;pass<3;pass++){
-        dbRows=await allDb();const tomb=await blockedIds();const vis=expectedSet(dbRows,tomb);
-        missing=expected.filter(x=>!vis.has(x.chantierId+'|'+x.ref));
-        if(!missing.length)break;
-        const used2=new Set(dbRows.map(m=>String(m?.id||'')).filter(Boolean));
-        for(const exp of missing){
-          try{const r=await insertFresh(exp,used2,tomb,dbRows);if(r.created)createdCount++;}catch(e){errors.push(e.message);}
-        }
-      }
-      const refreshed=await reloadVisible();const visFinal=expectedSet(refreshed.rows,refreshed.blocked);
-      missing=expected.filter(x=>!visFinal.has(x.chantierId+'|'+x.ref));
-      try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
-      document.getElementById('movl')?.remove();if(typeof render==='function')render();
-      setTimeout(()=>window.RailOpsMultiChantier?.decorate?.(),0);
-      const report={version:VERSION,parent:parent.id,total:expected.length,present:expected.length-missing.length,missing,created:createdCount,moved:movedCount,updated:updatedCount,multi:multiCount,errors};
-      window.__railopsV139Report=report;
-      console.info('[RailOps v139] rapport import DPI',report);
-      if(missing.length){
-        const sample=missing.slice(0,6).map(x=>`${x.ref} (${pathOf(x.chantierId)})`).join(', ');
-        toast(`Import ${data.code}: ${report.present}/${report.total} · ${missing.length} encore absente(s)${sample?' · '+sample:''}`,'danger');
-      }else toast(`Import ${data.code}: ${report.present}/${report.total} ✓ · ${createdCount} occurrence(s) créée(s)${multiCount?' · '+multiCount+' multi-chantier(s)':''}`,'ok');
-      return report;
-    }finally{window._isImporting=false;window._lastImport=Date.now();delete window.__v139DpiCode;}
-  }
-  function showModal(data,fileName){
-    document.getElementById('movl')?.remove();
-    const scores=candidateParents(data),best=scores[0]?.score>0?scores[0].p:null;
-    const opts=scores.map(({p,score})=>`<option value="${String(p.id).replace(/"/g,'&quot;')}" ${best?.id===p.id?'selected':''}>${p.nom}${score?' · correspondance '+score:''}</option>`).join('');
-    const counts=Object.entries(data.siteCounts||{}).map(([s,n])=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:.5px solid var(--border)"><span>${s}</span><strong>${n}</strong></div>`).join('');
-    const d=document.createElement('div');d.id='movl';d.className='moverlay';
-    d.innerHTML=`<div class="msheet"><div class="mhandle"></div><div style="font-size:18px;font-weight:600">Import ${data.code} — moteur v139</div><div style="font-size:11px;color:var(--text2);margin:3px 0 12px">${fileName} · ${data.items.length} références attendues</div><div style="background:rgba(29,158,117,.09);border:.5px solid rgba(29,158,117,.3);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px"><strong>Mode multi-chantier natif.</strong><br>Les références présentes sur Lison restent sur Lison. Une vraie occurrence séparée est créée sur CDG.</div><label class="fl" style="margin-top:0">Chantier maître</label><select id="dpi-parent-v139" class="fi"><option value="__create__">+ Créer un nouveau maître</option>${opts}</select><div style="margin:12px 0;background:var(--bg3);padding:9px 12px;border-radius:10px">${counts}</div><button id="dpi-go-v139" class="btn btn-accent">Importer et vérifier ${data.items.length}/${data.items.length}</button><button class="btn btn-outline" style="margin-top:8px" onclick="document.getElementById('movl').remove()">Annuler</button></div>`;
-    document.getElementById('app').appendChild(d);
-    const sel=document.getElementById('dpi-parent-v139');if(best)sel.value=best.id;
-    document.getElementById('dpi-go-v139').onclick=async()=>{const b=document.getElementById('dpi-go-v139');b.disabled=true;b.textContent='Import + contrôle en cours…';try{await runImport(data,sel.value);}catch(e){console.error('[v139]',e);toast('Import v139 interrompu : '+(e?.message||e),'danger');b.disabled=false;b.textContent='Réessayer';}};
-  }
-
-  // Dernière surcharge : le registre DPI passe exclusivement par le moteur v139.
-  const previousImport=window.importCSV||importCSV;
-  window.importCSV=importCSV=function(input){
-    const file=input?.files?.[0];
-    if(!file||typeof XLSX==='undefined'||!window.RailOpsDPIImport?.detect)return previousImport(input);
-    const ext=(file.name.split('.').pop()||'').toLowerCase();
-    if(!['xlsx','xls','xlsm','xlsb'].includes(ext))return previousImport(input);
-    const reader=new FileReader();
-    reader.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});const dpi=window.RailOpsDPIImport.detect(wb);if(!dpi){previousImport(input);return;}input.value='';showModal(dpi,file.name);}catch(err){console.warn('[v139 detect]',err);previousImport(input);}};
-    reader.onerror=()=>previousImport(input);reader.readAsArrayBuffer(file);
-  };
-  window.RailOpsV139={version:VERSION,runImport,last:()=>window.__railopsV139Report||null};
-  console.info('[RailOps] moteur DPI garanti actif —',VERSION);
+// Décoration après rendu, et proposition de réparation après chargement/login.
+try{const oldRender=render;render=function(){const r=oldRender.apply(this,arguments);setTimeout(decorate,20);return r;};}catch(e){}
+try{const oldLoad=load;load=async function(){const r=await oldLoad.apply(this,arguments);setTimeout(()=>{showRepairOffer();decorate();},700);return r;};}catch(e){}
+setTimeout(()=>{try{if(S?.mat?.length){showRepairOffer();decorate();}}catch(e){}},1800);
+window.RailOpsStableV140={version:VERSION,businessRef,duplicateGroups,repairDuplicates,importDpi,showRepairOffer};
+console.info('[RailOps] moteur propre actif —',VERSION);
 })();
-</script>
 
+</script>
 </body>
 </html>
