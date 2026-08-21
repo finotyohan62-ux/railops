@@ -733,13 +733,11 @@ console.info('[RailOps] moteur propre actif —',VERSION);
 
 
 
-
-
-<script id="railops-v144-generalized-register">
+<script id="railops-v145-generalized-register">
 (function(){
 'use strict';
-const VERSION='144-registre-generalise';
-const HISTORY_KEY='ro_import_history_v144';
+const VERSION='145-registre-production-lock';
+const HISTORY_KEY='ro_import_history_v145';
 const MC='__MC__';
 let seq=0;
 
@@ -799,7 +797,7 @@ function formatDate(v){
   if(v instanceof Date&&!isNaN(v))return v.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
   return text(v);
 }
-function sectionCount(raw){const m=text(raw).match(/\(\s*(\d{1,5})\s*(?:articles?|materiels?|matériels?|references?|références?|items?)\s*\)/i);return m?Number(m[1]):0;}
+function sectionCount(raw){const m=text(raw).match(/\(\s*(\d{1,5})\s*(?:articles?|materiels?|matériels?|references?|références?|items?|équipements?|equipements?)\s*\)/i);return m?Number(m[1]):0;}
 function sourceDeclaredCount(rows,headerIdx){
   let top=0;
   const topLimit=headerIdx>=0?Math.min(rows.length,headerIdx):Math.min(rows.length,6);
@@ -931,7 +929,22 @@ async function ensureOccurrence(item,targetCid,parentId,mode,rows,used,blocked){
   let last=null;for(let attempt=0;attempt<4;attempt++){const {error}=await db.from('materiels').insert([cleanDb(m)]);if(!error){rows.push(m);return elsewhere.length?'multi':'created';}last=error;m.id=freshId(item.ref,targetCid,used,blocked);}
   throw last||new Error('Insertion impossible');
 }
+function assertSafeCommit(plan){
+  const seen=new Set();
+  for(const g of plan||[]){
+    if(!g?.target)throw new Error('Destination manquante');
+    for(const item of g.items||[]){
+      const raw=item?.rawRef||item?.ref||'';
+      if(!item?.ref||!looksLikeRef(item.ref)||sectionCount(raw)||sectionCount(item.ref))throw new Error(`Ligne refusée avant écriture : ${raw||'référence vide'}`);
+      const k=plannedTargetId(g.target)+'|'+normRef(item.ref);
+      if(seen.has(k))throw new Error(`Doublon refusé avant écriture : ${item.ref}`);
+      seen.add(k);
+    }
+  }
+  return true;
+}
 async function performImport(plan,sourceSheets,mode,fileMeta){
+  assertSafeCommit(plan);
   await resolvePlan(plan);const blocked=await blockedIds();let rows=await fetchRows();const used=new Set(rows.map(m=>String(m.id)));const stats={total:0,existing:0,created:0,moved:0,multi:0,ignored:sourceSheets.reduce((n,x)=>n+x.ignored.length,0),absent:0};const errors=[];
   for(const g of plan){for(const item of g.items){stats.total++;try{const t=await ensureOccurrence(item,g.target.cid,g.target.parentId||null,mode,rows,used,blocked);if(t==='multi'){stats.created++;stats.multi++;}else stats[t]=(stats[t]||0)+1;}catch(e){errors.push(`${item.ref} → ${pathOf(g.target.cid)} : ${e.message||e}`);}}}
   rows=await fetchRows();let visible=rows.filter(m=>!blocked.has(String(m.id)));const s=state();s.mat=typeof normMats==='function'?normMats(visible):visible;
@@ -952,14 +965,14 @@ function confirmPreview(plan,sourceSheets,mode,fileMeta,backFn){
   const body=`<div class=\"ro144-targets\"><strong>Destination${targets.length>1?'s':''}</strong><br>${targets.map(esc).join('<br>')}</div>${previewHtml(a)}${ignoredSamples.length?`<details class=\"ro144-details\"><summary>Voir quelques lignes ignorées</summary>${ignoredSamples.map(x=>`<div>${esc(x.sheet)} L${x.row} · ${esc(x.value)} <span>(${esc(x.reason)})</span></div>`).join('')}</details>`:''}<button id=\"ro144-confirm\" class=\"btn btn-accent\" ${a.ok?'':'disabled'}>${a.ok?'Confirmer l’import':'Import bloqué'}</button><button id=\"ro144-back\" class=\"btn btn-outline\" style=\"margin-top:8px\">Retour</button>`;
   const d=shell('Prévisualisation du registre',`${fileMeta.name} · aucune donnée n’a encore été modifiée`,body);
   document.getElementById('ro144-back').onclick=()=>{d.remove();backFn();};
-  if(a.ok)document.getElementById('ro144-confirm').onclick=async()=>{const b=document.getElementById('ro144-confirm');b.disabled=true;b.textContent='Import sécurisé en cours…';try{const r=await performImport(plan,sourceSheets,mode,fileMeta);d.remove();if(r.status!=='VALIDÉ')showResult(r); }catch(e){b.disabled=false;b.textContent='Réessayer';toast('Import interrompu : '+(e.message||e),'danger');}};
+  if(a.ok){const commitPlan=JSON.parse(JSON.stringify(plan));const commitSources=sourceSheets.map(sh=>({name:sh.name,items:JSON.parse(JSON.stringify(sh.items)),ignored:JSON.parse(JSON.stringify(sh.ignored||[])),duplicates:JSON.parse(JSON.stringify(sh.duplicates||[])),crossSiteDuplicates:JSON.parse(JSON.stringify(sh.crossSiteDuplicates||[])),declared:{...(sh.declared||{})},analysis:{...(sh.analysis||{})},siteValues:[...(sh.siteValues||[])]}));document.getElementById('ro144-confirm').onclick=async()=>{const b=document.getElementById('ro144-confirm');b.disabled=true;b.textContent='Import sécurisé en cours…';try{const r=await performImport(commitPlan,commitSources,mode,fileMeta);d.remove();if(r.status!=='VALIDÉ')showResult(r); }catch(e){b.disabled=false;b.textContent='Réessayer';toast('Import interrompu : '+(e.message||e),'danger');}};}
 }
 function showResult(r){const body=`<div class=\"ro144-errorbox\"><strong>${esc(r.status)}</strong><br>${(r.errors||[]).slice(0,10).map(esc).join('<br>')}${r.missing?.length?'<br>'+r.missing.slice(0,10).map(esc).join('<br>'):''}</div><button class=\"btn btn-outline\" onclick=\"document.getElementById('ro-v144-modal').remove()\">Fermer</button>`;shell('Rapport d’import',r.file,body);}
 
 function simpleModal(sheet,fileMeta){
   const qs=sourceQuality(sheet);const list=activeChantiers();if(!list.length){toast('Créez d’abord un chantier avant d’importer son registre','warn');return;}
   const body=`${qualityBlock(sheet)}<label class=\"fl\">Chantier destinataire</label><select id=\"ro144-target\" class=\"fi\">${chantierOptions()}</select><div class=\"ro144-note\">L’import ne supprimera aucune référence déjà présente. Les correspondances avec d’autres chantiers seront signalées automatiquement par la pastille Multi-chantier.</div><button id=\"ro144-analyze\" class=\"btn btn-accent\" ${qs.ok?'':'disabled'}>Analyser avant import</button><button id=\"ro144-history\" class=\"btn btn-outline\" style=\"margin-top:8px\">Historique des imports</button><button class=\"btn btn-outline\" style=\"margin-top:8px\" onclick=\"document.getElementById('ro-v144-modal').remove()\">Annuler</button>`;
-  const open=()=>{const d=shell('Importer un registre','Moteur généralisé v144 · '+fileMeta.name,body);if(qs.ok)document.getElementById('ro144-analyze').onclick=()=>{const cid=document.getElementById('ro144-target').value;const plan=[{name:sheet.name,items:sheet.items,target:{cid,parentId:chantier(cid)?.parent_id||null,name:pathOf(cid)}}];confirmPreview(plan,[sheet],'simple',fileMeta,open);};document.getElementById('ro144-history').onclick=showHistory;};open();
+  const open=()=>{const d=shell('Importer un registre','Moteur généralisé v145 · '+fileMeta.name,body);if(qs.ok)document.getElementById('ro144-analyze').onclick=()=>{const cid=document.getElementById('ro144-target').value;const plan=[{name:sheet.name,items:sheet.items,target:{cid,parentId:chantier(cid)?.parent_id||null,name:pathOf(cid)}}];confirmPreview(plan,[sheet],'simple',fileMeta,open);};document.getElementById('ro144-history').onclick=showHistory;};open();
 }
 function structuredModal(sheet,fileMeta){
   const qs=sourceQuality(sheet),masters=activeMasters();if(!masters.length){toast('Créez d’abord le chantier maître avant d’importer ce registre','warn');return;}
@@ -973,17 +986,53 @@ function multiModal(sheets,fileMeta){
   const good=sheets.filter(s=>s.items.length);const qualityOk=good.every(s=>sourceQuality(s).ok);
   function open(parentId=''){const rows=good.map((sh,i)=>{const scoped=parentId?all.filter(c=>c.parent_id===parentId):all;const match=scoped.find(c=>siteKey(c.nom)===siteKey(sh.name));const opts=scoped.map(c=>`<option value=\"${esc(c.id)}\" ${match?.id===c.id?'selected':''}>${esc(pathOf(c.id))}</option>`).join('');return `<div class=\"ro144-maprow\"><div><strong>${esc(sh.name)}</strong><span>${sh.items.length} réf.</span></div><select class=\"fi\" id=\"ro144-sheet-${i}\"><option value=\"__ignore__\">Ignorer cet onglet</option><option value=\"__create__\" ${match?'':'selected'}>Créer / réutiliser « ${esc(sh.name)} »</option>${opts}</select></div>`;}).join('');
     const body=`<div class=\"ro144-scroll ro144-sources\">${good.map(qualityBlock).join('')}</div><label class=\"fl\">Chantier maître optionnel</label><select id=\"ro144-parent\" class=\"fi\"><option value=\"\">Chantiers indépendants</option>${masters.map(m=>`<option value=\"${esc(m.id)}\" ${m.id===parentId?'selected':''}>${esc(m.nom)}</option>`).join('')}</select><div class=\"ro144-map\">${rows}</div><button id=\"ro144-analyze\" class=\"btn btn-accent\" ${qualityOk?'':'disabled'}>Analyser avant import</button><button id=\"ro144-history\" class=\"btn btn-outline\" style=\"margin-top:8px\">Historique des imports</button><button class=\"btn btn-outline\" style=\"margin-top:8px\" onclick=\"document.getElementById('ro-v144-modal').remove()\">Annuler</button>`;
-    shell('Importer plusieurs onglets','Moteur généralisé v144 · '+fileMeta.name,body);document.getElementById('ro144-parent').onchange=e=>open(e.target.value);if(qualityOk)document.getElementById('ro144-analyze').onclick=()=>{const pid=document.getElementById('ro144-parent').value;const plan=[];const usedSheets=[];good.forEach((sh,i)=>{const v=document.getElementById(`ro144-sheet-${i}`).value;if(v==='__ignore__')return;usedSheets.push(sh);plan.push({name:sh.name,items:sh.items,target:v==='__create__'?{cid:null,parentId:pid||null,name:sh.name}:{cid:v,parentId:chantier(v)?.parent_id||null,name:pathOf(v)}});});if(!plan.length){toast('Sélectionnez au moins un onglet à importer','warn');return;}confirmPreview(plan,usedSheets,'multi',fileMeta,()=>open(pid));};document.getElementById('ro144-history').onclick=showHistory;}open('');
+    shell('Importer plusieurs onglets','Moteur généralisé v145 · '+fileMeta.name,body);document.getElementById('ro144-parent').onchange=e=>open(e.target.value);if(qualityOk)document.getElementById('ro144-analyze').onclick=()=>{const pid=document.getElementById('ro144-parent').value;const plan=[];const usedSheets=[];good.forEach((sh,i)=>{const v=document.getElementById(`ro144-sheet-${i}`).value;if(v==='__ignore__')return;usedSheets.push(sh);plan.push({name:sh.name,items:sh.items,target:v==='__create__'?{cid:null,parentId:pid||null,name:sh.name}:{cid:v,parentId:chantier(v)?.parent_id||null,name:pathOf(v)}});});if(!plan.length){toast('Sélectionnez au moins un onglet à importer','warn');return;}confirmPreview(plan,usedSheets,'multi',fileMeta,()=>open(pid));};document.getElementById('ro144-history').onclick=showHistory;}open('');
 }
 async function sha256Hex(data){try{const buf=typeof data==='string'?new TextEncoder().encode(data):data;const hash=await crypto.subtle.digest('SHA-256',buf);return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('');}catch(e){return '';}}
 function routeWorkbook(wb,fileMeta){const model=workbookModel(wb);if(!model.sheets.length){toast('Aucun registre exploitable détecté dans ce fichier','danger');return;}if(model.structured){structuredModal(model.structured,fileMeta);return;}if(model.sheets.length===1){simpleModal(model.sheets[0],fileMeta);return;}multiModal(model.sheets,fileMeta);}
 async function generalizedImport(input){
   const file=input?.files?.[0];if(!file)return;input.value='';const ext=(file.name.split('.').pop()||'').toLowerCase();if(ext==='pdf'){toast('Import PDF non supporté','warn');return;}if(typeof XLSX==='undefined'){toast('Bibliothèque XLSX indisponible','danger');return;}
-  try{let wb,hash='';if(['csv','txt'].includes(ext)){const str=await file.text();hash=await sha256Hex(str);wb=XLSX.read(str,{type:'string',raw:false,cellDates:true});}else{const buf=await file.arrayBuffer();hash=await sha256Hex(buf);wb=XLSX.read(buf,{type:'array',cellDates:true});}routeWorkbook(wb,{name:file.name,size:file.size,hash});}catch(e){console.error('[RailOps v144 import]',e);toast('Erreur lecture registre : '+(e.message||e),'danger');}
+  try{let wb,hash='';if(['csv','txt'].includes(ext)){const str=await file.text();hash=await sha256Hex(str);wb=XLSX.read(str,{type:'string',raw:false,cellDates:true});}else{const buf=await file.arrayBuffer();hash=await sha256Hex(buf);wb=XLSX.read(buf,{type:'array',cellDates:true});}routeWorkbook(wb,{name:file.name,size:file.size,hash});}catch(e){console.error('[RailOps v145 import]',e);toast('Erreur lecture registre : '+(e.message||e),'danger');}
 }
-// v144 devient l’unique point d’entrée des imports. Les moteurs spéciaux précédents restent inactifs.
+// v145 : point d’entrée UNIQUE des imports registre.
 try{window.importCSV=generalizedImport;importCSV=generalizedImport;}catch(e){window.importCSV=generalizedImport;}
 try{window.processRows=function(rows){const sh=parseSheet('Registre',Array.isArray(rows)?rows:[]);if(!sh.items.length){toast('Aucune référence exploitable trouvée','danger');return;}simpleModal(sh,{name:'Registre',size:0,hash:''});};processRows=window.processRows;}catch(e){}
+function isRegistryFile(file){return !!file&&/\.(?:xlsx|xls|xlsm|xlsb|ods|csv|txt)$/i.test(file.name||'');}
+if(!window.__ro145ImportCapture){
+  window.__ro145ImportCapture=true;
+  document.addEventListener('change',function(ev){
+    const input=ev.target;
+    if(!(input instanceof HTMLInputElement)||input.type!=='file')return;
+    const file=input.files?.[0];if(!isRegistryFile(file))return;
+    // Bloque tout ancien listener/onclick d’import : un seul moteur a le droit de traiter le fichier.
+    ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();
+    generalizedImport(input);
+  },true);
+}
+// Nettoyage générique des pseudo-références issues d’anciens imports (aucun chantier codé en dur).
+function isLegacySectionMaterial(m){
+  if(!m)return false;const vals=[String(m.id||''),String(m.nom||'')];
+  const title=/^.+\(\s*\d+\s*(?:articles?|materiels?|matériels?|references?|références?|items?|équipements?|equipements?)\s*\)$/i;
+  if(!vals.some(v=>title.test(v.trim())))return false;
+  return !m.scan&&!m.verifLundi&&!m.verifSemaine&&!m.controle2m&&(m.presence||'non-confirme')==='non-confirme'&&(m.etat||'inconnu')==='inconnu';
+}
+function legacySectionCandidates(){return (state()?.mat||[]).filter(isLegacySectionMaterial);}
+async function cleanLegacySections(){
+  const s=state(),list=legacySectionCandidates();let removed=0;const errors=[];
+  for(const m of list){try{const {error}=await db.from('materiels').delete().eq('id',m.id);if(error)throw error;s.mat=s.mat.filter(x=>x.id!==m.id);removed++;}catch(e){errors.push(`${m.id}: ${e.message||e}`);}}
+  try{localStorage.setItem('ro3_m',JSON.stringify(s.mat));}catch(e){}try{if(typeof render==='function')render();window.RailOpsDisplayV142?.apply?.();}catch(e){}
+  return {removed,errors};
+}
+function offerLegacyCleanup(){
+  if(document.getElementById('ro-v145-clean')||document.getElementById('ro-v144-modal'))return;
+  const list=legacySectionCandidates();if(!list.length)return;
+  const groups=new Map();for(const m of list){const k=m.chantierId||'';groups.set(k,(groups.get(k)||0)+1);}
+  const desc=[...groups].map(([cid,n])=>`${pathOf(cid)} : ${n}`).join('<br>');
+  const d=shell('Nettoyage de sécurité','Anciennes lignes de titre détectées',`<div class="ro144-errorbox"><strong>${list.length} pseudo-référence(s)</strong> provenant d’anciens imports ont été détectées.<br><br>${desc}</div><div class="ro144-note">Seules les lignes de type « CATÉGORIE (N articles) » sans scan, contrôle ni vérification seront supprimées. Cette règle est générale pour tous les chantiers.</div><button id="ro145-clean-go" class="btn btn-accent">Nettoyer ${list.length} ligne(s) parasite(s)</button><button class="btn btn-outline" style="margin-top:8px" onclick="document.getElementById('ro-v144-modal').remove()">Plus tard</button>`);
+  document.getElementById('ro145-clean-go').onclick=async()=>{const b=document.getElementById('ro145-clean-go');b.disabled=true;b.textContent='Nettoyage…';const r=await cleanLegacySections();d.remove();if(r.errors.length)toast(`${r.removed} nettoyée(s), ${r.errors.length} erreur(s)`,'danger');else toast(`${r.removed} ligne(s) parasite(s) supprimée(s) ✓`,'ok');};
+}
+setTimeout(offerLegacyCleanup,1200);
+try{const oldLoad145=load;load=async function(){const r=await oldLoad145.apply(this,arguments);setTimeout(offerLegacyCleanup,900);return r;};}catch(e){}
 
 if(!document.getElementById('ro-v144-style')){const st=document.createElement('style');st.id='ro-v144-style';st.textContent=`
 .ro144-sheet{max-height:90vh;overflow:auto}.ro144-title{font-size:18px;font-weight:650}.ro144-sub{font-size:11px;color:var(--text2);margin:4px 0 12px}.ro144-source{background:var(--bg3);border:.5px solid var(--border);border-radius:10px;padding:9px 11px;margin-bottom:8px;font-size:12px}.ro144-source.bad{border-color:rgba(226,75,74,.55)}.ro144-muted{font-size:10px;color:var(--text2);margin-top:3px}.ro144-danger{font-size:10px;color:#e24b4a;margin-top:5px}.ro144-map{margin:10px 0;max-height:38vh;overflow:auto}.ro144-maprow{background:var(--bg3);border-radius:10px;padding:9px 10px;margin-bottom:7px}.ro144-maprow>div{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:5px;font-size:11px}.ro144-maprow span{font-size:10px;color:var(--text2);white-space:nowrap}.ro144-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:10px 0}.ro144-kpis>div{background:var(--bg3);border-radius:10px;padding:9px 7px;text-align:center}.ro144-kpis b{display:block;font-size:17px}.ro144-kpis span{font-size:9px;color:var(--text2)}.ro144-note,.ro144-targets{font-size:11px;color:var(--text2);background:var(--bg3);border-radius:10px;padding:9px 11px;margin:9px 0}.ro144-okbox{font-size:11px;padding:9px 11px;margin:9px 0;border-radius:10px;background:rgba(29,158,117,.10);border:.5px solid rgba(29,158,117,.35)}.ro144-errorbox{font-size:11px;padding:9px 11px;margin:9px 0;border-radius:10px;background:rgba(226,75,74,.10);border:.5px solid rgba(226,75,74,.35);color:#e24b4a}.ro144-details{font-size:10px;color:var(--text2);margin:8px 0 12px}.ro144-details div{padding:3px 0}.ro144-details span{opacity:.8}.ro144-scroll{max-height:48vh;overflow:auto}.ro144-hist{background:var(--bg3);border-radius:10px;padding:9px 11px;margin-bottom:7px;font-size:11px}.ro144-hist span{color:var(--text2)}.ro144-sources{max-height:22vh}.ro144-sheet button[disabled]{opacity:.45;pointer-events:none}
@@ -991,7 +1040,10 @@ if(!document.getElementById('ro-v144-style')){const st=document.createElement('s
 
 window.RailOpsImportV144={version:VERSION,parseSheet,workbookModel,analyzePlan,getHistory,showHistory,importFile:generalizedImport};
 console.info('[RailOps] registre généralisé actif —',VERSION);
+
+window.RailOpsProductionV145={version:VERSION,parseSheet,workbookModel,analyzePlan,legacySectionCandidates,cleanLegacySections,generalizedImport};
+console.info('[RailOps] moteur registre production actif —',VERSION);
 })();
-</script>\n
+</script>
 </body>
 </html>
