@@ -726,5 +726,399 @@ select.fi{cursor:pointer}
 })();
 </script>
 
+
+<script id="railops-fix-step3-multichantier">
+/* RailOps v134 — ETAPE 3 : multi-chantier persistant.
+   - Une référence peut exister dans plusieurs chantiers sans être déplacée.
+   - Chaque occurrence chantier possède sa propre vérification hebdomadaire.
+   - Les occurrences supplémentaires ont un ID technique invisible dans l'interface.
+   - Les QR continuent d'utiliser la référence métier normale.
+   - Ne modifie pas la purge hebdomadaire. */
+(function(){
+  'use strict';
+  const VERSION='134-step3-multichantier';
+  const MC_MARK='__MC__';
+
+  function normRef(v){
+    if(window.RailOpsImportFix?.normalizeReference) return window.RailOpsImportFix.normalizeReference(v);
+    return String(v??'').normalize('NFKC').trim().toUpperCase()
+      .replace(/[‐‑‒–—−]/g,'-').replace(/\s+/g,'')
+      .replace(/[^A-Z0-9._\/-]/g,'-').replace(/-{2,}/g,'-').replace(/^-+|-+$/g,'');
+  }
+  function canonicalRef(id){
+    const s=String(id??'');
+    const i=s.lastIndexOf(MC_MARK);
+    return normRef(i>0?s.slice(0,i):s);
+  }
+  function shortHash(v){
+    let h=2166136261;
+    const s=String(v??'');
+    for(let i=0;i<s.length;i++){
+      h^=s.charCodeAt(i);
+      h=Math.imul(h,16777619);
+    }
+    return (h>>>0).toString(36).toUpperCase();
+  }
+  function technicalId(ref,chantierId){
+    const base=normRef(ref);
+    let id=base+MC_MARK+shortHash(chantierId);
+    let n=1;
+    while(S.mat.some(m=>m.id===id && (canonicalRef(m.id)!==base || m.chantierId!==chantierId))){
+      id=base+MC_MARK+shortHash(chantierId+'#'+(++n));
+    }
+    return id;
+  }
+  function allByRef(ref){
+    const c=normRef(ref);
+    return S.mat.filter(m=>canonicalRef(m.id)===c);
+  }
+  function directOn(ref,chantierId){
+    const c=normRef(ref);
+    return S.mat.find(m=>m.chantierId===chantierId && canonicalRef(m.id)===c) || null;
+  }
+  function parentOfChantier(chantierId){
+    const c=S.chantiers.find(x=>x.id===chantierId);
+    return c?.parent_id || null;
+  }
+  function pathForChantier(chantierId){
+    const c=S.chantiers.find(x=>x.id===chantierId);
+    if(!c) return chantierId || 'Chantier inconnu';
+    if(c.parent_id){
+      const p=S.chantiers.find(x=>x.id===c.parent_id);
+      return p ? `${p.nom} › ${c.nom}` : c.nom;
+    }
+    return c.nom || chantierId;
+  }
+  function instanceLocations(ref){
+    const ids=new Set(allByRef(ref).map(m=>m.chantierId).filter(Boolean));
+    // Compatibilité avec les anciennes associations locales, sans créer de doublon visuel.
+    try{
+      const mc=JSON.parse(localStorage.getItem('ro3_mc')||'{}');
+      for(const [key,arr] of Object.entries(mc)){
+        if(canonicalRef(key)===normRef(ref)) (arr||[]).forEach(id=>ids.add(id));
+      }
+    }catch(e){}
+    try{
+      const ext=JSON.parse(localStorage.getItem('ro3_ext')||'{}');
+      for(const [cid,arr] of Object.entries(ext)){
+        if((arr||[]).some(id=>canonicalRef(id)===normRef(ref))) ids.add(cid);
+      }
+    }catch(e){}
+    return [...ids];
+  }
+  function stripTechnicalIds(root=document){
+    if(!root || typeof document==='undefined') return;
+    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+    const nodes=[];
+    while(walker.nextNode()) nodes.push(walker.currentNode);
+    for(const node of nodes){
+      const t=node.nodeValue||'';
+      if(!t.includes(MC_MARK)) continue;
+      node.nodeValue=t.replace(/([A-Z0-9._\/-]+)__MC__[A-Z0-9]+/gi,(m,ref)=>canonicalRef(ref));
+    }
+  }
+  function decorateMultiBadges(){
+    if(typeof document==='undefined') return;
+    document.querySelectorAll('.ro-mc-badge').forEach(e=>e.remove());
+    const rows=document.querySelectorAll('.reg-item[id^="ri-"]');
+    rows.forEach(row=>{
+      const internalId=row.id.slice(3);
+      const ref=canonicalRef(internalId);
+      const current=S.curC || S.chantiers.find(c=>c.id===directOn(ref,c?.id)?.chantierId)?.id;
+      const mat=S.mat.find(m=>m.id===internalId) || directOn(ref,S.curC) || allByRef(ref)[0];
+      if(!mat) return;
+      const currentCid=S.curC || mat.chantierId;
+      const locations=instanceLocations(ref);
+      const others=locations.filter(cid=>cid!==currentCid).map(pathForChantier);
+      const unique=[...new Set(others)];
+      if(!unique.length) return;
+      const badge=document.createElement('div');
+      badge.className='ro-mc-badge';
+      badge.title='Référence également présente sur : '+unique.join(' · ');
+      badge.innerHTML='<span style="font-weight:700">Multi-chantier</span><span style="opacity:.9"> · aussi sur '+unique.map(x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')).join(' · ')+'</span>';
+      const top=row.querySelector('.reg-top');
+      if(top) top.insertAdjacentElement('afterend',badge); else row.prepend(badge);
+    });
+    stripTechnicalIds(document.getElementById('app')||document);
+  }
+  function ensureStyle(){
+    if(document.getElementById('ro-mc-style')) return;
+    const st=document.createElement('style');
+    st.id='ro-mc-style';
+    st.textContent=`.ro-mc-badge{display:inline-flex;align-items:center;gap:2px;max-width:calc(100% - 42px);margin:7px 0 0 42px;padding:4px 8px;border-radius:999px;background:rgba(245,166,35,.13);border:.5px solid rgba(245,166,35,.42);color:#d99000;font-size:10px;line-height:1.2;white-space:normal}.theme-light .ro-mc-badge,.theme-sferis .ro-mc-badge{color:#9a6500}`;
+    document.head.appendChild(st);
+  }
+
+  // matOfC : évite les doublons d'affichage quand une ancienne association locale
+  // coexiste avec une occurrence persistante v134.
+  const legacyMatOfC=matOfC;
+  matOfC=function(chantierId){
+    const direct=S.mat.filter(m=>m.chantierId===chantierId);
+    const seen=new Set(direct.map(m=>canonicalRef(m.id)));
+    try{
+      const ext=JSON.parse(localStorage.getItem('ro3_ext')||'{}');
+      for(const oldId of (ext[chantierId]||[])){
+        const ref=canonicalRef(oldId);
+        if(seen.has(ref)) continue;
+        const src=S.mat.find(m=>m.id===oldId) || allByRef(ref)[0];
+        if(src){direct.push({...src,_externe:true,autreChantier:src.chantierId});seen.add(ref);}
+      }
+    }catch(e){}
+    return direct;
+  };
+
+  // Supprime uniquement une ancienne liaison locale devenue inutile lorsqu'une vraie
+  // occurrence persistante existe désormais sur le chantier cible.
+  function removeLegacyExt(ref,chantierId){
+    const c=normRef(ref);
+    try{
+      const ext=JSON.parse(localStorage.getItem('ro3_ext')||'{}');
+      if(ext[chantierId]){
+        ext[chantierId]=ext[chantierId].filter(id=>canonicalRef(id)!==c);
+        if(!ext[chantierId].length) delete ext[chantierId];
+        localStorage.setItem('ro3_ext',JSON.stringify(ext));
+      }
+    }catch(e){}
+  }
+
+  async function upsertMaterials(items){
+    const clean=items.map(item=>{
+      const {prix,autreChantier,_externe,...r}=item;
+      return r;
+    });
+    const chunk=100;
+    for(let i=0;i<clean.length;i+=chunk){
+      const part=clean.slice(i,i+chunk);
+      const {error}=await db.from('materiels').upsert(part,{onConflict:'id'});
+      if(error) throw new Error(error.message);
+    }
+  }
+  function applyMetadata(target,src){
+    if(src.nom) target.nom=src.nom;
+    if(src.cat) target.cat=src.cat;
+    if(src.echeance) target.echeance=src.echeance;
+    if(src.prix!==undefined && src.prix!==null) target.prix=src.prix;
+    return target;
+  }
+  function freshOccurrence(src,chantierId,id){
+    return {
+      id,
+      nom:src.nom||normRef(src.id||src.reference),
+      cat:src.cat||'Outillage',
+      chantierId,
+      etat:'inconnu',
+      scan:null,
+      presence:'non-confirme',
+      echeance:src.echeance||'',
+      prix:src.prix??null,
+      verifLundi:null,
+      verifSemaine:null,
+      controle2m:null
+    };
+  }
+
+  // IMPORT SIMPLE : une référence déjà présente ailleurs n'est plus déplacée.
+  processRows=async function(rows){
+    const chantierId=S.curC;
+    if(!chantierId){toast('Aucun chantier sélectionné','danger');return;}
+    const parsed=window.RailOpsImportFix?.parseRows?.(Array.isArray(rows)?rows:[],chantierId) || [];
+    if(!parsed.length){toast('Aucune référence détectée dans ce registre','danger');return;}
+    window._isImporting=true;window._lastImport=Date.now();
+    let added=0,updated=0,multi=0;
+    const changed=[];
+    try{
+      for(const src of parsed){
+        const ref=normRef(src.id);
+        let target=directOn(ref,chantierId);
+        if(target){
+          applyMetadata(target,src);updated++;changed.push(target);continue;
+        }
+        const elsewhere=allByRef(ref);
+        let id=ref;
+        if(elsewhere.length){id=technicalId(ref,chantierId);multi++;}
+        else if(S.mat.some(m=>m.id===id)) id=technicalId(ref,chantierId);
+        target=freshOccurrence(src,chantierId,id);
+        S.mat.push(target);changed.push(target);added++;
+        removeLegacyExt(ref,chantierId);
+      }
+      await upsertMaterials(changed);
+      try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
+      renderTab();
+      setTimeout(decorateMultiBadges,0);
+      toast(`${parsed.length} référence(s) lue(s) · ${added} ajoutée(s) · ${updated} mise(s) à jour${multi?' · '+multi+' multi-chantier(s)':''}`,'ok');
+    }catch(err){
+      console.error('[RailOps multi import simple]',err);
+      toast('Import interrompu : '+(err?.message||err),'danger');
+    }finally{window._isImporting=false;window._lastImport=Date.now();}
+  };
+
+  // DPI : garde la source de vérité INVENTAIRE à l'intérieur du chantier maître,
+  // mais ne vole plus une référence à un autre chantier maître (ex. Lison).
+  function compact(v){return String(v??'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'');}
+  function canonicalSite(raw){return window.RailOpsDPIImport?.canonicalSite?.(raw) || String(raw??'').trim().toUpperCase();}
+  function siteKey(raw){return compact(canonicalSite(raw));}
+  function parentCandidates(data){
+    const code=compact(data.code);
+    return S.chantiers.filter(c=>!c.parent_id&&c.statut!=='termine').sort((a,b)=>((compact(b.nom).includes(code)?10:0)-(compact(a.nom).includes(code)?10:0)));
+  }
+  function chooseChild(parentId,site){
+    const key=siteKey(site);
+    const matches=S.chantiers.filter(c=>c.parent_id===parentId&&siteKey(c.nom)===key);
+    if(!matches.length) return null;
+    matches.sort((a,b)=>S.mat.filter(m=>m.chantierId===b.id).length-S.mat.filter(m=>m.chantierId===a.id).length);
+    return matches[0];
+  }
+  function stableChildId(parentId,site){
+    const slug=canonicalSite(site).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'');
+    return `${parentId}_${slug}`.slice(0,110);
+  }
+  async function upsertChantiers(rows){
+    if(!rows.length) return;
+    const payload=rows.map(c=>({id:c.id,nom:c.nom||'',lieu:c.lieu||'',chef:Array.isArray(c.chefs)?(c.chefs[0]||c.chef||''):(c.chef||''),chefs:c.chefs||[],statut:c.statut||'actif',desc:c.desc||'',dateDebut:c.dateDebut||'',dateFin:c.dateFin||'',agents:c.agents||[],parent_id:c.parent_id||null}));
+    const {error}=await db.from('chantiers').upsert(payload,{onConflict:'id'});
+    if(error) throw new Error('Chantiers : '+error.message);
+  }
+  function showDpiMultiModal(data,fileName){
+    document.getElementById('movl')?.remove();
+    const modal=document.createElement('div');modal.id='movl';modal.className='moverlay';
+    const candidates=parentCandidates(data);
+    const best=candidates.find(c=>compact(c.nom).includes(compact(data.code)))||null;
+    const opts=candidates.map(c=>`<option value="${c.id}" ${best&&best.id===c.id?'selected':''}>${c.nom}</option>`).join('');
+    const counts=Object.entries(data.siteCounts||{}).map(([s,n])=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:.5px solid var(--border)"><span>${s}</span><strong>${n}</strong></div>`).join('');
+    modal.innerHTML=`<div class="msheet"><div class="mhandle"></div>
+      <div style="font-size:18px;font-weight:600;margin-bottom:4px">Import hiérarchique ${data.code}</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:14px">${fileName} · ${data.items.length} références uniques détectées</div>
+      <div style="background:rgba(245,166,35,.08);border:.5px solid rgba(245,166,35,.25);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--text2)">
+        <strong style="color:#d99000">Multi-chantier protégé.</strong><br>Une référence déjà présente sur Lison ou un autre chantier sera conservée là-bas et une occurrence séparée sera créée ici.
+      </div>
+      <label class="fl" style="margin-top:0">Chantier maître</label>
+      <select id="dpi-parent-choice-v134" class="fi" style="margin-bottom:12px"><option value="__create__" ${best?'':'selected'}>+ Créer / retrouver automatiquement ${data.code}</option>${opts}</select>
+      <div style="background:var(--bg3);border-radius:10px;padding:10px 12px;margin-bottom:14px"><div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:6px">Répartition détectée</div>${counts}</div>
+      <button id="dpi-import-confirm-v134" class="btn btn-accent" style="margin-bottom:8px">Importer sans déplacer les doublons</button>
+      <button class="btn btn-outline" onclick="document.getElementById('movl').remove()">Annuler</button></div>`;
+    document.getElementById('app').appendChild(modal);
+    document.getElementById('dpi-import-confirm-v134').onclick=()=>applyDpiMulti(data,document.getElementById('dpi-parent-choice-v134').value);
+  }
+  async function applyDpiMulti(data,parentChoice){
+    const btn=document.getElementById('dpi-import-confirm-v134');if(btn){btn.disabled=true;btn.textContent='Import en cours…';}
+    window._isImporting=true;window._lastImport=Date.now();
+    try{
+      let parent=null,newParent=false;
+      if(parentChoice&&parentChoice!=='__create__') parent=S.chantiers.find(c=>c.id===parentChoice)||null;
+      if(!parent) parent=S.chantiers.find(c=>!c.parent_id&&compact(c.nom).includes(compact(data.code)))||null;
+      if(!parent){
+        let id='CH_'+data.code;if(S.chantiers.some(c=>c.id===id)) id=newId('CH');
+        parent={id,nom:data.parentName||data.code,lieu:data.parentName||data.code,chef:S.agent,chefs:[S.agent],statut:'actif',desc:'Registre maître '+data.code,dateDebut:'',dateFin:'',agents:[],parent_id:null};newParent=true;
+      }
+      const children=[],created=[];
+      for(const site of Object.keys(data.siteCounts||{})){
+        let child=chooseChild(parent.id,site);
+        if(!child){let id=stableChildId(parent.id,site);if(S.chantiers.some(c=>c.id===id))id=newId('CH');child={id,nom:site,lieu:site,chef:S.agent,chefs:[S.agent],statut:'actif',desc:'Sous-chantier '+data.code,dateDebut:'',dateFin:'',agents:[],parent_id:parent.id};created.push(child);}
+        children.push(child);
+      }
+      await upsertChantiers([...(newParent?[parent]:[]),...created]);
+      if(newParent) S.chantiers.push(parent);created.forEach(c=>S.chantiers.push(c));
+      const childBySite=new Map(children.map(c=>[siteKey(c.nom),c]));
+      const changed=[];
+      let added=0,movedWithin=0,multi=0,updated=0;
+      for(const src of data.items){
+        const ref=normRef(src.reference||src.id);const child=childBySite.get(siteKey(src.site));if(!ref||!child)continue;
+        let target=directOn(ref,child.id);
+        if(target){applyMetadata(target,{...src,id:ref});updated++;changed.push(target);removeLegacyExt(ref,child.id);continue;}
+        const candidates=allByRef(ref);
+        const sameMaster=candidates.find(m=>parentOfChantier(m.chantierId)===parent.id);
+        if(sameMaster){
+          sameMaster.chantierId=child.id;applyMetadata(sameMaster,{...src,id:ref});movedWithin++;changed.push(sameMaster);removeLegacyExt(ref,child.id);continue;
+        }
+        if(candidates.length){
+          const id=technicalId(ref,child.id);
+          target=freshOccurrence({id:ref,nom:src.nom,cat:src.cat,echeance:src.echeance},child.id,id);
+          S.mat.push(target);changed.push(target);added++;multi++;removeLegacyExt(ref,child.id);
+        }else{
+          target=freshOccurrence({id:ref,nom:src.nom,cat:src.cat,echeance:src.echeance},child.id,ref);
+          S.mat.push(target);changed.push(target);added++;
+        }
+      }
+      await upsertMaterials(changed);
+      try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
+      document.getElementById('movl')?.remove();render();setTimeout(decorateMultiBadges,0);
+      toast(`${data.items.length} références ${data.code} synchronisées · ${multi} multi-chantier(s) conservé(s)`,'ok');
+      console.info('[RailOps v134 DPI]',{parent:parent.id,total:data.items.length,added,updated,movedWithin,multi});
+    }catch(err){console.error('[RailOps v134 DPI]',err);toast('Import DPI interrompu : '+(err?.message||err),'danger');if(btn){btn.disabled=false;btn.textContent='Réessayer';}}
+    finally{window._isImporting=false;window._lastImport=Date.now();}
+  }
+
+  // Intercepte les registres DPI avant la v133. Les autres formats restent traités par le lecteur v132/v133.
+  const previousImportCSV=importCSV;
+  importCSV=function(input){
+    const file=input?.files?.[0];
+    if(!file) return previousImportCSV(input);
+    const ext=(file.name.split('.').pop()||'').toLowerCase();
+    if(!['xlsx','xls','xlsm','xlsb'].includes(ext)||typeof XLSX==='undefined'||!window.RailOpsDPIImport?.detect) return previousImportCSV(input);
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+        const dpi=window.RailOpsDPIImport.detect(wb);
+        if(!dpi){previousImportCSV(input);return;}
+        input.value='';showDpiMultiModal(dpi,file.name);
+      }catch(err){console.warn('[RailOps v134 detect]',err);previousImportCSV(input);}
+    };
+    reader.onerror=()=>previousImportCSV(input);
+    reader.readAsArrayBuffer(file);
+  };
+
+  // QR : le code physique reste RAILOPS:MAT:<référence>, jamais l'ID technique.
+  const oldGetM=getM;
+  getM=function(id){
+    const direct=oldGetM(id);if(direct)return direct;
+    const ref=canonicalRef(id);
+    return directOn(ref,S.curC) || allByRef(ref)[0] || null;
+  };
+  const oldGenQR=genQR;
+  genQR=function(id){return oldGenQR(canonicalRef(id));};
+  const oldPrintQR=printQR;
+  printQR=function(id,name){return oldPrintQR(canonicalRef(id),name);};
+
+  processQR=function(payload){
+    stopCam();
+    if(!String(payload||'').startsWith('RAILOPS:MAT:')){toast('QR invalide','danger');return;}
+    const ref=canonicalRef(String(payload).replace('RAILOPS:MAT:',''));
+    const matches=allByRef(ref);
+    if(!matches.length){toast('Matériel introuvable','danger');return;}
+    let chosen=directOn(ref,S.curC);
+    if(!chosen && S.curC){
+      const cur=S.chantiers.find(c=>c.id===S.curC);
+      if(cur && !cur.parent_id){
+        const under=matches.filter(m=>parentOfChantier(m.chantierId)===cur.id);
+        if(under.length===1) chosen=under[0];
+      }
+    }
+    if(chosen || matches.length===1){startInspect((chosen||matches[0]).id);return;}
+    document.getElementById('movl')?.remove();
+    const modal=document.createElement('div');modal.id='movl';modal.className='moverlay';
+    modal.innerHTML=`<div class="msheet"><div class="mhandle"></div><div style="font-size:18px;font-weight:600;margin-bottom:4px">${ref}</div><div style="font-size:12px;color:var(--text2);margin-bottom:14px">Cette référence est présente sur plusieurs chantiers.</div><div style="display:flex;flex-direction:column;gap:8px">${matches.map(m=>`<button class="btn btn-ghost ro-mc-choose" data-id="${m.id.replace(/"/g,'&quot;')}">${pathForChantier(m.chantierId)}</button>`).join('')}</div><button class="btn btn-outline" style="margin-top:12px" onclick="document.getElementById('movl').remove()">Annuler</button></div>`;
+    document.getElementById('app').appendChild(modal);
+    modal.querySelectorAll('.ro-mc-choose').forEach(b=>b.onclick=()=>{const id=b.dataset.id;modal.remove();startInspect(id);});
+  };
+
+  // Affichage : pastille uniforme + masquage de l'ID technique.
+  const originalRegItemHTML=regItemHTML;
+  regItemHTML=function(a){
+    const clean={...a};delete clean.autreChantier;delete clean._externe;
+    return originalRegItemHTML(clean);
+  };
+  const originalRenderTab=renderTab;
+  renderTab=function(){const r=originalRenderTab.apply(this,arguments);setTimeout(decorateMultiBadges,0);return r;};
+  const originalRender=render;
+  render=function(){const r=originalRender.apply(this,arguments);setTimeout(()=>{ensureStyle();decorateMultiBadges();},0);return r;};
+
+  ensureStyle();
+  setTimeout(decorateMultiBadges,0);
+  window.RailOpsMultiChantier={version:VERSION,canonicalRef,allByRef,pathForChantier,technicalId,decorate:decorateMultiBadges};
+  console.info('[RailOps] Correctif multi-chantier actif —',VERSION);
+})();
+
+</script>
 </body>
 </html>
