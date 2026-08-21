@@ -16,7 +16,7 @@ function safeLocalSave(){
 }
 function clearSession(){
   try{localStorage.removeItem('ro3_a');localStorage.removeItem('ro3_u');}catch(e){}
-  try{S.agent=null;S.role=null;S.isAdminOwner=false;S.__ownerAdminMode=false;S.page='login';S.modal=null;S.curC=null;S.curM=null;S.users=[];S.mat=[];S.scans=[];S.chantiers=[];}catch(e){}
+  try{S.agent=null;S.role=null;S.isAdminOwner=false;S.__ownerAdminMode=false;S.page='login';S.modal=null;S.curC=null;S.curM=null;S.users=[];S.mat=[];S.scans=[];S.chantiers=[];S.chefChantierStats=[];}catch(e){}
 }
 async function rpc(name,args){const {data,error}=await db.rpc(name,args||{});if(error)throw error;return data;}
 
@@ -52,12 +52,14 @@ async function secureLoad(){
   S.isAdminOwner=!!ctx.is_admin_owner;
   S.__ownerAdminMode=false;
   S.page=S.page==='login'?'dashboard':(S.page||'dashboard');
-  const [chantiers,mat,scans,users]=await Promise.all([
-    rpc('railops_chantiers_scope'),rpc('railops_materials_scope'),rpc('railops_scans_scope'),rpc('railops_user_directory')
+  const chefChantierStatsPromise=ctx.role==='chef_chantier'?rpc('railops_chef_chantier_tree_stats'):Promise.resolve([]);
+  const [chantiers,mat,scans,users,chefChantierStats]=await Promise.all([
+    rpc('railops_chantiers_scope'),rpc('railops_materials_scope'),rpc('railops_scans_scope'),rpc('railops_user_directory'),chefChantierStatsPromise
   ]);
   S.chantiers=chantiers||[];
   S.mat=typeof normMats==='function'?normMats(mat||[]):(mat||[]);
   S.scans=scans||[];
+  S.chefChantierStats=ctx.role==='chef_chantier'?(chefChantierStats||[]):[];
   S.users=(users||[]).map(u=>({id:u.id,nom:u.nom,badge:u.badge,role:u.role,is_admin:!!u.is_admin}));
   S.prixCatalogue=[];
   if(['chef','admin'].includes(S.role)){
