@@ -12,20 +12,25 @@ function assert(condition, message) {
 }
 
 assert(
-  html.includes("if(start<0||end<0)throw new Error('LEGACY_BOOTSTRAP_NOT_FOUND')"),
-  'harness must fail closed when the legacy bootstrap cannot be located'
+  html.includes('<script src="./v150b2b-harness-core.js?build=150b2b8"></script>'),
+  'test page must load the extracted harness core'
 );
 assert(
-  html.includes("const silentMarker='async function silentSync(){'"),
-  'harness must locate silentSync explicitly'
+  html.includes("if(!globalThis.RailOpsHarness150B2B)throw new Error('HARNESS_CORE_NOT_LOADED')"),
+  'test page must fail closed when the harness core is unavailable'
 );
 assert(
-  html.includes("if(!html.includes(silentMarker))throw new Error('LEGACY_SILENT_SYNC_NOT_FOUND')"),
-  'harness must fail closed when silentSync is missing'
+  html.includes('RailOpsHarness150B2B.neutralizeLegacyHtml(await r.text())'),
+  'test page must pass the legacy HTML through the tested neutralizer'
 );
-assert(
-  html.includes("html=html.replace(silentMarker,silentMarker+'return;')"),
-  'harness must neutralize the located silentSync marker'
-);
+for (const adapter of [
+  'v150b2b-loader.js',
+  'v150b2b-owner-mode.js',
+  'v150b2b-secure-admin.js',
+  'v150b2b-secure-delete.js',
+  'v150b2b-maintenance.js'
+]) {
+  assert(html.includes(adapter + '?build=150b2b8'), `test page must inject ${adapter}`);
+}
 
-console.log('PASS: v150B-2B harness fail-closed guards are present');
+console.log('PASS: v150B-2B harness integration wiring is present');
