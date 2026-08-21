@@ -12,7 +12,7 @@ function assert(condition, message) {
 }
 
 assert(
-  html.includes('<script src="./v150b2b-harness-core.js?build=150b2b9"></script>'),
+  html.includes('<script src="./v150b2b-harness-core.js?build=150b2b10"></script>'),
   'test page must load the extracted harness core'
 );
 assert(
@@ -31,7 +31,7 @@ for (const adapter of [
   'v150b2b-secure-delete.js',
   'v150b2b-maintenance.js'
 ]) {
-  assert(html.includes(adapter + '?build=150b2b9'), `test page must inject ${adapter}`);
+  assert(html.includes(adapter + '?build=150b2b10'), `test page must inject ${adapter}`);
 }
 
 console.log('PASS: v150B-2B harness integration wiring is present');
