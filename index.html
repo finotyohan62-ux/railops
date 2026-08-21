@@ -1591,5 +1591,237 @@ select.fi{cursor:pointer}
   console.info('[RailOps] Import multi-chantier natif actif —',VERSION);
 })();
 </script>
+
+<script id="railops-fix-step3f-dpi-guaranteed">
+/* RailOps v139 — ETAPE 3F
+   Import DPI déterministe : aucune référence n'est déplacée hors d'un autre chantier maître.
+   Une occurrence manquante est créée avec un ID technique NEUF par INSERT (pas par upsert
+   d'un ancien ID potentiellement blacklisté). Après import, la base est relue et doit
+   contenir chaque paire sous-chantier + référence attendue. Ne touche pas à la purge hebdo. */
+(function(){
+  'use strict';
+  const VERSION='139-step3f-dpi-guaranteed';
+  const MC='__MC__';
+  const MANIFEST_KEY='ro_registry_manifest_v136';
+  let seq=0;
+
+  const api=()=>window.RailOpsMultiChantier||{};
+  function normRef(v){
+    if(window.RailOpsImportFix?.normalizeReference) return window.RailOpsImportFix.normalizeReference(v);
+    return String(v??'').normalize('NFKC').trim().toUpperCase().replace(/[‐‑‒–—−]/g,'-').replace(/\s+/g,'').replace(/[^A-Z0-9._\/-]/g,'-').replace(/-{2,}/g,'-').replace(/^-+|-+$/g,'');
+  }
+  function businessRef(m){
+    if(api().businessRefOf) return api().businessRefOf(m);
+    const id=String(m?.id||''); const p=id.lastIndexOf(MC);
+    return normRef(p>0?id.slice(0,p):id);
+  }
+  function siteKey(v){
+    return String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'');
+  }
+  function canonicalSite(v){
+    return window.RailOpsDPIImport?.canonicalSite?.(v)||String(v??'').trim().toUpperCase();
+  }
+  function parentOf(cid){
+    const c=(S.chantiers||[]).find(x=>x.id===cid); return c?.parent_id||null;
+  }
+  function pathOf(cid){
+    if(api().pathForChantier) return api().pathForChantier(cid);
+    const c=(S.chantiers||[]).find(x=>x.id===cid); if(!c)return cid;
+    const p=c.parent_id?(S.chantiers||[]).find(x=>x.id===c.parent_id):null;
+    return p?`${p.nom} › ${c.nom}`:(c.nom||cid);
+  }
+  function direct(ref,cid,arr=S.mat||[]){
+    const r=normRef(ref); return arr.find(m=>m.chantierId===cid&&businessRef(m)===r)||null;
+  }
+  function all(ref,arr=S.mat||[]){
+    const r=normRef(ref); return arr.filter(m=>businessRef(m)===r);
+  }
+  async function allDb(){
+    if(typeof fetchAllMats==='function'){
+      const r=await fetchAllMats(); if(!r?.error&&Array.isArray(r?.data)) return r.data;
+      if(r?.error) throw new Error(r.error.message||'Lecture matériels impossible');
+    }
+    return (S.mat||[]).slice();
+  }
+  async function blockedIds(){
+    const set=new Set();
+    try{if(typeof getDeleteQueue==='function')for(const id of (getDeleteQueue()||[]))if(id)set.add(String(id));}catch(e){}
+    try{
+      const {data,error}=await db.from('deleted_ids').select('*');
+      if(!error&&Array.isArray(data)) for(const x of data){const id=String(x?.id||x?.identifiant||'').trim();if(id)set.add(id);}
+    }catch(e){console.warn('[v139] deleted_ids non lisible',e);}
+    return set;
+  }
+  function cleanForDb(x){
+    return {id:x.id,nom:x.nom||'',cat:x.cat||'Outillage',chantierId:x.chantierId,etat:x.etat||'inconnu',scan:x.scan||null,presence:x.presence||'non-confirme',echeance:x.echeance||'',verifLundi:x.verifLundi||null,verifSemaine:x.verifSemaine||null,controle2m:x.controle2m||null};
+  }
+  function fresh(exp,id){
+    return {id,nom:exp.nom||exp.ref,cat:exp.cat||'Outillage',chantierId:exp.chantierId,etat:'inconnu',scan:null,presence:'non-confirme',echeance:exp.echeance||'',verifLundi:null,verifSemaine:null,controle2m:null};
+  }
+  function rnd(){
+    try{const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0].toString(36).toUpperCase();}catch(e){return Math.floor(Math.random()*0xffffffff).toString(36).toUpperCase();}
+  }
+  function freshTechnicalId(ref,cid,used,blocked){
+    const base=normRef(ref).slice(0,78);
+    let id='';
+    do{id=`${base}${MC}N${Date.now().toString(36).toUpperCase()}${(++seq).toString(36).toUpperCase()}${rnd().slice(0,5)}`.slice(0,120);}while(used.has(id)||blocked.has(id));
+    used.add(id); return id;
+  }
+  async function insertFresh(exp,used,blocked,dbRows){
+    // Vérifie encore une fois juste avant l'INSERT afin d'éviter un doublon de course.
+    const visible=direct(exp.ref,exp.chantierId,dbRows.filter(m=>!blocked.has(String(m.id))));
+    if(visible) return {item:visible,created:false};
+    let lastErr=null;
+    for(let attempt=0;attempt<6;attempt++){
+      const id=freshTechnicalId(exp.ref,exp.chantierId,used,blocked);
+      const item=fresh(exp,id);
+      try{
+        const {error}=await db.from('materiels').insert([cleanForDb(item)]);
+        if(!error){dbRows.push(item);S.mat.push(item);return {item,created:true};}
+        lastErr=error;
+        console.warn('[v139] INSERT occurrence refusé',exp.ref,pathOf(exp.chantierId),error);
+      }catch(e){lastErr=e;console.warn('[v139] INSERT occurrence erreur',exp.ref,e);}
+    }
+    throw new Error(`${exp.ref} → ${pathOf(exp.chantierId)} : ${lastErr?.message||lastErr||'INSERT refusé'}`);
+  }
+  async function updateExisting(item,exp,move=false){
+    const patch={};
+    if(exp.nom)patch.nom=exp.nom;if(exp.cat)patch.cat=exp.cat;if(exp.echeance)patch.echeance=exp.echeance;
+    if(move)patch.chantierId=exp.chantierId;
+    if(!Object.keys(patch).length)return;
+    const {error}=await db.from('materiels').update(patch).eq('id',item.id);
+    if(error) throw new Error(`${exp.ref} : ${error.message}`);
+    Object.assign(item,patch);
+  }
+  function manifestWrite(byChild){
+    let mf={};try{mf=JSON.parse(localStorage.getItem(MANIFEST_KEY)||'{}')||{};}catch(e){}
+    for(const [cid,items] of byChild) mf[cid]=items.map(x=>({ref:x.ref,nom:x.nom||'',cat:x.cat||'Outillage',echeance:x.echeance||'',prix:x.prix??null}));
+    try{localStorage.setItem(MANIFEST_KEY,JSON.stringify(mf));}catch(e){}
+  }
+  async function upsertChildren(rows){
+    if(!rows.length)return;
+    const payload=rows.map(c=>({id:c.id,nom:c.nom||'',lieu:c.lieu||'',chef:c.chef||'',chefs:c.chefs||[],statut:c.statut||'actif',desc:c.desc||'',dateDebut:c.dateDebut||'',dateFin:c.dateFin||'',agents:c.agents||[],parent_id:c.parent_id||null}));
+    const {error}=await db.from('chantiers').upsert(payload,{onConflict:'id'});if(error)throw new Error('Sous-chantiers : '+error.message);
+  }
+  function stableChildId(parentId,site){const slug=canonicalSite(site).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'');return `${parentId}_${slug}`.slice(0,110);}
+  function candidateParents(data){
+    const sites=new Set(Object.keys(data.siteCounts||{}).map(siteKey));
+    return (S.chantiers||[]).filter(c=>!c.parent_id&&c.statut!=='termine').map(p=>{
+      const kids=(S.chantiers||[]).filter(c=>c.parent_id===p.id);
+      let score=kids.filter(k=>sites.has(siteKey(k.nom))).length*20;
+      score+=kids.filter(k=>String(k.desc||'').toUpperCase().includes(String(data.code||'').toUpperCase())).length*50;
+      if(siteKey(p.nom).includes(siteKey(data.code)))score+=30;
+      return {p,score};
+    }).sort((a,b)=>b.score-a.score);
+  }
+  function getChild(parent,site,created){
+    const key=siteKey(site);
+    let child=(S.chantiers||[]).filter(c=>c.parent_id===parent.id&&siteKey(c.nom)===key).sort((a,b)=>(S.mat||[]).filter(m=>m.chantierId===b.id).length-(S.mat||[]).filter(m=>m.chantierId===a.id).length)[0];
+    if(child)return child;
+    let id=stableChildId(parent.id,site);let n=1;while((S.chantiers||[]).some(c=>c.id===id))id=stableChildId(parent.id,site)+'_'+(++n);
+    child={id,nom:canonicalSite(site),lieu:canonicalSite(site),chef:S.agent||'',chefs:S.agent?[S.agent]:[],statut:'actif',desc:'Sous-chantier '+(window.__v139DpiCode||'DPI'),dateDebut:'',dateFin:'',agents:[],parent_id:parent.id};
+    created.push(child);return child;
+  }
+  function expectedSet(dbRows,blocked){
+    const s=new Set();for(const m of dbRows){if(!m?.id||blocked.has(String(m.id)))continue;const r=businessRef(m);if(r&&m.chantierId)s.add(m.chantierId+'|'+r);}return s;
+  }
+  async function reloadVisible(){
+    const [rows,blocked]=await Promise.all([allDb(),blockedIds()]);
+    const vis=rows.filter(m=>m?.id&&!blocked.has(String(m.id)));
+    S.mat=typeof normMats==='function'?normMats(vis):vis;
+    try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
+    return {rows,blocked};
+  }
+  async function runImport(data,parentId){
+    window._isImporting=true;window._lastImport=Date.now();window.__v139DpiCode=data.code;
+    const errors=[];let createdCount=0,movedCount=0,updatedCount=0,multiCount=0;
+    try{
+      let parent=(S.chantiers||[]).find(c=>c.id===parentId&&!c.parent_id)||null;
+      if(!parent){
+        let id='CH_'+String(data.code||'DPI').replace(/[^A-Z0-9_]+/gi,'_');if((S.chantiers||[]).some(c=>c.id===id))id=typeof newId==='function'?newId('CH'):`CH${Date.now()}`;
+        parent={id,nom:data.parentName||data.code||'Chantier maître',lieu:data.parentName||data.code||'',chef:S.agent||'',chefs:S.agent?[S.agent]:[],statut:'actif',desc:'Registre maître '+(data.code||''),dateDebut:'',dateFin:'',agents:[],parent_id:null};
+        await upsertChildren([parent]);S.chantiers.push(parent);
+      }
+      const createdChildren=[];const childBySite=new Map();
+      for(const site of Object.keys(data.siteCounts||{})){const c=getChild(parent,site,createdChildren);childBySite.set(siteKey(site),c);}
+      if(createdChildren.length){await upsertChildren(createdChildren);createdChildren.forEach(c=>S.chantiers.push(c));}
+
+      let dbRows=await allDb();const blocked=await blockedIds();const used=new Set(dbRows.map(m=>String(m?.id||'')).filter(Boolean));
+      const byChild=new Map(),expected=[];
+      for(const src of (data.items||[])){
+        const ref=normRef(src.reference||src.id);const child=childBySite.get(siteKey(src.site));
+        if(!ref||!child)continue;
+        const exp={ref,chantierId:child.id,nom:src.nom||src.designation||ref,cat:src.cat||src.categorie||'Outillage',echeance:src.echeance||'',prix:src.prix??null};
+        expected.push(exp);if(!byChild.has(child.id))byChild.set(child.id,[]);byChild.get(child.id).push(exp);
+
+        const visibleRows=dbRows.filter(m=>!blocked.has(String(m?.id||'')));
+        let target=direct(ref,child.id,visibleRows);
+        if(target){try{await updateExisting(target,exp,false);updatedCount++;}catch(e){errors.push(e.message);}continue;}
+
+        const occurrences=all(ref,visibleRows);
+        const sameMaster=occurrences.find(m=>parentOf(m.chantierId)===parent.id);
+        if(sameMaster){
+          try{await updateExisting(sameMaster,exp,true);sameMaster.chantierId=child.id;movedCount++;}catch(e){errors.push(e.message);}
+          continue;
+        }
+        if(occurrences.length) multiCount++;
+        try{const r=await insertFresh(exp,used,blocked,dbRows);if(r.created)createdCount++;}catch(e){errors.push(e.message);}
+      }
+      manifestWrite(byChild);
+
+      // Vérification forte et réparation jusqu'à 3 passages avec un ID NEUF à chaque fois.
+      let missing=[];
+      for(let pass=0;pass<3;pass++){
+        dbRows=await allDb();const tomb=await blockedIds();const vis=expectedSet(dbRows,tomb);
+        missing=expected.filter(x=>!vis.has(x.chantierId+'|'+x.ref));
+        if(!missing.length)break;
+        const used2=new Set(dbRows.map(m=>String(m?.id||'')).filter(Boolean));
+        for(const exp of missing){
+          try{const r=await insertFresh(exp,used2,tomb,dbRows);if(r.created)createdCount++;}catch(e){errors.push(e.message);}
+        }
+      }
+      const refreshed=await reloadVisible();const visFinal=expectedSet(refreshed.rows,refreshed.blocked);
+      missing=expected.filter(x=>!visFinal.has(x.chantierId+'|'+x.ref));
+      try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));}catch(e){}
+      document.getElementById('movl')?.remove();if(typeof render==='function')render();
+      setTimeout(()=>window.RailOpsMultiChantier?.decorate?.(),0);
+      const report={version:VERSION,parent:parent.id,total:expected.length,present:expected.length-missing.length,missing,created:createdCount,moved:movedCount,updated:updatedCount,multi:multiCount,errors};
+      window.__railopsV139Report=report;
+      console.info('[RailOps v139] rapport import DPI',report);
+      if(missing.length){
+        const sample=missing.slice(0,6).map(x=>`${x.ref} (${pathOf(x.chantierId)})`).join(', ');
+        toast(`Import ${data.code}: ${report.present}/${report.total} · ${missing.length} encore absente(s)${sample?' · '+sample:''}`,'danger');
+      }else toast(`Import ${data.code}: ${report.present}/${report.total} ✓ · ${createdCount} occurrence(s) créée(s)${multiCount?' · '+multiCount+' multi-chantier(s)':''}`,'ok');
+      return report;
+    }finally{window._isImporting=false;window._lastImport=Date.now();delete window.__v139DpiCode;}
+  }
+  function showModal(data,fileName){
+    document.getElementById('movl')?.remove();
+    const scores=candidateParents(data),best=scores[0]?.score>0?scores[0].p:null;
+    const opts=scores.map(({p,score})=>`<option value="${String(p.id).replace(/"/g,'&quot;')}" ${best?.id===p.id?'selected':''}>${p.nom}${score?' · correspondance '+score:''}</option>`).join('');
+    const counts=Object.entries(data.siteCounts||{}).map(([s,n])=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:.5px solid var(--border)"><span>${s}</span><strong>${n}</strong></div>`).join('');
+    const d=document.createElement('div');d.id='movl';d.className='moverlay';
+    d.innerHTML=`<div class="msheet"><div class="mhandle"></div><div style="font-size:18px;font-weight:600">Import ${data.code} — moteur v139</div><div style="font-size:11px;color:var(--text2);margin:3px 0 12px">${fileName} · ${data.items.length} références attendues</div><div style="background:rgba(29,158,117,.09);border:.5px solid rgba(29,158,117,.3);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px"><strong>Mode multi-chantier natif.</strong><br>Les références présentes sur Lison restent sur Lison. Une vraie occurrence séparée est créée sur CDG.</div><label class="fl" style="margin-top:0">Chantier maître</label><select id="dpi-parent-v139" class="fi"><option value="__create__">+ Créer un nouveau maître</option>${opts}</select><div style="margin:12px 0;background:var(--bg3);padding:9px 12px;border-radius:10px">${counts}</div><button id="dpi-go-v139" class="btn btn-accent">Importer et vérifier ${data.items.length}/${data.items.length}</button><button class="btn btn-outline" style="margin-top:8px" onclick="document.getElementById('movl').remove()">Annuler</button></div>`;
+    document.getElementById('app').appendChild(d);
+    const sel=document.getElementById('dpi-parent-v139');if(best)sel.value=best.id;
+    document.getElementById('dpi-go-v139').onclick=async()=>{const b=document.getElementById('dpi-go-v139');b.disabled=true;b.textContent='Import + contrôle en cours…';try{await runImport(data,sel.value);}catch(e){console.error('[v139]',e);toast('Import v139 interrompu : '+(e?.message||e),'danger');b.disabled=false;b.textContent='Réessayer';}};
+  }
+
+  // Dernière surcharge : le registre DPI passe exclusivement par le moteur v139.
+  const previousImport=window.importCSV||importCSV;
+  window.importCSV=importCSV=function(input){
+    const file=input?.files?.[0];
+    if(!file||typeof XLSX==='undefined'||!window.RailOpsDPIImport?.detect)return previousImport(input);
+    const ext=(file.name.split('.').pop()||'').toLowerCase();
+    if(!['xlsx','xls','xlsm','xlsb'].includes(ext))return previousImport(input);
+    const reader=new FileReader();
+    reader.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});const dpi=window.RailOpsDPIImport.detect(wb);if(!dpi){previousImport(input);return;}input.value='';showModal(dpi,file.name);}catch(err){console.warn('[v139 detect]',err);previousImport(input);}};
+    reader.onerror=()=>previousImport(input);reader.readAsArrayBuffer(file);
+  };
+  window.RailOpsV139={version:VERSION,runImport,last:()=>window.__railopsV139Report||null};
+  console.info('[RailOps] moteur DPI garanti actif —',VERSION);
+})();
+</script>
+
 </body>
 </html>
