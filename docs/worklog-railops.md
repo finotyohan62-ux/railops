@@ -18,3 +18,16 @@
 - Commits : `1fe9db233910087981c5a85a8fc1eccf2c19ec02` (`docs: align v150B-2B plan with owner Chef/Admin modes`) et `6b11d7b48ee8a6395421ffb75b4c5aceae77deba` (`tests: split owner Chef and Admin smoke checks`).
 - Vérification : cette passe ne modifie aucun code de production, aucune migration, aucune policy, aucune donnée ni règle métier ; `main`, Import, Multi-chantier et purge hebdomadaire restent intacts.
 - À suivre : audit statique des adaptateurs client/page de test, puis vérification des écarts fonctionnels encore ouverts avant toute fermeture RLS.
+
+## 2026-08-21 — reprise interactive 21:42 Europe/Paris
+
+- Harness de preview durci en TDD : un module testable `v150b2b-harness-core.js` neutralise le bootstrap legacy et `silentSync()` en mode fail-closed (`LEGACY_BOOTSTRAP_NOT_FOUND` / `LEGACY_SILENT_SYNC_NOT_FOUND`).
+- Vérifications locales : test rouge initial (module absent), puis `node tests/v150b2b-harness-core.test.js` vert et `node --check` vert ; le test d'intégration du harness a ensuite été aligné avec le module extrait.
+- Commits harness : `2162ca5e2cacbbe75725af55a348c8d2a54a698d`, `130c6f972601052df1cddc5f227257392806b7e7`, `55b3da927da546f3f377455bd0c84c8a377ffc15`, puis `527a32987c1e50f41ac7d8a46cfe72070831b738` pour le câblage de test. Vercel a renvoyé `success` après le refactor.
+- Audit Chef de chantier : la couche serveur renvoyait déjà `railops_chef_chantier_tree_stats()` et gardait `S.mat=[]`, mais le dashboard legacy calculait encore `statsFor()` depuis `S.mat`, ce qui pouvait afficher des compteurs à zéro malgré un cloisonnement correct.
+- Correction TDD : ajout de `v150b2b-chef-chantier-stats.js`, qui remplace uniquement la source des compteurs pour `chef_chantier` par les agrégats statistiques serveur du chantier + descendants. Aucun matériel, référence, QR ou scan n'est injecté côté client ; les autres rôles utilisent toujours le comportement historique.
+- Vérifications locales : test rouge initial (module absent), puis `node tests/v150b2b-chef-chantier-stats.test.js` vert, test du harness vert et `node --check` vert.
+- Commits Chef de chantier : `6376ae36785459f64908ade31b6fada03d9cf5ac` (test), `443a9bc173bf38cb8566e1d0fda7f92ba75299a1` (adaptateur), `0cfbac5402433b5de41a50801b00465ff1af16ec` (test de câblage), `449366e22510a3420e8b870d2ad09bcff81171da` (preview build `150b2b9`) et `bebd5fba06462aa37b95b097a0d4de8cf578892a` (checklist smoke-test).
+- Déploiement preview : Vercel `success` sur `449366e22510a3420e8b870d2ad09bcff81171da`.
+- Garde-fous respectés : aucune donnée Supabase, migration, policy, RLS, règle de rôle, Import, Multi-chantier ou purge hebdomadaire modifiés ; `main` n'a pas été fusionné.
+- À valider humainement plus tard : connexion réelle Chef de chantier sur la preview pour confirmer visuellement les compteurs et l'absence totale de références/QR/scans.
