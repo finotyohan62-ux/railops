@@ -1205,5 +1205,193 @@ console.info('[RailOps] invariant registre persistant actif —',VERSION);
 })();
 </script>
 
+<script id="railops-v147-roles">
+(function(){
+'use strict';
+const VERSION='147-role-cloisonnement';
+
+function st(){try{return S||null;}catch(e){return null;}}
+function role(){return st()?.role||'';}
+function userName(){return st()?.agent||'';}
+function allChantiers(){return st()?.chantiers||[];}
+function allMats(){return st()?.mat||[];}
+function chantierById(id){return allChantiers().find(c=>String(c.id)===String(id))||null;}
+function parentOf(c){return c?.parent_id?chantierById(c.parent_id):null;}
+function isAdmin(){return role()==='admin';}
+function isCC(){return role()==='chef_chantier';}
+function isChef(){return role()==='chef';}
+function isField(){return role()==='agent'||role()==='cte';}
+function active(c){return !!c && c.statut!=='termine';}
+
+function chefOwns(c){
+  if(!c)return false;
+  // Un sous-chantier appartient au chef du chantier maître. On n'utilise pas
+  // une ancienne affectation stockée sur le sous-chantier pour contourner le parent.
+  const p=parentOf(c);
+  if(p)return chefOwns(p);
+  const n=userName();
+  return (c.chefs||[]).includes(n)||c.chef===n;
+}
+function fieldAssigned(c){
+  if(!c)return false;
+  const n=userName();
+  if((c.agents||[]).includes(n))return true;
+  const p=parentOf(c);return p?fieldAssigned(p):false;
+}
+function canAccessChantier(cid){
+  const c=typeof cid==='object'?cid:chantierById(cid);
+  if(!c)return false;
+  if(isAdmin()||isCC())return true;
+  if(isChef())return chefOwns(c);
+  if(isField())return fieldAssigned(c);
+  return false;
+}
+function accessibleChantiers(includeTerminated=true){
+  return allChantiers().filter(c=>(includeTerminated||active(c))&&canAccessChantier(c));
+}
+function descendants(cid){
+  const out=[];const seen=new Set();const q=[cid];
+  while(q.length){const id=q.shift();if(seen.has(id))continue;seen.add(id);out.push(id);for(const c of allChantiers())if(c.parent_id===id)q.push(c.id);}
+  return out;
+}
+function businessRefSafe(m){
+  try{return window.RailOpsStableV140?.businessRef?.(m)||String(m?.reference||m?.id||'').split('__MC__')[0];}catch(e){return String(m?.reference||m?.id||'').split('__MC__')[0];}
+}
+function verif(m,type){
+  try{return typeof getVerif==='function'?!!getVerif(m,type):!!(type==='lundi'?m.verifLundi:m.verifSemaine);}catch(e){return !!(type==='lundi'?m?.verifLundi:m?.verifSemaine);}
+}
+function statsFor(c){
+  const ids=new Set(descendants(c.id));
+  const mats=allMats().filter(m=>ids.has(m.chantierId)&&m.presence!=='retire');
+  const total=mats.length;
+  const v1=mats.filter(m=>verif(m,'lundi')).length;
+  const v2=mats.filter(m=>verif(m,'semaine')).length;
+  const absent=mats.filter(m=>m.presence==='absent').length;
+  const hs=mats.filter(m=>m.etat==='hors-service'||m.etat==='hs').length;
+  return {total,v1,v2,absent,hs,p1:total?Math.round(v1/total*100):0,p2:total?Math.round(v2/total*100):0};
+}
+function esc(s){return String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+function chefLabel(c){const a=(c.chefs||[]).filter(Boolean);return a[0]||c.chef||'—';}
+function progress(label,n,total,pct){
+  return `<div class="ro147-prog"><div class="ro147-prog-head"><span>${label}</span><strong>${n}/${total} · ${pct}%</strong></div><div class="ro147-track"><div class="ro147-fill" style="width:${Math.max(0,Math.min(100,pct))}%"></div></div></div>`;
+}
+function chantierCard(c,clickable=true){
+  const x=statsFor(c);
+  return `<div class="ro147-card" ${clickable?`onclick="openC('${esc(c.id)}')"`:''}>
+    <div class="ro147-card-top"><div><div class="ro147-name">${esc(c.nom)}</div><div class="ro147-sub">${esc(c.lieu||'')} · Chef d'équipe : ${esc(chefLabel(c))}</div></div><span class="ro147-total">${x.total} suivis</span></div>
+    ${progress('Vérification 1',x.v1,x.total,x.p1)}
+    ${progress('Vérification 2',x.v2,x.total,x.p2)}
+  </div>`;
+}
+function topLevelActive(){
+  const act=allChantiers().filter(active);const ids=new Set(act.map(c=>c.id));
+  return act.filter(c=>!c.parent_id||!ids.has(c.parent_id));
+}
+function renderChefChantierDashboard(root){
+  const tops=topLevelActive();
+  const totals=tops.reduce((a,c)=>{const x=statsFor(c);a.total+=x.total;a.v1+=x.v1;a.v2+=x.v2;return a;},{total:0,v1:0,v2:0});
+  const p1=totals.total?Math.round(totals.v1/totals.total*100):0;
+  const p2=totals.total?Math.round(totals.v2/totals.total*100):0;
+  root.innerHTML=`<div class="topbar"><div class="tbi"><div class="tbt">Vue globale des vérifications</div><div class="tbs">${tops.length} chantier(s) actif(s)</div></div><div class="avatar" onclick="openProfil()" style="cursor:pointer">${typeof ini==='function'?ini(userName()):esc(userName().slice(0,2))}</div></div>
+  <div class="ro147-wrap">
+    <div class="ro147-summary"><div><strong>${tops.length}</strong><span>Chantiers</span></div><div><strong>${p1}%</strong><span>Vérif. 1</span></div><div><strong>${p2}%</strong><span>Vérif. 2</span></div></div>
+    <div class="ro147-info">Vue Chef de chantier · suivi de l'avancement uniquement. Les références matériel ne sont pas affichées.</div>
+    <div class="ro147-section">Avancement par chantier</div>
+    ${tops.length?tops.map(c=>chantierCard(c,true)).join(''):'<div class="ro147-empty">Aucun chantier actif</div>'}
+  </div>`;
+}
+function renderChefChantierDetail(){
+  const c=chantierById(st()?.curC);const root=document.getElementById('app');if(!root)return;
+  if(!c){st().page='dashboard';render();return;}
+  const x=statsFor(c);const children=allChantiers().filter(ch=>ch.parent_id===c.id&&active(ch));
+  root.innerHTML=`<div class="topbar"><button class="ro147-back" onclick="RailOpsRole147.backGlobal()">‹</button><div class="tbi"><div class="tbt">${esc(c.nom)}</div><div class="tbs">${esc(c.lieu||'')} · ${esc(chefLabel(c))}</div></div></div>
+  <div class="ro147-wrap">
+    <div class="ro147-info">Vue de suivi uniquement · aucune référence ni QR n'est accessible depuis ce compte.</div>
+    <div class="ro147-big"><div><strong>${x.p1}%</strong><span>Vérification 1</span></div><div><strong>${x.p2}%</strong><span>Vérification 2</span></div></div>
+    ${progress('Vérification 1',x.v1,x.total,x.p1)}${progress('Vérification 2',x.v2,x.total,x.p2)}
+    ${children.length?`<div class="ro147-section">Sous-chantiers</div>${children.map(ch=>chantierCard(ch,true)).join('')}`:''}
+  </div>`;
+}
+function renderAssignedList(root){
+  const list=accessibleChantiers(false).sort((a,b)=>String(a.nom).localeCompare(String(b.nom),'fr'));
+  root.innerHTML=`<div class="topbar"><div class="tbi"><div class="tbt">Mes chantiers</div><div class="tbs">${list.length} chantier(s) accessible(s)</div></div></div><div class="ro147-wrap">${list.length?list.map(c=>chantierCard(c,true)).join(''):'<div class="ro147-empty">Aucun chantier ne vous est affecté.</div>'}</div>`;
+}
+function deny(msg='Accès non autorisé pour ce compte'){
+  try{toast(msg,'danger');}catch(e){}
+}
+
+// --- Accès direct chantier ---
+const baseOpenC=typeof openC==='function'?openC:null;
+if(baseOpenC){openC=function(cid){if(!canAccessChantier(cid)){deny('Ce chantier ne fait pas partie de votre périmètre.');return;}return baseOpenC.call(this,cid);};}
+
+// --- Détail chantier : Chef de chantier = statistiques uniquement ---
+const baseRenderDetail=typeof renderChantierDetail==='function'?renderChantierDetail:null;
+if(baseRenderDetail){renderChantierDetail=function(){if(isCC())return renderChefChantierDetail();if(!canAccessChantier(st()?.curC)){deny();st().page='dashboard';return render();}return baseRenderDetail.apply(this,arguments);};}
+
+// --- Tableau de bord Chef de chantier ---
+if(typeof pgDashChefChantier==='function')pgDashChefChantier=function(root){return renderChefChantierDashboard(root);};
+if(typeof pgChantiersDashboard==='function')pgChantiersDashboard=function(root){return renderChefChantierDashboard(root);};
+
+// --- Page Chantiers Agent / CTE : uniquement périmètre affecté ---
+const basePgChantiers=typeof pgChantiers==='function'?pgChantiers:null;
+if(basePgChantiers){pgChantiers=function(root){if(isCC())return renderChefChantierDashboard(root);if(isField())return renderAssignedList(root);return basePgChantiers.apply(this,arguments);};}
+
+// --- matOfC : empêche les fonctions client de lire un chantier hors périmètre (hors CC/admin qui ont besoin d'agrégats) ---
+const baseMatOfC=typeof matOfC==='function'?matOfC:null;
+if(baseMatOfC){matOfC=function(cid){if(!isAdmin()&&!isCC()&&!canAccessChantier(cid))return [];return baseMatOfC.call(this,cid);};}
+
+// --- getM / QR : aucun accès direct à un matériel d'un autre chantier ---
+const baseGetM=typeof getM==='function'?getM:null;
+if(baseGetM){getM=function(id){const m=baseGetM.call(this,id);if(!m)return null;if(isCC())return null;if(isAdmin()||canAccessChantier(m.chantierId))return m;return null;};}
+const baseOpenQR=typeof openQR==='function'?openQR:null;
+if(baseOpenQR){openQR=function(id){if(isCC()){deny('Les références et QR ne sont pas accessibles au Chef de chantier.');return;}const m=getM(id);if(!m){deny('Matériel hors de votre périmètre.');return;}return baseOpenQR.call(this,id);};}
+
+// --- QR codes : liste limitée aux chantiers accessibles ; interdite au Chef de chantier ---
+const basePgQR=typeof pgQRCodes==='function'?pgQRCodes:null;
+if(basePgQR){pgQRCodes=function(root){if(isCC()){root.innerHTML='<div class="ro147-wrap"><div class="ro147-info">La gestion des QR et des références n’est pas disponible pour le compte Chef de chantier.</div></div>';return;}const s=st();const oc=s.chantiers,om=s.mat;try{const allowed=new Set(accessibleChantiers(true).map(c=>c.id));s.chantiers=oc.filter(c=>allowed.has(c.id));s.mat=om.filter(m=>allowed.has(m.chantierId));return basePgQR.call(this,root);}finally{s.chantiers=oc;s.mat=om;}};}
+
+// --- Historique : jamais global pour Chef / CTE / Agent. Le CC n'a pas les détails référence. ---
+const baseHistory=typeof pgHistorique==='function'?pgHistorique:null;
+if(baseHistory){pgHistorique=function(root){if(isCC()){root.innerHTML='<div class="ro147-wrap"><div class="ro147-info">Le compte Chef de chantier dispose uniquement de la vue globale d’avancement des vérifications.</div><button class="btn btn-accent" onclick="RailOpsRole147.backGlobal()">Retour au suivi global</button></div>';return;}if(isAdmin())return baseHistory.apply(this,arguments);const s=st(),oc=s.chantiers,om=s.mat,os=s.scans;const allowed=new Set(accessibleChantiers(true).map(c=>c.id));try{s.chantiers=oc.filter(c=>allowed.has(c.id));s.mat=om.filter(m=>allowed.has(m.chantierId));s.scans=os.filter(x=>allowed.has(x.chantierId));return baseHistory.call(this,root);}finally{s.chantiers=oc;s.mat=om;s.scans=os;}};}
+
+// --- Notifications CC : aucune référence individuelle ---
+const baseBuildNotifs=typeof buildNotifs==='function'?buildNotifs:null;
+if(baseBuildNotifs){buildNotifs=function(){if(isCC())return [];return baseBuildNotifs.apply(this,arguments);};}
+
+// --- Actions de structure / registre réservées au Chef d'équipe et Admin ---
+function chefOnly(name){
+  try{const fn=globalThis[name];if(typeof fn!=='function')return;globalThis[name]=function(){if(!(isChef()||isAdmin())){deny('Action réservée au Chef d’équipe.');return;}return fn.apply(this,arguments);};}catch(e){}
+}
+['renderNouveauChantier','creerC','renderEditChantier','editC','renderAjoutMat','ajouterM','triggerImport','triggerReplace','importReplace','processRows','importCSV','openImportMultiModal','lancerImportMulti','importerOnglet','confirmDeleteChantier','deleteChantier','openTransfertModal','doTransfert','deleteSelected','doDeleteSelected','addChefToC','removeChefFromC','addAgentDirectToC','addAgentToC','removeAgentFromC','confirmTerminer','doTerminer','openImportChoix'].forEach(chefOnly);
+
+// Export détaillé et actions article non accessibles au Chef de chantier.
+for(const name of ['openExportChoix','exportNonVerifies','openHistoriqueArticle']){
+  try{const fn=globalThis[name];if(typeof fn==='function')globalThis[name]=function(){if(isCC()){deny('Cette vue détaillée n’est pas disponible pour le Chef de chantier.');return;}return fn.apply(this,arguments);};}catch(e){}
+}
+
+// Empêche le CC de forcer un onglet matériel via console/navigation interne.
+const baseSetTab=typeof setTab==='function'?setTab:null;
+if(baseSetTab){setTab=function(tab){if(isCC()){return renderChefChantierDetail();}return baseSetTab.apply(this,arguments);};}
+const baseTabReg=typeof tabRegistre==='function'?tabRegistre:null;
+if(baseTabReg){tabRegistre=function(root){if(isCC()){root.innerHTML='<div class="ro147-info">Références masquées pour ce rôle.</div>';return;}return baseTabReg.apply(this,arguments);};}
+
+// Masque l'ancien bouton d'historique des imports : non retenu dans le besoin métier.
+try{const css=document.createElement('style');css.id='ro147-style';css.textContent=`
+#ro144-history{display:none!important}
+.ro147-wrap{padding:12px 16px 90px}.ro147-summary,.ro147-big{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}.ro147-big{grid-template-columns:1fr 1fr}.ro147-summary>div,.ro147-big>div{background:var(--bg2);border:.5px solid var(--border);border-radius:12px;padding:12px;text-align:center}.ro147-summary strong,.ro147-big strong{display:block;font-size:22px;color:var(--accent)}.ro147-summary span,.ro147-big span{display:block;font-size:10px;color:var(--text3);margin-top:3px}.ro147-info{background:rgba(55,138,221,.08);border:.5px solid rgba(55,138,221,.22);border-radius:10px;padding:10px 12px;font-size:11px;color:var(--text2);margin-bottom:12px}.ro147-section{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin:14px 2px 8px}.ro147-card{background:var(--bg2);border:.5px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer}.ro147-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}.ro147-name{font-size:14px;font-weight:600;color:var(--text)}.ro147-sub{font-size:10px;color:var(--text3);margin-top:2px}.ro147-total{font-size:10px;color:var(--text2);background:var(--bg3);border-radius:999px;padding:3px 7px;white-space:nowrap}.ro147-prog{margin:7px 0}.ro147-prog-head{display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-bottom:4px}.ro147-prog-head strong{color:var(--text);font-weight:600}.ro147-track{height:5px;background:var(--bg3);border-radius:999px;overflow:hidden}.ro147-fill{height:100%;background:var(--accent);border-radius:999px}.ro147-empty{text-align:center;padding:50px 10px;color:var(--text3);font-size:12px}.ro147-back{border:none;background:none;color:var(--text);font-size:28px;padding:0 8px 0 0;cursor:pointer}
+`;document.head.appendChild(css);}catch(e){}
+
+window.RailOpsRole147={
+  version:VERSION,
+  canAccessChantier,
+  accessibleChantiers,
+  statsFor,
+  roleMatrix:{agent:'chantiers affectés',cte:'chantiers affectés',chef:'ses chantiers',chef_chantier:'vue globale statistiques',admin:'global'},
+  backGlobal(){const s=st();if(!s)return;s.page='dashboard';s.curC=null;try{render();}catch(e){location.reload();}}
+};
+console.info('[RailOps] cloisonnement rôles actif —',VERSION);
+})();
+
+</script>
 </body>
 </html>
