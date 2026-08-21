@@ -7,6 +7,7 @@ const tests = [
   'tests/v150b2b-harness.test.js',
   'tests/v150b2b-chef-chantier-stats.test.js',
   'tests/v150b2b-chef-chantier-integration.test.js',
+  'tests/v150b2b-static-invariants.test.js',
 ];
 const syntaxTargets = [
   'v150b2b-harness-core.js',
