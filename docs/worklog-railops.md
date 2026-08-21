@@ -41,3 +41,15 @@
 - Documentation créée : `docs/v150b2b-write-scope-audit.md`.
 - Commit : `b290092632fbffc2f24a3eaf9594bba87b9366b1` (`docs: audit v150B2B write scope before strict RLS`).
 - Aucune correction serveur/RLS appliquée : ce point est volontairement arrêté avant changement de sécurité ou de règle d'accès et nécessite validation explicite.
+
+## 2026-08-21 — correction intégration Chef de chantier 21:57 Europe/Paris
+
+- Reprise du correctif Chef de chantier avec vérification de bout en bout : le premier adaptateur ne suffisait pas, car `secureLoad()` ne chargeait pas encore `railops_chef_chantier_tree_stats()` et l'écran v148 actif utilisait sa closure `stats148()` basée sur `S.mat`, pas seulement le `statsFor()` global.
+- Test rouge ajouté : `tests/v150b2b-chef-chantier-integration.test.js` reproduit les deux ruptures (RPC statistique absent du loader + routeur v148 restant sur le rendu legacy à zéro).
+- Correction minimale : `v150b2b-loader.js` charge maintenant uniquement `railops_chef_chantier_tree_stats()` pour `chef_chantier` dans `S.chefChantierStats`, tout en laissant `S.mat=[]` et `S.scans=[]`; `v150b2b-chef-chantier-stats.js` intercepte les routes Dashboard/Chantiers/Détail du rôle et rend les agrégats maître + descendants sans référence individuelle.
+- Non-régression : le contrat historique `statsFor()` reste `total/v1/v2`; les autres rôles retombent sur leurs fonctions originales.
+- Vérification locale fraîche : test unitaire historique Chef de chantier OK, test d'intégration sécurisé OK, harness core OK, câblage preview OK et `node --check` OK.
+- Preview cache-bust passée à `150b2b10`; Vercel `success` sur le head vérifié `df1a7ff124aa1d486f1ff723e01527505c51cb47`.
+- Contrôle Supabase lecture seule : les 9 chantiers actifs totalisent actuellement 740 matériels et `retired_count=0`, donc le RPC et l'ancien calcul donnent aujourd'hui le même total sur ce point. Le RPC ne filtre toutefois pas encore explicitement `presence='retire'`; aucune migration serveur n'a été appliquée pour corriger ce cas latent.
+- Commits principaux de cette correction : `5fb38c033f301aa2969bc42f973178c2444982e1` (test rouge), `43d45b7132b77a44c50d7727add9453ace2ec7f6` (chargement stats-only), `cb03eb07f55b839a16455cf93b628f111a84c9ea` puis `df1a7ff124aa1d486f1ff723e01527505c51cb47` (rendu sécurisé + contrat legacy), avec build preview `150b2b10` via `e3861c0f72f684c10c037783c8f202dc357a9592` / `4f82c68a22a69f06045554fddf44c42317b34fc7`.
+- À valider humainement : connexion réelle Chef de chantier sur la preview pour confirmer visuellement les compteurs, la navigation maître/sous-chantier et l'absence totale de références/QR/scans. La fermeture RLS reste interdite avant les smoke-tests complets.
