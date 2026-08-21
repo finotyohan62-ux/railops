@@ -420,5 +420,311 @@ select.fi{cursor:pointer}
 })();
 </script>
 
+<script id="railops-fix-step2-dpi-master">
+/* RailOps v133 — ETAPE 2 : import hiérarchique stable pour registres type DPI.
+   - INVENTAIRE = source de vérité pour l'affectation actuelle.
+   - Réutilise le chantier maître et les sous-chantiers existants.
+   - Ne supprime aucune référence absente du nouvel inventaire.
+   - Ne modifie pas la purge hebdomadaire des vérifications. */
+(function(){
+  'use strict';
+  const VERSION='133-step2-dpi';
+  const previousImportCSV=importCSV;
+
+  function txt(v){
+    return String(v ?? '').trim().toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g,'')
+      .replace(/[‐‑‒–—−]/g,'-')
+      .replace(/\s+/g,' ');
+  }
+  function compact(v){return txt(v).replace(/[^a-z0-9]+/g,'');}
+  function normRef(v){
+    if(window.RailOpsImportFix?.normalizeReference) return window.RailOpsImportFix.normalizeReference(v);
+    return String(v ?? '').normalize('NFKC').trim().toUpperCase()
+      .replace(/[‐‑‒–—−]/g,'-').replace(/\s+/g,'')
+      .replace(/[^A-Z0-9._\/-]/g,'-').replace(/-{2,}/g,'-').replace(/^-+|-+$/g,'');
+  }
+  function headerKind(v){
+    const h=compact(v);
+    if(!h) return null;
+    if(/^(ref|refs|reference|references|id|identifiant|numero|num|code|matricule)$/.test(h) || h.includes('referencemateriel')) return 'ref';
+    if(h.includes('site') || h.includes('affectation') || h.includes('emplacement') || h.includes('localisation')) return 'site';
+    if(h.includes('designation') || h.includes('libelle') || h==='nom' || h.includes('description') || h==='materiel') return 'name';
+    if(h.includes('categorie') || h==='cat' || h==='type' || h.includes('famille')) return 'cat';
+    if(h.includes('validite') || h.includes('echeance') || h.includes('expiration') || h.includes('date')) return 'date';
+    return null;
+  }
+  function canonicalSite(raw){
+    const h=compact(raw);
+    if(!h) return 'NON AFFECTÉ';
+    if(h.includes('roissy')) return 'ROISSY';
+    if(h.includes('vemars')) return 'VEMARS';
+    if(h.includes('pra152') || (h.includes('pra')&&h.includes('152'))) return 'PRA 152';
+    if(h==='gcp' || h.includes('gcp')) return 'GCP';
+    if(h.includes('container')) return 'CONTAINER-01';
+    if(h.includes('retour')) return 'RETOUR';
+    if(h.includes('nonaffect') || h.includes('nonattribu') || h.includes('sansaffect')) return 'NON AFFECTÉ';
+    return String(raw ?? '').trim().toUpperCase() || 'NON AFFECTÉ';
+  }
+  function siteKey(v){return compact(canonicalSite(v));}
+  function formatDate(v){
+    if(v===null || v===undefined || v==='') return '';
+    if(v instanceof Date && !isNaN(v)) return v.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    if(typeof v==='number' && v>1000){
+      const d=new Date(Date.UTC(1899,11,30)+v*86400000);
+      return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'UTC'});
+    }
+    return String(v).trim();
+  }
+  function parseInventoryRows(rows){
+    let header=-1, cols={ref:-1,site:-1,name:-1,cat:-1,date:-1};
+    for(let r=0;r<Math.min(rows.length,30);r++){
+      const kinds=(rows[r]||[]).map(headerKind);
+      const rc=kinds.indexOf('ref'), sc=kinds.indexOf('site');
+      if(rc>=0 && sc>=0){
+        header=r; cols={ref:rc,site:sc,name:kinds.indexOf('name'),cat:kinds.indexOf('cat'),date:kinds.indexOf('date')};
+        break;
+      }
+    }
+    if(header<0) return null;
+    const map=new Map(), siteCounts={};
+    for(let r=header+1;r<rows.length;r++){
+      const row=rows[r]||[];
+      const ref=normRef(row[cols.ref]);
+      if(!ref) continue;
+      const site=canonicalSite(row[cols.site]);
+      const nom=cols.name>=0 && String(row[cols.name]??'').trim()?String(row[cols.name]).trim():ref;
+      const cat=cols.cat>=0 && String(row[cols.cat]??'').trim()?String(row[cols.cat]).trim():'Outillage';
+      const echeance=cols.date>=0?formatDate(row[cols.date]):'';
+      map.set(ref,{reference:ref,nom,cat,echeance,site});
+    }
+    for(const item of map.values()) siteCounts[item.site]=(siteCounts[item.site]||0)+1;
+    return {items:[...map.values()],siteCounts,header,cols};
+  }
+  function detectDpiWorkbook(wb){
+    if(!wb?.SheetNames?.length) return null;
+    const invName=wb.SheetNames.find(n=>compact(n)==='inventaire' || compact(n).startsWith('inventaire'));
+    if(!invName) return null;
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[invName],{header:1,defval:'',raw:false,dateNF:'dd/mm/yyyy',blankrows:false});
+    const parsed=parseInventoryRows(rows);
+    if(!parsed || parsed.items.length<10) return null;
+    const lead=rows.slice(0,4).flat().map(v=>String(v??'')).join(' ');
+    const m=lead.match(/\bDPI\s*[-_ ]?\s*(\d{3,8})\b/i);
+    if(!m) return null;
+    const code='DPI'+m[1];
+    return {...parsed,code,parentName:code,inventorySheet:invName,fileWorkbook:wb};
+  }
+  function parentCandidates(data){
+    const code=compact(data.code);
+    return S.chantiers.filter(c=>!c.parent_id && c.statut!=='termine').sort((a,b)=>{
+      const aa=compact(a.nom),bb=compact(b.nom);
+      const sa=(aa.includes(code)?10:0), sb=(bb.includes(code)?10:0);
+      return sb-sa;
+    });
+  }
+  function showDpiModal(data,fileName){
+    document.getElementById('movl')?.remove();
+    const modal=document.createElement('div');
+    modal.id='movl'; modal.className='moverlay';
+    const candidates=parentCandidates(data);
+    let best=candidates.find(c=>compact(c.nom).includes(compact(data.code))) || null;
+    const opts=candidates.map(c=>`<option value="${c.id}" ${best&&best.id===c.id?'selected':''}>${c.nom}</option>`).join('');
+    const counts=Object.entries(data.siteCounts).map(([s,n])=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:.5px solid var(--border)"><span>${s}</span><strong>${n}</strong></div>`).join('');
+    modal.innerHTML=`<div class="msheet">
+      <div class="mhandle"></div>
+      <div style="font-size:18px;font-weight:600;margin-bottom:4px">Import hiérarchique ${data.code}</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:14px">${fileName} · ${data.items.length} références uniques détectées</div>
+      <div style="background:rgba(29,158,117,.08);border:.5px solid rgba(29,158,117,.25);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--text2)">
+        <strong style="color:#5DCAA5">INVENTAIRE sera la source de vérité.</strong><br>
+        Les onglets ROISSY/VEMARS/etc. ne déplaceront plus les références. Aucune référence absente de ce fichier ne sera supprimée.
+      </div>
+      <label class="fl" style="margin-top:0">Chantier maître</label>
+      <select id="dpi-parent-choice" class="fi" style="margin-bottom:12px">
+        <option value="__create__" ${best?'':'selected'}>+ Créer / retrouver automatiquement ${data.code}</option>
+        ${opts}
+      </select>
+      <div style="background:var(--bg3);border-radius:10px;padding:10px 12px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:6px">Répartition détectée</div>${counts}
+      </div>
+      <button id="dpi-import-confirm" class="btn btn-accent" style="margin-bottom:8px">Importer sans perte</button>
+      <button class="btn btn-outline" onclick="document.getElementById('movl').remove()">Annuler</button>
+    </div>`;
+    document.getElementById('app').appendChild(modal);
+    window.__railopsDpiPending=data;
+    document.getElementById('dpi-import-confirm').onclick=()=>applyDpiImport(data,document.getElementById('dpi-parent-choice').value);
+  }
+  function stableChildId(parentId,site){
+    const slug=canonicalSite(site).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'');
+    return `${parentId}_${slug}`.slice(0,110);
+  }
+  function chooseChild(parentId,site){
+    const key=siteKey(site);
+    const matches=S.chantiers.filter(c=>c.parent_id===parentId && siteKey(c.nom)===key);
+    if(!matches.length) return null;
+    matches.sort((a,b)=>{
+      const ca=S.mat.filter(m=>m.chantierId===a.id).length;
+      const cb=S.mat.filter(m=>m.chantierId===b.id).length;
+      return cb-ca;
+    });
+    return matches[0];
+  }
+  async function upsertChantiers(rows){
+    if(!rows.length) return;
+    const payload=rows.map(c=>({id:c.id,nom:c.nom||'',lieu:c.lieu||'',chef:Array.isArray(c.chefs)?(c.chefs[0]||c.chef||''):(c.chef||''),chefs:c.chefs||[],statut:c.statut||'actif',desc:c.desc||'',dateDebut:c.dateDebut||'',dateFin:c.dateFin||'',agents:c.agents||[],parent_id:c.parent_id||null}));
+    const {error}=await db.from('chantiers').upsert(payload,{onConflict:'id'});
+    if(error) throw new Error('Chantiers : '+error.message);
+  }
+  function scoreExisting(m){
+    let s=0;
+    if(m.scan) s+=4;
+    if(m.verifLundi) s+=3;
+    if(m.verifSemaine) s+=3;
+    if(m.controle2m) s+=2;
+    if(m.presence&&m.presence!=='non-confirme') s+=1;
+    if(m.etat&&m.etat!=='inconnu') s+=1;
+    return s;
+  }
+  function clearLegacyMultiLinks(refs){
+    const keys=new Set(refs.map(normRef));
+    try{
+      const mc=JSON.parse(localStorage.getItem('ro3_mc')||'{}');
+      Object.keys(mc).forEach(k=>{if(keys.has(normRef(k))) delete mc[k];});
+      localStorage.setItem('ro3_mc',JSON.stringify(mc));
+    }catch(e){}
+    try{
+      const ext=JSON.parse(localStorage.getItem('ro3_ext')||'{}');
+      Object.keys(ext).forEach(cid=>{ext[cid]=(ext[cid]||[]).filter(id=>!keys.has(normRef(id)));if(!ext[cid].length) delete ext[cid];});
+      localStorage.setItem('ro3_ext',JSON.stringify(ext));
+    }catch(e){}
+  }
+  async function applyDpiImport(data,parentChoice){
+    const btn=document.getElementById('dpi-import-confirm');
+    if(btn){btn.disabled=true;btn.textContent='Import en cours…';}
+    window._isImporting=true; window._lastImport=Date.now();
+    try{
+      let parent=null, newParent=false;
+      if(parentChoice && parentChoice!=='__create__') parent=S.chantiers.find(c=>c.id===parentChoice)||null;
+      if(!parent){
+        parent=S.chantiers.find(c=>!c.parent_id && compact(c.nom).includes(compact(data.code)))||null;
+      }
+      if(!parent){
+        let id='CH_'+data.code;
+        if(S.chantiers.some(c=>c.id===id)) id=newId('CH');
+        parent={id,nom:data.parentName,lieu:data.parentName,chef:S.agent,chefs:[S.agent],statut:'actif',desc:'Registre maître '+data.code,dateDebut:'',dateFin:'',agents:[],parent_id:null};
+        newParent=true;
+      }
+
+      const siteNames=Object.keys(data.siteCounts);
+      const children=[], created=[];
+      for(const site of siteNames){
+        let child=chooseChild(parent.id,site);
+        if(!child){
+          let id=stableChildId(parent.id,site);
+          if(S.chantiers.some(c=>c.id===id)) id=newId('CH');
+          child={id,nom:site,lieu:site,chef:S.agent,chefs:[S.agent],statut:'actif',desc:'Sous-chantier '+data.code,dateDebut:'',dateFin:'',agents:[],parent_id:parent.id};
+          created.push(child);
+        }
+        children.push(child);
+      }
+      await upsertChantiers([...(newParent?[parent]:[]),...created]);
+
+      const childBySite=new Map(children.map(c=>[siteKey(c.nom),c]));
+      const existingGroups=new Map();
+      S.mat.forEach((m,idx)=>{
+        const k=normRef(m.id);
+        if(!existingGroups.has(k)) existingGroups.set(k,[]);
+        existingGroups.get(k).push({m,idx});
+      });
+
+      const updates=[], localOps=[];
+      let moved=0,added=0,duplicates=0;
+      for(const src of data.items){
+        const child=childBySite.get(siteKey(src.site));
+        if(!child) continue;
+        const group=existingGroups.get(src.reference)||[];
+        if(group.length>1) duplicates+=group.length-1;
+        let chosen=null;
+        if(group.length){
+          chosen=group.slice().sort((a,b)=>{
+            const exactA=a.m.id===src.reference?10:0, exactB=b.m.id===src.reference?10:0;
+            return (exactB+scoreExisting(b.m))-(exactA+scoreExisting(a.m));
+          })[0];
+        }
+        let item;
+        if(chosen){
+          item={...chosen.m};
+          if(item.chantierId!==child.id) moved++;
+          item.chantierId=child.id;
+          if(src.nom) item.nom=src.nom;
+          if(src.cat) item.cat=src.cat;
+          if(src.echeance) item.echeance=src.echeance;
+          delete item.autreChantier; delete item._externe;
+          localOps.push({type:'update',idx:chosen.idx,item});
+        }else{
+          item={id:src.reference,nom:src.nom||src.reference,cat:src.cat||'Outillage',chantierId:child.id,etat:'inconnu',scan:null,presence:'non-confirme',echeance:src.echeance||'',verifLundi:null,verifSemaine:null,controle2m:null};
+          localOps.push({type:'add',item}); added++;
+        }
+        const {prix,autreChantier,_externe,...remote}=item;
+        updates.push(remote);
+      }
+
+      const chunk=100;
+      for(let i=0;i<updates.length;i+=chunk){
+        const part=updates.slice(i,i+chunk);
+        const {error}=await db.from('materiels').upsert(part,{onConflict:'id'});
+        if(error) throw new Error('Références '+(i+1)+'-'+(i+part.length)+' : '+error.message);
+      }
+
+      if(newParent) S.chantiers.push(parent);
+      created.forEach(c=>S.chantiers.push(c));
+      localOps.forEach(op=>{if(op.type==='update') S.mat[op.idx]=op.item; else S.mat.push(op.item);});
+      clearLegacyMultiLinks(data.items.map(i=>i.reference));
+      try{localStorage.setItem('ro3_c',JSON.stringify(S.chantiers));localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
+      try{restoreMultiChantier?.();}catch(e){}
+      document.getElementById('movl')?.remove();
+      render();
+      toast(`${data.items.length} références ${data.code} synchronisées · ${added} ajoutée(s) · ${moved} réaffectée(s)`,'ok');
+      if(duplicates) setTimeout(()=>toast(`${duplicates} ancien(s) doublon(s) de référence détecté(s) — aucune suppression automatique`,'warn'),500);
+      console.info('[RailOps DPI]',{version:VERSION,parent:parent.id,sites:data.siteCounts,total:data.items.length,added,moved,duplicates,createdChildren:created.map(c=>c.nom)});
+    }catch(err){
+      console.error('[RailOps DPI]',err);
+      toast('Import DPI interrompu : '+(err?.message||err),'danger');
+      if(btn){btn.disabled=false;btn.textContent='Réessayer l’import';}
+    }finally{
+      window._isImporting=false; window._lastImport=Date.now();
+    }
+  }
+
+  importCSV=function(input){
+    const file=input?.files?.[0];
+    if(!file) return previousImportCSV(input);
+    const ext=(file.name.split('.').pop()||'').toLowerCase();
+    if(!['xlsx','xls','xlsm','xlsb'].includes(ext) || typeof XLSX==='undefined') return previousImportCSV(input);
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+        const dpi=detectDpiWorkbook(wb);
+        if(!dpi){
+          // Laisse le lecteur fiable de l'étape 1 gérer tous les autres registres.
+          previousImportCSV(input);
+          return;
+        }
+        input.value='';
+        showDpiModal(dpi,file.name);
+      }catch(err){
+        console.warn('[RailOps DPI detect]',err);
+        previousImportCSV(input);
+      }
+    };
+    reader.onerror=()=>previousImportCSV(input);
+    reader.readAsArrayBuffer(file);
+  };
+
+  window.RailOpsDPIImport={version:VERSION,detect:detectDpiWorkbook,parseInventoryRows,canonicalSite,apply:applyDpiImport};
+  console.info('[RailOps] Correctif DPI étape 2 actif —',VERSION);
+})();
+</script>
+
 </body>
 </html>
