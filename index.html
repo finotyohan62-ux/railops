@@ -1272,5 +1272,250 @@ select.fi{cursor:pointer}
 })();
 
 </script>
+
+
+<script id="railops-fix-step3d-reconcile">
+/* RailOps v137 — ETAPE 3D : réconciliation réelle des références attendues.
+   Corrige le cas où une référence existe dans Supabase mais reste invisible car son ID
+   est encore présent dans deleted_ids / la file locale de suppression.
+   Ne supprime rien et ne modifie pas la purge hebdomadaire. */
+(function(){
+  'use strict';
+  const VERSION='137-step3d-visible-reconcile';
+  const MANIFEST_KEY='ro_registry_manifest_v136';
+  const MC_MARK='__MC__';
+  let running=false;
+  let lastManifestSignature='';
+  let bootDone=false;
+
+  function norm(v){
+    if(window.RailOpsImportFix?.normalizeReference) return window.RailOpsImportFix.normalizeReference(v);
+    return String(v??'').normalize('NFKC').trim().toUpperCase()
+      .replace(/[‐‑‒–—−]/g,'-').replace(/\s+/g,'')
+      .replace(/[^A-Z0-9._\/-]/g,'-').replace(/-{2,}/g,'-').replace(/^-+|-+$/g,'');
+  }
+  function localBusinessRef(m){
+    if(window.RailOpsMultiChantier?.businessRefOf) return window.RailOpsMultiChantier.businessRefOf(m);
+    const id=String(m?.id??'');
+    const pos=id.lastIndexOf(MC_MARK);
+    if(pos>0) return norm(id.slice(0,pos));
+    const nid=norm(id), nnom=norm(m?.nom);
+    if(nnom && nid.startsWith(nnom+'-') && /^\d{1,5}$/.test(nid.slice(nnom.length+1))) return nnom;
+    return nid;
+  }
+  function loadManifest(){
+    try{return JSON.parse(localStorage.getItem(MANIFEST_KEY)||'{}')||{};}catch(e){return {};}
+  }
+  function manifestSignature(mf){
+    try{
+      const parts=[];
+      Object.keys(mf).sort().forEach(cid=>{
+        const refs=(mf[cid]||[]).map(x=>norm(x?.ref||x?.id||x?.reference)).filter(Boolean).sort();
+        parts.push(cid+':'+refs.join(','));
+      });
+      return parts.join('|');
+    }catch(e){return '';}
+  }
+  function expectedFromManifest(){
+    const mf=loadManifest();
+    const valid=new Set((S?.chantiers||[]).map(c=>c.id));
+    const map=new Map();
+    for(const [cid,items] of Object.entries(mf)){
+      if(!valid.has(cid) || !Array.isArray(items)) continue;
+      for(const x of items){
+        const ref=norm(x?.ref||x?.id||x?.reference);
+        if(!ref) continue;
+        const key=cid+'|'+ref;
+        if(!map.has(key)) map.set(key,{chantierId:cid,ref,nom:x?.nom||ref,cat:x?.cat||'Outillage',echeance:x?.echeance||'',prix:x?.prix??null});
+      }
+    }
+    return [...map.values()];
+  }
+  async function readTombstones(){
+    const ids=new Set();
+    try{
+      const {data,error}=await db.from('deleted_ids').select('*');
+      if(!error && Array.isArray(data)) for(const r of data){
+        const id=String(r?.id||r?.identifiant||'').trim();
+        if(id) ids.add(id);
+      }
+    }catch(e){console.warn('[RailOps v137] deleted_ids illisible',e);}
+    try{
+      if(typeof getDeleteQueue==='function') for(const id of (getDeleteQueue()||[])) if(id) ids.add(String(id));
+    }catch(e){}
+    return ids;
+  }
+  async function readAllDbMaterials(){
+    try{
+      if(typeof fetchAllMats==='function'){
+        const r=await fetchAllMats();
+        if(!r?.error && Array.isArray(r?.data)) return r.data;
+      }
+    }catch(e){console.warn('[RailOps v137] lecture complète impossible',e);}
+    return Array.isArray(S?.mat)?S.mat.slice():[];
+  }
+  function hash(v){
+    let h=2166136261; const s=String(v??'');
+    for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}
+    return (h>>>0).toString(36).toUpperCase();
+  }
+  function safeTechnicalId(ref,cid,used,tomb){
+    const base=norm(ref);
+    let n=0,id='';
+    do{
+      const salt=n?cid+'|RESTORE|'+n:cid+'|RESTORE';
+      id=base+MC_MARK+hash(salt);
+      n++;
+    }while(used.has(id)||tomb.has(id));
+    used.add(id);
+    return id;
+  }
+  function freshOccurrence(exp,id,src){
+    return {
+      id,
+      nom:exp.nom||src?.nom||exp.ref,
+      cat:exp.cat||src?.cat||'Outillage',
+      chantierId:exp.chantierId,
+      etat:'inconnu',
+      scan:null,
+      presence:'non-confirme',
+      echeance:exp.echeance||src?.echeance||'',
+      prix:exp.prix??src?.prix??null,
+      verifLundi:null,
+      verifSemaine:null,
+      controle2m:null
+    };
+  }
+  function cleanForDb(item){
+    const {prix,autreChantier,_externe,reference,...r}=item;
+    return r;
+  }
+  async function upsertBatch(items){
+    for(let i=0;i<items.length;i+=100){
+      const part=items.slice(i,i+100).map(cleanForDb);
+      const {error}=await db.from('materiels').upsert(part,{onConflict:'id'});
+      if(error) throw new Error(error.message||String(error));
+    }
+  }
+  function visiblePairSet(dbRows,tomb){
+    const set=new Set();
+    for(const m of (dbRows||[])){
+      if(!m?.id || tomb.has(String(m.id))) continue;
+      const ref=localBusinessRef(m);
+      if(ref && m.chantierId) set.add(m.chantierId+'|'+ref);
+    }
+    return set;
+  }
+  function sourceForRef(ref,dbRows){
+    const local=(S?.mat||[]).find(m=>localBusinessRef(m)===ref);
+    if(local) return local;
+    return (dbRows||[]).find(m=>localBusinessRef(m)===ref)||null;
+  }
+  function pathFor(cid){
+    if(window.RailOpsMultiChantier?.pathForChantier) return window.RailOpsMultiChantier.pathForChantier(cid);
+    const c=(S?.chantiers||[]).find(x=>x.id===cid);return c?.nom||cid;
+  }
+  async function reconcile(reason='manuel',showSuccess=false){
+    if(running || !Array.isArray(S?.mat) || !Array.isArray(S?.chantiers) || !S.chantiers.length) return null;
+    const expected=expectedFromManifest();
+    if(!expected.length) return {reason,expected:0,created:0,remaining:0,missing:[]};
+    running=true;
+    try{
+      const tomb=await readTombstones();
+      let dbRows=await readAllDbMaterials();
+      let visible=visiblePairSet(dbRows,tomb);
+      const missing=expected.filter(x=>!visible.has(x.chantierId+'|'+x.ref));
+      if(!missing.length){
+        if(showSuccess) toast(`Références vérifiées : ${expected.length}/${expected.length} ✓`,'ok');
+        return {reason,expected:expected.length,created:0,remaining:0,missing:[]};
+      }
+
+      const used=new Set(dbRows.map(m=>String(m?.id||'')).filter(Boolean));
+      (S.mat||[]).forEach(m=>m?.id&&used.add(String(m.id)));
+      const created=[];
+      for(const exp of missing){
+        // Une occurrence déjà visible localement est prioritaire. Si elle n'est simplement
+        // pas encore en base, on la republie sans toucher à ses vérifications.
+        const localDirect=(S.mat||[]).find(m=>m.chantierId===exp.chantierId && localBusinessRef(m)===exp.ref && !tomb.has(String(m.id)));
+        if(localDirect){created.push(localDirect);continue;}
+
+        // Si l'ID historique est blacklisté, on ne le ressuscite pas : on crée une occurrence
+        // par chantier avec un nouvel ID technique qui ne peut pas être filtré au prochain load().
+        const src=sourceForRef(exp.ref,dbRows);
+        const id=safeTechnicalId(exp.ref,exp.chantierId,used,tomb);
+        const item=freshOccurrence(exp,id,src);
+        S.mat.push(item);created.push(item);
+      }
+
+      if(created.length) await upsertBatch(created);
+      try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));}catch(e){}
+
+      // Contrôle réel : on refait une lecture DB ET on réapplique deleted_ids,
+      // exactement comme l'application le fait au chargement.
+      dbRows=await readAllDbMaterials();
+      const tomb2=await readTombstones();
+      visible=visiblePairSet(dbRows,tomb2);
+      const remaining=expected.filter(x=>!visible.has(x.chantierId+'|'+x.ref));
+
+      try{
+        if(typeof render==='function') render();
+        else if(typeof renderTab==='function') renderTab();
+        setTimeout(()=>window.RailOpsMultiChantier?.decorate?.(),0);
+      }catch(e){}
+
+      const result={reason,expected:expected.length,created:created.length,remaining:remaining.length,missing:remaining};
+      window.__railopsLastReferenceAudit=result;
+      if(remaining.length){
+        const sample=remaining.slice(0,5).map(x=>`${x.ref} (${pathFor(x.chantierId)})`).join(', ');
+        console.error('[RailOps v137] références toujours absentes',remaining);
+        toast(`${remaining.length} référence(s) restent invisibles après réparation${sample?' · '+sample:''}`,'danger');
+      }else if(created.length){
+        toast(`${created.length} référence(s) restaurée(s) sur leur chantier ✓`,'ok');
+      }else if(showSuccess){
+        toast(`Références vérifiées : ${expected.length}/${expected.length} ✓`,'ok');
+      }
+      console.info('[RailOps v137] audit références',result);
+      return result;
+    }catch(err){
+      console.error('[RailOps v137] réconciliation impossible',err);
+      toast('Réparation des références impossible : '+(err?.message||err),'danger');
+      return {reason,error:String(err?.message||err)};
+    }finally{running=false;}
+  }
+
+  // Tout import simple est suivi d'un audit réel. On ne remplace pas le moteur v136,
+  // on ajoute uniquement le contrôle qui tient compte de deleted_ids.
+  if(typeof processRows==='function'){
+    const processRowsV136=processRows;
+    processRows=async function(rows){
+      const r=await processRowsV136(rows);
+      await reconcile('import-simple',true);
+      return r;
+    };
+  }
+
+  // Les imports DPI sont gérés dans l'IIFE v136. Leur manifeste change à la fin de l'import.
+  // Ce surveillant déclenche alors automatiquement la même réconciliation globale.
+  const timer=setInterval(async()=>{
+    try{
+      if(!Array.isArray(S?.chantiers)||!S.chantiers.length||!Array.isArray(S?.mat)) return;
+      const mf=loadManifest();
+      const sig=manifestSignature(mf);
+      if(!bootDone){
+        bootDone=true;lastManifestSignature=sig;
+        if(sig) await reconcile('demarrage',false);
+        return;
+      }
+      if(sig && sig!==lastManifestSignature && !window._isImporting && !window._importing){
+        lastManifestSignature=sig;
+        await reconcile('manifest-modifie',true);
+      }
+    }catch(e){console.warn('[RailOps v137] surveillance manifeste',e);}
+  },1200);
+
+  window.RailOpsReferenceAudit={version:VERSION,reconcile,expected:expectedFromManifest,last:()=>window.__railopsLastReferenceAudit||null};
+  console.info('[RailOps] Réconciliation références active —',VERSION);
+})();
+</script>
 </body>
 </html>
