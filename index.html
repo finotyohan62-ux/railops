@@ -648,79 +648,81 @@ console.info('[RailOps] moteur propre actif —',VERSION);
 
 <script>
 (function(){
-  const VERSION='141-badges-libelles';
-  const getState=()=>{ try{return typeof S!=='undefined'?S:null;}catch(e){return null;} };
-  const getRows=()=> (getState()?.mat||[]);
-  const getChantiers=()=> (getState()?.chantiers||[]);
-  function rowItem(row){
-    const internal=(row.id||'').startsWith('ri-')?row.id.slice(3):'';
-    return getRows().find(x=>String(x.id)===internal)||null;
-  }
-  function visibleRef(m){
-    try{return (window.RailOpsStableV140?.businessRef?window.RailOpsStableV140.businessRef(m):(m?.reference||m?.id||''))||'';}catch(e){return String(m?.reference||m?.id||'');}
-  }
-  function localPathOf(cid){
-    const c=getChantiers().find(x=>x.id===cid); if(!c) return cid||'Chantier inconnu';
-    const p=c.parent_id?getChantiers().find(x=>x.id===c.parent_id):null;
+  const VERSION='142-affichage-multichantier';
+  const getState=()=>{try{return typeof S!=='undefined'?S:null;}catch(e){return null;}};
+  const mats=()=>getState()?.mat||[];
+  const chantiers=()=>getState()?.chantiers||[];
+  const normSite=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'');
+  const refOf=m=>{try{return window.RailOpsStableV140?.businessRef?.(m)||String(m?.reference||m?.id||'');}catch(e){return String(m?.reference||m?.id||'');}};
+  function chantier(cid){return chantiers().find(c=>c.id===cid)||null;}
+  function siteOf(cid){const c=chantier(cid);return normSite(c?.nom||c?.lieu||cid);}
+  function pathOf142(cid){
+    const c=chantier(cid);if(!c)return cid||'Chantier inconnu';
+    const p=c.parent_id?chantier(c.parent_id):null;
     return p?`${p.nom} › ${c.nom}`:(c.nom||cid);
   }
-  function subtitleText(m){
-    const cat=String(m?.cat||'Outillage').trim();
-    const ref=visibleRef(m);
-    return ref ? `${cat} · ${ref}` : cat;
+  function candidateRank(cid){
+    const c=chantier(cid);if(!c)return 0;
+    let n=0;
+    if(/DPI2455/i.test(String(c.desc||'')))n+=100;
+    if(c.parent_id)n+=10;
+    if(c.statut==='actif')n+=2;
+    return n;
   }
-  function candidateSubtitle(row,m){
-    const nodes=[...row.querySelectorAll('div,span,small,p')];
-    const id=String(m?.id||'');
-    const ref=String(visibleRef(m)||'');
-    const cat=String(m?.cat||'').trim();
-    let hit=nodes.find(el=>{const t=(el.textContent||'').trim(); return !!t && (t.includes(id) || t.includes('__MC__') || (ref && t.includes(ref)) || (cat && t.startsWith(cat+' · ')));});
-    if(hit) return hit;
-    const top=row.querySelector('.reg-top');
-    if(top){
-      const texts=[...top.querySelectorAll('div,span,small,p')].filter(el=>(el.textContent||'').trim());
-      if(texts.length>=2) return texts[1];
+  function destinationsFor(m){
+    const ref=refOf(m), currentSite=siteOf(m.chantierId);
+    const bySite=new Map();
+    for(const x of mats()){
+      if(x===m||refOf(x)!==ref||!x.chantierId)continue;
+      const sk=siteOf(x.chantierId);
+      // Même site logique (ex. ancien LGV › VEMARS et CDG › VEMARS) : pas multi-chantier.
+      if(!sk||sk===currentSite)continue;
+      const old=bySite.get(sk);
+      if(!old||candidateRank(x.chantierId)>candidateRank(old.chantierId))bySite.set(sk,x);
     }
-    return null;
+    return [...bySite.values()].map(x=>pathOf142(x.chantierId));
   }
-  function paintBadgesAndLabels(){
-    try{ document.querySelectorAll('.ro-v141-mc').forEach(x=>x.remove()); }catch(e){}
-    const rows=document.querySelectorAll('.reg-item[id^="ri-"]');
-    for(const row of rows){
-      const m=rowItem(row); if(!m) continue;
-      const sub=candidateSubtitle(row,m);
-      if(sub) sub.textContent=subtitleText(m);
-      const ref=visibleRef(m);
-      let all=[];
-      try{ all=getRows().filter(x=> visibleRef(x)===ref); }catch(e){ all=[]; }
-      const loc=[...new Set(all.map(x=>x.chantierId).filter(Boolean))];
-      const others=loc.filter(cid=>cid!==m.chantierId).map(localPathOf);
-      if(!others.length) continue;
-      const anchor=row.querySelector('.reg-top') || row.firstElementChild || row;
+  function cleanTechnicalIds(row){
+    const walker=document.createTreeWalker(row,NodeFilter.SHOW_TEXT);
+    const nodes=[];let n;while((n=walker.nextNode()))nodes.push(n);
+    for(const t of nodes){
+      const before=t.nodeValue||'';
+      const after=before.replace(/__MC__[A-Z0-9]+/gi,'');
+      if(after!==before)t.nodeValue=after;
+    }
+  }
+  function apply(){
+    for(const row of document.querySelectorAll('.reg-item[id^="ri-"]')){
+      cleanTechnicalIds(row);
+      const internal=row.id.slice(3);
+      const m=mats().find(x=>String(x.id)===internal);
+      const current=row.querySelector('.ro-v142-mc');
+      if(!m){current?.remove();continue;}
+      const dest=destinationsFor(m);
+      if(!dest.length){current?.remove();continue;}
+      const text=`Multi-chantier · aussi sur ${dest.join(' · ')}`;
+      if(current){if(current.textContent!==text)current.textContent=text;continue;}
       const b=document.createElement('div');
-      b.className='ro-v140-mc ro-v141-mc';
-      b.textContent=`Multi-chantier · aussi sur ${[...new Set(others)].join(' · ')}`;
-      anchor.insertAdjacentElement('afterend',b);
+      b.className='ro-v140-mc ro-v142-mc';b.textContent=text;
+      (row.querySelector('.reg-top')||row.firstElementChild||row).insertAdjacentElement('afterend',b);
     }
   }
-  function installObserver(){
-    if(window.__ro_v141_observer) return;
-    const root=document.getElementById('app') || document.body;
-    if(!root) return;
-    const obs=new MutationObserver(()=>{ clearTimeout(window.__ro_v141_t); window.__ro_v141_t=setTimeout(paintBadgesAndLabels,30); });
-    obs.observe(root,{childList:true,subtree:true});
-    window.__ro_v141_observer=obs;
+  if(!document.getElementById('ro-v142-style')){
+    const st=document.createElement('style');st.id='ro-v142-style';
+    st.textContent='.ro-v140-mc:not(.ro-v142-mc){display:none!important}.ro-v142-mc{display:inline-block!important}';
+    document.head.appendChild(st);
   }
+  let timer=null;
+  function schedule(){clearTimeout(timer);timer=setTimeout(apply,35);}
+  const root=document.getElementById('app')||document.body;
+  if(root){new MutationObserver(schedule).observe(root,{childList:true,subtree:true,characterData:true});}
   try{
     const oldRender=window.render;
-    if(typeof oldRender==='function' && !oldRender.__ro141){
-      const wrapped=function(){ const r=oldRender.apply(this,arguments); setTimeout(paintBadgesAndLabels,25); return r; };
-      wrapped.__ro141=true; window.render=wrapped;
-    }
+    if(typeof oldRender==='function')window.render=function(){const r=oldRender.apply(this,arguments);setTimeout(apply,25);return r;};
   }catch(e){}
-  setTimeout(()=>{installObserver(); paintBadgesAndLabels();},200);
-  setTimeout(()=>{installObserver(); paintBadgesAndLabels();},1200);
-  console.info('[RailOps] correctif badges/libellés actif —', VERSION);
+  setTimeout(apply,150);setTimeout(apply,1000);
+  window.RailOpsDisplayV142={version:VERSION,apply,destinationsFor};
+  console.info('[RailOps] affichage multi-chantier corrigé —',VERSION);
 })();
 </script>
 
