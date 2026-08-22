@@ -7,6 +7,8 @@ const root = path.resolve(__dirname, '..');
 const previewPath = path.join(root, 'v150b2b-test.html');
 const preview = fs.readFileSync(previewPath, 'utf8');
 const CHECK_TIMEOUT_MS = 30000;
+const runRef = process.env.GITHUB_REF_NAME || 'local';
+const runSha = process.env.GITHUB_SHA?.slice(0, 12) || 'local';
 
 const tests = fs.readdirSync(__dirname)
   .filter(name => /^v150b2b-.*\.test\.js$/i.test(name))
@@ -23,6 +25,9 @@ if (!syntaxTargets.length) {
   console.error('FAIL: no v150B-2B preview modules discovered');
   process.exit(1);
 }
+
+console.log(`ℹ v150B-2B checks context: node=${process.version} ref=${runRef} sha=${runSha}`);
+console.log(`ℹ discovered checks: ${tests.length} tests, ${syntaxTargets.length} syntax targets`);
 
 function run(label, args) {
   process.stdout.write(`\n▶ ${label}\n`);
