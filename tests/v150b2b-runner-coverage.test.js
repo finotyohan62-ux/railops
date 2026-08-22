@@ -80,5 +80,13 @@ assert(
   runner.includes('node=${process.version} ref=${runRef} sha=${runSha}'),
   'aggregate runner must print Node, ref and SHA diagnostics before checks run'
 );
+assert(
+  runner.includes('const failures = [];') && runner.includes('failures.push('),
+  'aggregate runner must collect failures instead of stopping at the first failing check'
+);
+assert(
+  runner.includes('FAIL: ${failures.length} v150B-2B check(s) failed'),
+  'aggregate runner must print one concise failure summary after all checks have run'
+);
 
-console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with per-check diagnostics, durations, timeout guards and CI context`);
+console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with per-check diagnostics, durations, timeout guards, CI context and complete failure collection`);
