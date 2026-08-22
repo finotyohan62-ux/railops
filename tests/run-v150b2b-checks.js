@@ -1,6 +1,7 @@
 const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
+const { extractPreviewModules } = require('./v150b2b-preview-modules.js');
 
 const root = path.resolve(__dirname, '..');
 const previewPath = path.join(root, 'v150b2b-test.html');
@@ -12,10 +13,7 @@ const tests = fs.readdirSync(__dirname)
   .sort()
   .map(name => `tests/${name}`);
 
-const syntaxTargets = [...new Set(
-  [...preview.matchAll(/\.\/(v150b2b-[a-z0-9-]+\.js)\?build=/gi)]
-    .map(match => match[1])
-)].sort();
+const syntaxTargets = extractPreviewModules(preview);
 
 if (!tests.length) {
   console.error('FAIL: no v150B-2B tests discovered');
