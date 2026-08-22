@@ -4,19 +4,27 @@ const { createDiagnosticsSnapshot } = require('../v150b2b-diagnostics.js');
 const state = {
   agent: 'Sensitive Name',
   role: 'chef_chantier',
+  badge: 'BADGE-SECRET',
+  mdp: 'PASSWORD-SECRET',
+  password: 'PASSWORD-ALT-SECRET',
+  accessToken: 'ACCESS-TOKEN-SECRET',
+  refreshToken: 'REFRESH-TOKEN-SECRET',
   isAdminOwner: false,
   __ownerAdminMode: false,
   page: 'dashboard',
   chantiers: [{ id: 'C-SECRET' }, { id: 'C-2' }],
   mat: [],
   scans: [],
-  users: [{ id: 'U-SECRET' }],
+  users: [{ id: 'U-SECRET', badge: 'USER-BADGE-SECRET', mdp: 'USER-PASSWORD-SECRET' }],
   chefChantierStats: [{ chantier_id: 'C-SECRET' }],
 };
 
 const snapshot = createDiagnosticsSnapshot(state, {
   version: '150B2B-client-2',
   online: true,
+  accessToken: 'RUNTIME-ACCESS-TOKEN-SECRET',
+  refreshToken: 'RUNTIME-REFRESH-TOKEN-SECRET',
+  apiKey: 'RUNTIME-API-KEY-SECRET',
 });
 
 assert.deepEqual(snapshot, {
@@ -36,8 +44,30 @@ assert.deepEqual(snapshot, {
 });
 
 const serialized = JSON.stringify(snapshot);
-for (const secret of ['Sensitive Name', 'C-SECRET', 'U-SECRET']) {
+for (const secret of [
+  'Sensitive Name',
+  'C-SECRET',
+  'U-SECRET',
+  'BADGE-SECRET',
+  'PASSWORD-SECRET',
+  'PASSWORD-ALT-SECRET',
+  'ACCESS-TOKEN-SECRET',
+  'REFRESH-TOKEN-SECRET',
+  'USER-BADGE-SECRET',
+  'USER-PASSWORD-SECRET',
+  'RUNTIME-ACCESS-TOKEN-SECRET',
+  'RUNTIME-REFRESH-TOKEN-SECRET',
+  'RUNTIME-API-KEY-SECRET',
+]) {
   assert.equal(serialized.includes(secret), false, `diagnostics must not expose ${secret}`);
+}
+
+for (const forbiddenKey of ['agent', 'badge', 'mdp', 'password', 'accessToken', 'refreshToken', 'apiKey']) {
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(snapshot, forbiddenKey),
+    false,
+    `diagnostics must not expose the ${forbiddenKey} field`
+  );
 }
 
 assert.deepEqual(
