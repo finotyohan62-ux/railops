@@ -103,3 +103,11 @@
 - Commit : `edbdd001b50453ff6f18663159c82138955e437c` (`tests: ensure runner includes every v150B-2B test`).
 - Vérification fraîche : contrôle exécuté localement sur une reconstruction fidèle de la liste actuelle des tests et des scripts de preview : `PASS: aggregate runner covers 8 tests and 7 preview JavaScript modules`; `node --check` du garde-fou passe également ; Vercel `success` sur le commit.
 - Aucun code de production, règle métier, permission, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
+
+## 2026-08-22 — relevé Security Advisor 04:13 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, base `main` inchangée ; projet Supabase `railops` `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.
+- Amélioration documentaire réversible : ajout d'un relevé comparatif daté dans `docs/security-advisor-baseline.md` afin de tracer les écarts du Security Advisor sans modifier la base. Les anciennes alertes « RLS désactivée » sur `deleted_ids` et `prix_catalogue` ne sont plus remontées ; de nouvelles informations `RLS Enabled No Policy` sont visibles sur cinq tables, les avertissements `SECURITY DEFINER` persistent et la protection contre les mots de passe compromis reste désactivée.
+- Commit : `7b3882c2a2d932352dcf9b4016675bba178597df` (`docs: refresh Supabase security advisor snapshot`).
+- Vérification : document relu depuis GitHub après commit ; aucune migration, policy, permission, fonction, table ou donnée Supabase n'a été modifiée. Aucun changement de code de production, règle métier, Import, Multi-chantier ou purge hebdomadaire.
+- Point en attente inchangé : toute correction de sécurité ou interprétation de la dérive observée reste volontairement hors scope sans validation explicite et smoke-tests complets.
