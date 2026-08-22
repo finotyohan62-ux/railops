@@ -14,14 +14,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run refactor script and capture output
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run refactor and green test, capture output
         shell: bash
         run: |
+          : > v155-refactor-diagnostic.txt
           set +e
-          python scripts/v155_refactor.py > v155-refactor-diagnostic.txt 2>&1
-          status=$?
+          python scripts/v155_refactor.py >> v155-refactor-diagnostic.txt 2>&1
+          patch_status=$?
+          if [ "$patch_status" -eq 0 ]; then
+            node tests/lifecycle-refactor.test.js >> v155-refactor-diagnostic.txt 2>&1
+            test_status=$?
+          else
+            test_status=99
+          fi
           set -e
-          echo "exit_status=$status" >> v155-refactor-diagnostic.txt
+          echo "patch_status=$patch_status" >> v155-refactor-diagnostic.txt
+          echo "test_status=$test_status" >> v155-refactor-diagnostic.txt
           git checkout -- index.html
       - name: Commit diagnostic
         shell: bash
@@ -29,5 +40,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add v155-refactor-diagnostic.txt
-          git commit -m "test: capture v155 refactor diagnostic"
+          git commit -m "test: capture v155 refactor and green diagnostic"
           git push
