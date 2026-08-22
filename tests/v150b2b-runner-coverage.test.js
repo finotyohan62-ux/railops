@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { extractPreviewModules } = require('./v150b2b-preview-modules.js');
 
 const root = path.resolve(__dirname, '..');
 const runner = fs.readFileSync(path.join(__dirname, 'run-v150b2b-checks.js'), 'utf8');
@@ -15,8 +16,8 @@ assert(
   'aggregate runner must use the v150B-2B test filename contract'
 );
 assert(
-  runner.includes("preview.matchAll(/\\.\\/(v150b2b-[a-z0-9-]+\\.js)\\?build=/gi)"),
-  'aggregate runner must derive syntax targets from the preview script list'
+  runner.includes("require('./v150b2b-preview-modules.js')") && runner.includes('extractPreviewModules(preview)'),
+  'aggregate runner must derive syntax targets through the shared preview module discovery helper'
 );
 
 const testFiles = fs.readdirSync(__dirname)
@@ -24,9 +25,7 @@ const testFiles = fs.readdirSync(__dirname)
   .sort();
 assert(testFiles.length > 0, 'tests directory must contain v150B-2B test files');
 
-const previewScripts = [...preview.matchAll(/\.\/(v150b2b-[a-z0-9-]+\.js)\?build=/gi)]
-  .map(match => match[1]);
-const uniquePreviewScripts = [...new Set(previewScripts)].sort();
+const uniquePreviewScripts = extractPreviewModules(preview);
 assert(uniquePreviewScripts.length > 0, 'preview must expose at least one v150B-2B JavaScript module');
 
 assert(
