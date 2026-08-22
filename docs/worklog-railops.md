@@ -213,3 +213,12 @@
 - Vérification fraîche : `v150B-2B checks` run #82 et `RailOps lifecycle regression` run #116 sont tous deux `success` sur `354227a5f8580bd49c6f64f492e2bd2b3a377ea5`. Vercel reste limité par le quota de builds du compte, sans signal de régression applicative provenant des deux suites GitHub Actions.
 - Aucun changement de règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire. `main` reste intact et aucun merge/rebase n'a été tenté.
 - Point en attente inchangé : la synchronisation avec les 12 commits récents de `main` et les smoke-tests humains restent bloqués sur validation explicite ; aucun nouveau choix produit n'a été introduit par cette passe.
+
+## 2026-08-22 — guide de diagnostic sûr 17:15 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, non fusionnée ; `main` reste à `283fca36c07f990ad80613d2aac97c2de3ef7bcf` avec 12 commits absents de la branche, qui reste divergente. Supabase `railops` est `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.
+- Amélioration documentaire réversible : ajout de `docs/v150b2b-diagnostics-guide.md`, qui documente l’usage du snapshot de diagnostic, les champs autorisés, l’interdiction d’y ajouter noms/IDs/références/QR/payloads métier et la lecture attendue du cas Chef de chantier sans matériels/scans chargés.
+- Commit d’amélioration : `2aca165f81f32e7226c19091886d11703e866150` (`docs: document safe v150B-2B diagnostics`).
+- Vérification fraîche : le document a été relu depuis la branche ; GitHub Actions `v150B-2B checks` run #86 et `RailOps lifecycle regression` run #118 sont `success` sur ce commit, et Vercel est également `success`.
+- Aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n’a été modifié. `main` reste intact ; aucun merge/rebase n’a été tenté.
+- Point en attente inchangé : la synchronisation de la branche avec les 12 commits récents de `main` et les smoke-tests humains nécessitent toujours une validation explicite ; aucun nouveau choix produit n’a été introduit par cette passe.
