@@ -1,0 +1,28 @@
+name: RailOps modules regression
+on:
+  push:
+    branches:
+      - refactor/modules-progressive-offline-css
+      - refactor/modules-progressive-offline
+      - refactor/modules-progressive-offline-sync
+  pull_request:
+    branches:
+      - main
+permissions:
+  contents: read
+jobs:
+  modules-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check module extraction invariants
+        run: node tests/modules-refactor.test.js
+      - name: Check shared lifecycle invariants
+        run: node tests/lifecycle-refactor.test.js
+      - name: Check legacy core extraction invariants
+        run: node tests/legacy-core-extraction.test.js
+      - name: Check offline sync extraction invariants
+        run: node tests/sync-extraction.test.js
