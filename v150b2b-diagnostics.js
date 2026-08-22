@@ -8,7 +8,7 @@
   function createDiagnosticsSnapshot(state,runtime){
     const s=state&&typeof state==='object'?state:{};
     const r=runtime&&typeof runtime==='object'?runtime:{};
-    return {
+    const snapshot={
       version:r.version==null?null:String(r.version),
       role:s.role==null?null:String(s.role),
       adminOwner:!!s.isAdminOwner,
@@ -23,6 +23,12 @@
         chefChantierStats:count(s.chefChantierStats),
       },
     };
+    const warnings=[];
+    if(snapshot.role==='chef_chantier'&&snapshot.counts.materials>0)warnings.push('CHEF_CHANTIER_MATERIAL_SCOPE_LEAK');
+    if(snapshot.role==='chef_chantier'&&snapshot.counts.scans>0)warnings.push('CHEF_CHANTIER_SCAN_SCOPE_LEAK');
+    if(snapshot.adminMode&&snapshot.role!=='admin')warnings.push('OWNER_ADMIN_MODE_ROLE_MISMATCH');
+    if(warnings.length)snapshot.warnings=warnings;
+    return snapshot;
   }
 
   return {createDiagnosticsSnapshot};
