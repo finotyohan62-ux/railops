@@ -56,5 +56,17 @@ assert(
   runner.includes('FAIL: ${label} timed out after ${CHECK_TIMEOUT_MS}ms'),
   'aggregate runner must report a clear timeout diagnostic for the exact hung check'
 );
+assert(
+  runner.includes('const startedAt = Date.now();'),
+  'aggregate runner must timestamp the start of each child check'
+);
+assert(
+  runner.includes('const elapsedMs = Date.now() - startedAt;'),
+  'aggregate runner must calculate elapsed time for each child check'
+);
+assert(
+  runner.includes('PASS: ${label} (${elapsedMs}ms)'),
+  'aggregate runner must include each successful check duration in CI output'
+);
 
-console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with per-check diagnostics and timeout guards`);
+console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with per-check diagnostics, durations and timeout guards`);
