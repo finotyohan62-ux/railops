@@ -45,5 +45,17 @@ assert(
   runner.includes('FAIL: ${label} exited with code ${result.status ?? 1}'),
   'aggregate runner must identify the exact failed check and exit code in CI output'
 );
+assert(
+  runner.includes('const CHECK_TIMEOUT_MS = 30000;'),
+  'aggregate runner must cap each child check so one hung test cannot consume the full workflow timeout'
+);
+assert(
+  runner.includes('timeout: CHECK_TIMEOUT_MS'),
+  'aggregate runner must apply the per-check timeout to spawned Node processes'
+);
+assert(
+  runner.includes('FAIL: ${label} timed out after ${CHECK_TIMEOUT_MS}ms'),
+  'aggregate runner must report a clear timeout diagnostic for the exact hung check'
+);
 
-console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with per-check diagnostics`);
+console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with per-check diagnostics and timeout guards`);
