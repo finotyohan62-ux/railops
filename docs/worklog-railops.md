@@ -87,3 +87,11 @@
 - Cycle rouge/vert vérifié localement : le nouveau test échouait d'abord car il n'était pas référencé par `tests/run-v150b2b-checks.js`, puis passe après son ajout (`PASS: aggregate runner covers 7 preview JavaScript modules`).
 - Commits : `434fb953d52d839f54905ccf08b472ff28ec7fc3` (`tests: guard aggregate preview check coverage`) et `1896a4a41509f09711660ea20c72c438d0178b1a` (`tests: include aggregate runner coverage guard`).
 - Aucun code de production, règle métier, permission, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
+
+## 2026-08-22 — garde-fou stockage local 02:17 Europe/Paris
+
+- État contrôlé avant modification : PR #1 ouverte en brouillon sur `security/v150b2b-rls-ready`, `main` non fusionné ; aucun changement Supabase, RLS ou permission effectué.
+- Amélioration réversible : ajout de `tests/v150b2b-local-storage-safety.test.js` pour empêcher le retour du cache legacy `ro3_u`, la sérialisation de `S.users` ou la persistance de champs de type mot de passe dans le loader sécurisé.
+- Le test est inclus dans `tests/run-v150b2b-checks.js`. Commits : `cd72ae042598ea6b24c123c371f24da2e31e8bce` (`tests: guard secure local storage invariants`) et `a758ad7fbd76f1f32e1e7b7534057f05904ae56e` (`tests: include local storage safety guard`).
+- Vérification fraîche : test relu depuis GitHub ; assertions exécutées localement contre les lignes actuelles de persistance du loader avec résultat `PASS: v150B-2B local storage safety invariants` ; Vercel `success` sur `a758ad7fbd76f1f32e1e7b7534057f05904ae56e`.
+- Limite connue : le clone GitHub reste indisponible dans l'environnement d'exécution, donc la suite agrégée complète n'a pas été rejouée contre un checkout frais. Aucun code de production, règle métier, permission, Import, Multi-chantier ou purge hebdomadaire n'a été modifié ; aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
