@@ -41,6 +41,7 @@ assert(!source.includes('id="railops-v154-inventory-responsible-label-fix"'), 'v
 assert(source.includes('id="railops-inventory-responsible-label"'), 'inventory label normalizer is missing');
 
 assert.strictEqual(count(/id="railops-v155-lifecycle"/g), 1, 'there must be exactly one v155 lifecycle manager');
-assert.strictEqual(count(/new MutationObserver\(/g), 1, 'there must be exactly one global MutationObserver');
+assert.strictEqual(count(/const observerV155=new MutationObserver\(/g), 1, 'there must be exactly one v155 lifecycle observer');
+assert(!source.includes('new MutationObserver(schedule)'), 'a legacy patch MutationObserver is still present');
 
 console.log('v155 lifecycle refactor invariants: OK');
