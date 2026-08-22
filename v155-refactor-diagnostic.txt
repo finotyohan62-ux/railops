@@ -1,0 +1,14 @@
+OK v155 lifecycle manager inserted
+OK v140 render hook
+OK v140 load hook
+OK v142 render/mutation hooks
+OK v145 load hook
+OK v146 render hooks
+OK v146 load hook
+OK v149 load hook
+OK inventory label script identity
+OK inventory label version
+OK inventory label render/mutation hooks
+OK inventory label public API
+v155 refactor written
+exit_status=0
