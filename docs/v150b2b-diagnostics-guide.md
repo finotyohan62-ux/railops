@@ -58,9 +58,10 @@ Codes actuellement possibles :
 
 - `CHEF_CHANTIER_MATERIAL_SCOPE_LEAK` : un état `chef_chantier` contient au moins une ligne matériel alors que ce rôle doit fonctionner uniquement avec des statistiques agrégées ;
 - `CHEF_CHANTIER_SCAN_SCOPE_LEAK` : un état `chef_chantier` contient au moins un scan ;
+- `CHEF_CHANTIER_STATS_MISSING` : l’application est en ligne, le rôle `chef_chantier` voit au moins un chantier, mais aucune ligne de statistiques agrégées n’a été chargée ; ce signal aide à distinguer un chargement statistique manquant d’un tableau réellement vide ;
 - `OWNER_ADMIN_MODE_ROLE_MISMATCH` : le mode Administration propriétaire est marqué actif alors que le rôle effectif n’est pas `admin`.
 
-Ces codes sont des signaux de diagnostic uniquement. Ils ne modifient aucun droit, aucune donnée, aucun chargement et ne contiennent ni ID ni référence métier.
+Ces codes sont des signaux de diagnostic uniquement. Ils ne modifient aucun droit, aucune donnée, aucun chargement et ne contiennent ni ID ni référence métier. L’alerte `CHEF_CHANTIER_STATS_MISSING` n’est pas produite en mode hors-ligne afin d’éviter un faux positif lorsque le serveur n’est pas joignable.
 
 ## Lecture rapide
 
