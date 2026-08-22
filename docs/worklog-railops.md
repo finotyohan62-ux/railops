@@ -153,3 +153,11 @@
 - Commit : `1380ffae91cfe0028ccdd1d21a7b0a66d44e34e8` (`tests: guard v150B-2B verification docs contract`).
 - Vérification fraîche : le nouveau test a été relu depuis GitHub et GitHub Actions `v150B-2B checks` run #24 s'est terminé avec conclusion `success` sur ce commit. Le téléchargement direct raw reste indisponible dans l'environnement (`Could not resolve host: raw.githubusercontent.com`), donc aucune vérification locale supplémentaire n'est revendiquée.
 - Aucun code de production, règle métier, permission applicative, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
+
+## 2026-08-22 — CI de vérification en lecture seule 10:15 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, cible `main`, non fusionnée ; Supabase `railops` reste `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1 et le Security Advisor a été relu en lecture seule, sans correction appliquée.
+- Amélioration réversible : le contrat `tests/v150b2b-verification-doc-contract.test.js` interdit désormais explicitement dans la CI de vérification les commandes Supabase de migration/déploiement/link, `psql`, l'exécution de la migration RLS stricte, les déploiements Vercel CLI et les commandes Git de push/merge. Le workflow reste donc limité aux diagnostics et tests.
+- Commit : `982f0871f59514dd3413fd78067704cc8714622c` (`tests: keep verification CI diagnostic-only`).
+- Vérification fraîche : GitHub Actions `v150B-2B checks` run #28 s'est terminé avec conclusion `success`; le job `checks` confirme Checkout, Node.js 22 et la suite v150B-2B tous verts. Aucune opération Supabase, migration, permission, RLS ou donnée n'a été appliquée.
+- Aucun code de production, règle métier, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
