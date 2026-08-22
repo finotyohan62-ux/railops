@@ -32,10 +32,15 @@ function run(label, args) {
     stdio: 'inherit',
   });
   if (result.error) {
+    console.error(`FAIL: ${label} could not start`);
     console.error(result.error);
     process.exit(1);
   }
-  if (result.status !== 0) process.exit(result.status ?? 1);
+  if (result.status !== 0) {
+    console.error(`FAIL: ${label} exited with code ${result.status ?? 1}`);
+    process.exit(result.status ?? 1);
+  }
+  console.log(`PASS: ${label}`);
 }
 
 for (const test of tests) run(test, [test]);
