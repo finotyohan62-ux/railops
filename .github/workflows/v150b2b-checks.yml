@@ -1,0 +1,28 @@
+name: v150B-2B checks
+
+on:
+  push:
+    branches:
+      - security/v150b2b-rls-ready
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run v150B-2B verification suite
+        run: node tests/run-v150b2b-checks.js
