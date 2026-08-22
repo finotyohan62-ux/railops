@@ -29,7 +29,7 @@ assert(source.includes("RailOpsLifecycleV155.afterRender('v140-stable'"), 'v140 
 assert(source.includes("RailOpsLifecycleV155.afterLoad('v140-stable'"), 'v140 is not registered on the shared load lifecycle');
 assert(source.includes("RailOpsLifecycleV155.onMutation('v142-display'"), 'v142 is not registered on the shared mutation lifecycle');
 assert(source.includes("RailOpsLifecycleV155.afterRender('v142-display'"), 'v142 is not registered on the shared render lifecycle');
-assert(source.includes("RailOpsLifecycleV155.afterLoad('v145-history'"), 'v145 is not registered on the shared load lifecycle');
+assert(source.includes("RailOpsLifecycleV155.afterLoad('v145-cleanup'"), 'v145 is not registered on the shared load lifecycle');
 assert(source.includes("RailOpsLifecycleV155.beforeRender('v146-integrity'"), 'v146 is not registered before render');
 assert(source.includes("RailOpsLifecycleV155.afterRender('v146-integrity'"), 'v146 is not registered after render');
 assert(source.includes("RailOpsLifecycleV155.afterLoad('v146-integrity'"), 'v146 is not registered on the shared load lifecycle');
