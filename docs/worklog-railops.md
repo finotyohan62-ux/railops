@@ -161,3 +161,12 @@
 - Commit : `982f0871f59514dd3413fd78067704cc8714622c` (`tests: keep verification CI diagnostic-only`).
 - Vérification fraîche : GitHub Actions `v150B-2B checks` run #28 s'est terminé avec conclusion `success`; le job `checks` confirme Checkout, Node.js 22 et la suite v150B-2B tous verts. Aucune opération Supabase, migration, permission, RLS ou donnée n'a été appliquée.
 - Aucun code de production, règle métier, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
+
+## 2026-08-22 — diagnostics détaillés du lanceur 11:16 Europe/Paris
+
+- État contrôlé avant chaque modification : PR #1 ouverte en brouillon sur `security/v150b2b-rls-ready`, cible `main`, non fusionnée ; Supabase `railops` `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1, sans écriture ni migration.
+- Amélioration réversible limitée aux tests : le lanceur agrégé affiche désormais explicitement `PASS` pour chaque contrôle réussi et, en cas d'échec, le nom exact du contrôle ainsi que son code de sortie. Aucun comportement applicatif n'est modifié.
+- Cycle rouge/vert vérifié : le contrat ajouté dans `tests/v150b2b-runner-coverage.test.js` échouait contre l'ancien lanceur sur l'absence du diagnostic par contrôle, puis passe après la modification minimale de `tests/run-v150b2b-checks.js`.
+- Commits : `73b04951e9d3bf208080cb73fe456441c64f5d65` (`tests: require per-check CI diagnostics`) et `aa8b0cb8ea71d30b849973bbb56fda2ced824c03` (`tests: improve aggregate runner diagnostics`).
+- Vérification fraîche : garde-fou local vert sur une reconstruction fidèle des deux fichiers concernés ; GitHub Actions `v150B-2B checks` run #34 est terminé avec conclusion `success` sur `aa8b0cb8ea71d30b849973bbb56fda2ced824c03`.
+- Aucun code de production, règle métier, permission, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
