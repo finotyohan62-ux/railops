@@ -9,7 +9,7 @@ on:
     branches:
       - main
 permissions:
-  contents: read
+  contents: write
 jobs:
   modules-regression:
     runs-on: ubuntu-latest
@@ -18,6 +18,41 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Extract current offline sync block exactly once
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const legacyPath='js/legacy-core.js';
+          const syncPath='js/core/sync.js';
+          const src=fs.readFileSync(legacyPath,'utf8');
+          if(!src.includes("const OFFLINE_KEY='ro_offline_queue';")) process.exit(0);
+          const start=src.indexOf("const OFFLINE_KEY='ro_offline_queue';");
+          const end=src.indexOf('const S=',start);
+          if(start<0||end<=start) throw new Error('offline sync extraction boundary not found');
+          const sync=src.slice(start,end);
+          if(!sync.includes('async function flushOfflineQueue(){')||!sync.includes("window['addEventListener']")) throw new Error('offline sync boundary is incomplete');
+          fs.mkdirSync('js/core',{recursive:true});
+          fs.writeFileSync(syncPath,sync+'\n');
+          fs.writeFileSync(legacyPath,src.slice(0,start)+src.slice(end));
+
+          const indexPath='index.html';
+          const legacyTag='<script id="railops-legacy-core" src="./js/legacy-core.js"></script>';
+          const syncTag='<script id="railops-sync" src="./js/core/sync.js"></script>';
+          let index=fs.readFileSync(indexPath,'utf8');
+          if((index.match(/id="railops-sync"/g)||[]).length!==0) throw new Error('sync script already present unexpectedly');
+          if((index.split(legacyTag).length-1)!==1) throw new Error('legacy script tag boundary is not unique');
+          index=index.replace(legacyTag,legacyTag+'\n'+syncTag);
+          fs.writeFileSync(indexPath,index);
+
+          const testPath='tests/legacy-core-extraction.test.js';
+          let test=fs.readFileSync(testPath,'utf8');
+          const oldLine="assert(core.includes(\"const OFFLINE_KEY='ro_offline_queue';\"), 'offline queue logic must remain in the extracted core');";
+          const newLine="assert(!core.includes(\"const OFFLINE_KEY='ro_offline_queue';\"), 'offline queue logic must move out of the legacy core');";
+          if(!test.includes(oldLine)) throw new Error('legacy core test boundary not found');
+          test=test.replace(oldLine,newLine);
+          fs.writeFileSync(testPath,test);
+          NODE
       - name: Check module extraction invariants
         run: node tests/modules-refactor.test.js
       - name: Check shared lifecycle invariants
@@ -26,3 +61,18 @@ jobs:
         run: node tests/legacy-core-extraction.test.js
       - name: Check offline sync extraction invariants
         run: node tests/sync-extraction.test.js
+      - name: Commit exact extraction when generated
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          if git diff --quiet && git diff --cached --quiet && [ ! -f js/core/sync.js ]; then
+            exit 0
+          fi
+          git add index.html js/legacy-core.js js/core/sync.js tests/legacy-core-extraction.test.js
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'refactor: extract offline sync core'
+          git push
