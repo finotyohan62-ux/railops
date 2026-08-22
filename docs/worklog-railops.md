@@ -272,3 +272,12 @@
 - Documentation mise à jour : `docs/v150b2b-diagnostics-guide.md` décrit les trois codes et rappelle qu'ils ne modifient aucun droit, chargement ni donnée et n'exposent aucun ID/référence métier.
 - Aucun changement de règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire; `main` reste intact et aucun merge/rebase n'a été tenté.
 - Point en attente inchangé : la synchronisation avec les 12 commits de `main` et les smoke-tests humains nécessitent toujours une validation explicite; aucun nouveau choix produit n'a été introduit par cette passe.
+
+## 2026-08-23 — synthèse des contrôles les plus lents 00:15 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, non fusionnée ; comparaison fraîche `main...security/v150b2b-rls-ready` = **12 commits behind / 134 ahead**. Supabase `railops` reste `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1 ; Security Advisor relu en lecture seule, sans aucune correction backend.
+- Amélioration réversible limitée aux tests/diagnostics : `tests/run-v150b2b-checks.js` conserve désormais les durées de tous les contrôles et affiche en fin de run les **trois contrôles les plus lents**, afin de rendre visibles les régressions de performance CI sans modifier le runtime RailOps.
+- Cycle rouge/vert vérifié : `1a2ae692f20b2ad3d579d33088bc98036a046b96` (`test: require slowest-check CI summary`) fait échouer `v150B-2B checks` run #130 comme attendu ; `e7dda209410474cb2b940a6290cc9f18d8f702aa` (`test: summarize slowest v150B2B checks`) passe le garde-fou local et `node --check`, avec le job `v150B-2B checks` run #132 `success`, `RailOps lifecycle regression` run #141 `success` et Vercel `success`.
+- État après modification : branche toujours divergente, désormais **12 commits behind / 136 ahead** ; aucun merge/rebase n'a été tenté.
+- Aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié.
+- Point en attente inchangé : la synchronisation avec les 12 commits de `main` et les smoke-tests humains nécessitent toujours une validation explicite ; aucun nouveau choix produit n'a été introduit par cette passe.
