@@ -128,3 +128,12 @@
 - Commits : `dd34269c5ab3b11164b6c85b54c5e8b5d1b003d2` (`tests: require auto-discovered v150B-2B checks`), `daf1fb7bed4641f503e11872dd5ac530db0105fe` (`tests: auto-discover v150B-2B checks`) et `a12efe95cf60b24f0360c9ea6cea5cb9dece7c41` (`tests: refine runner auto-discovery guard`).
 - Vérification fraîche : `node --check` du lanceur et du garde-fou passe ; le garde-fou s'exécute avec succès sur une reconstruction locale fidèle (`PASS: aggregate runner auto-discovers 1 tests and 7 preview JavaScript modules`) ; GitHub Actions `v150B-2B checks` run #10 est `success` sur `a12efe95cf60b24f0360c9ea6cea5cb9dece7c41`, et Vercel est également `success` sur ce commit.
 - Aucun code de production, règle métier, permission, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
+
+## 2026-08-22 — concurrence CI 07:13 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, base `main` inchangée ; Supabase `railops` reste `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1 et le Security Advisor a été relu en lecture seule, sans aucune correction appliquée.
+- Amélioration réversible : ajout de `tests/v150b2b-ci-workflow.test.js` pour verrouiller les invariants de la CI (permissions `contents: read`, timeout de 5 minutes, exécution du lanceur agrégé et annulation des runs obsolètes), puis ajout d'un bloc `concurrency` dans `.github/workflows/v150b2b-checks.yml` avec `cancel-in-progress: true` par workflow + PR/branche.
+- Cycle rouge/vert vérifié localement : le nouveau test échoue contre l'ancien workflow faute de bloc `concurrency`, puis passe après la modification (`PASS: v150B-2B CI workflow safety contract`).
+- Commits : `51752628950d0ce707eacc1cdbc5463cb51c83ca` (`tests: guard v150B-2B CI workflow safety`) et `d45b240548991b8d7bb0c433f162f894b1cb8c4b` (`ci: cancel stale v150B-2B verification runs`).
+- Vérification fraîche : GitHub Actions `v150B-2B checks` run #16 est `success` sur `d45b240548991b8d7bb0c433f162f894b1cb8c4b` et Vercel est également `success` sur ce commit.
+- Aucun code de production, règle métier, permission applicative, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
