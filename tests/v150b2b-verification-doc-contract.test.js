@@ -37,6 +37,16 @@ assert.match(
   'verification guide must prohibit automatic branch synchronization without approval'
 );
 assert.match(
+  guide,
+  /Supabase[\s\S]*?lecture seule[\s\S]*?(?:RLS|polic)/i,
+  'verification guide must require a read-only Supabase RLS/policy checkpoint before compatibility conclusions'
+);
+assert.match(
+  guide,
+  /(?:état|state)[\s\S]*?(?:a changé|diffère|dérive)[\s\S]*?(?:arrêter|stop)/i,
+  'verification guide must stop compatibility conclusions when runtime Supabase state has drifted'
+);
+assert.match(
   workflow,
   /- security\/v150b2b-rls-ready/,
   'CI must continue to run on pushes to the security branch'
