@@ -11,6 +11,17 @@ assert(
   'aggregate runner must execute the runner coverage guard'
 );
 
+const testFiles = fs.readdirSync(__dirname)
+  .filter(name => /^v150b2b-.*\.test\.js$/i.test(name))
+  .sort();
+assert(testFiles.length > 0, 'tests directory must contain v150B-2B test files');
+for (const testFile of testFiles) {
+  assert(
+    runner.includes(`'tests/${testFile}'`),
+    `aggregate runner must execute ${testFile}`
+  );
+}
+
 const previewScripts = [...preview.matchAll(/\.\/(v150b2b-[a-z0-9-]+\.js)\?build=/gi)]
   .map(match => match[1]);
 const uniquePreviewScripts = [...new Set(previewScripts)];
@@ -23,4 +34,4 @@ for (const script of uniquePreviewScripts) {
   );
 }
 
-console.log(`PASS: aggregate runner covers ${uniquePreviewScripts.length} preview JavaScript modules`);
+console.log(`PASS: aggregate runner covers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules`);
