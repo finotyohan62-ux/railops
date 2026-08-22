@@ -170,3 +170,11 @@
 - Commits : `73b04951e9d3bf208080cb73fe456441c64f5d65` (`tests: require per-check CI diagnostics`) et `aa8b0cb8ea71d30b849973bbb56fda2ced824c03` (`tests: improve aggregate runner diagnostics`).
 - Vérification fraîche : garde-fou local vert sur une reconstruction fidèle des deux fichiers concernés ; GitHub Actions `v150B-2B checks` run #34 est terminé avec conclusion `success` sur `aa8b0cb8ea71d30b849973bbb56fda2ced824c03`.
 - Aucun code de production, règle métier, permission, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
+
+## 2026-08-22 — garde-fou mutation CI 12:12 Europe/Paris
+
+- État contrôlé avant modification : PR #1 ouverte en brouillon sur `security/v150b2b-rls-ready`, cible `main`, non fusionnée ; Supabase `railops` reste `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1. Le workflow réel et son contrat de test ont été relus avant changement.
+- Amélioration réversible limitée aux tests : `tests/v150b2b-ci-workflow.test.js` interdit désormais directement les commandes de mutation Supabase (`db push`, `migration up`, déploiement de fonctions) ainsi que les commandes `psql` contenant des verbes DDL/DML sensibles. Aucun workflow, code applicatif ou comportement métier n'a été modifié.
+- Commit : `f4944eee449bf496431836779f8063456bca5231` (`tests: keep verification workflow diagnostic-only`).
+- Vérification fraîche : GitHub Actions `v150B-2B checks` run #38 s'est terminé avec conclusion `success` sur ce commit et Vercel est également `success`. `main` reste intact et aucune opération Supabase, migration, permission, RLS ou donnée n'a été appliquée.
+- Aucun changement sur Import, Multi-chantier ou purge hebdomadaire. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
