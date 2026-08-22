@@ -111,3 +111,11 @@
 - Commit : `7b3882c2a2d932352dcf9b4016675bba178597df` (`docs: refresh Supabase security advisor snapshot`).
 - Vérification : document relu depuis GitHub après commit ; aucune migration, policy, permission, fonction, table ou donnée Supabase n'a été modifiée. Aucun changement de code de production, règle métier, Import, Multi-chantier ou purge hebdomadaire.
 - Point en attente inchangé : toute correction de sécurité ou interprétation de la dérive observée reste volontairement hors scope sans validation explicite et smoke-tests complets.
+
+## 2026-08-22 — CI automatique des vérifications 05:13 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, base `main` inchangée ; aucun changement Supabase, RLS, permission ou donnée effectué.
+- Amélioration réversible : ajout de `.github/workflows/v150b2b-checks.yml` pour exécuter automatiquement `node tests/run-v150b2b-checks.js` sur les pushes de la branche de sécurité et sur la PR vers `main`, avec permissions GitHub minimales (`contents: read`) et un timeout de 5 minutes.
+- Commit CI : `5568d35dcce14207fe84e4c74e8edf801716afeb` (`ci: run v150B-2B verification suite`).
+- Vérification fraîche : GitHub Actions a exécuté le job `checks` jusqu'au bout avec conclusion `success` (Checkout, Node.js 22 et suite v150B-2B tous verts) ; Vercel a également renvoyé `success` sur le même commit.
+- Aucun code de production, règle métier, Import, Multi-chantier, purge hebdomadaire, migration ou sécurité Supabase modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
