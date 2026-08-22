@@ -41,3 +41,16 @@ Avant toute correction d'une alerte de sécurité :
 ## Utilisation de ce baseline
 
 Lors des prochains contrôles, comparer le Security Advisor à cette photographie. Une alerte nouvelle, disparue ou modifiée doit être expliquée dans le worklog avant toute action de sécurité.
+
+## Relevé comparatif — 2026-08-22 04:13 Europe/Paris
+
+Contrôle effectué en lecture seule. Le projet est toujours `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1. Aucune migration, policy, permission, fonction, table ou donnée n'a été modifiée pendant ce relevé.
+
+Écarts observés par rapport au baseline du 21 août :
+
+- les alertes précédentes « RLS désactivée » sur `public.deleted_ids` et `public.prix_catalogue` ne sont plus remontées dans le relevé courant ;
+- le Security Advisor remonte désormais des informations `RLS Enabled No Policy` sur `public.agents`, `public.inspections`, `public.materiel`, `public.railops_auth_throttle` et `public.railops_legacy_credentials` ;
+- les avertissements sur les fonctions `SECURITY DEFINER` exécutables par `authenticated` restent présents et couvrent notamment les RPC de périmètre, d'administration, de catalogue, de matériel, de scans, de session et de diagnostic ;
+- la protection Supabase Auth contre les mots de passe compromis reste désactivée.
+
+Ce relevé documente uniquement la dérive constatée de l'environnement. Il ne permet pas, à lui seul, d'attribuer ces écarts à une migration particulière ni de conclure que les RLS strictes préparées sur la branche ont été appliquées. Toute correction ou harmonisation de cet état reste soumise aux smoke-tests et à une validation explicite avant changement de sécurité.
