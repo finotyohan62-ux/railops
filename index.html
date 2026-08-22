@@ -425,6 +425,80 @@ select.fi{cursor:pointer}
 })();
 </script>
 
+<script id="railops-v155-lifecycle">
+(function(){
+'use strict';
+if(window.RailOpsLifecycleV155)return;
+const VERSION='155-lifecycle-cleanup';
+const beforeRenderHandlers=new Map();
+const afterRenderHandlers=new Map();
+const afterLoadHandlers=new Map();
+const mutationHandlers=new Map();
+
+function add(map,name,fn){
+  if(!name||typeof fn!=='function')throw new TypeError('RailOps lifecycle: handler invalide');
+  map.set(String(name),fn);
+  return fn;
+}
+function runSync(map,ctx,args){
+  for(const [name,fn] of map){
+    try{fn.apply(ctx,args);}catch(e){console.warn('[RailOps v155] '+name,e);}
+  }
+}
+async function runAsync(map,ctx,args){
+  for(const [name,fn] of map){
+    try{await fn.apply(ctx,args);}catch(e){console.warn('[RailOps v155] '+name,e);}
+  }
+}
+
+const api={
+  version:VERSION,
+  beforeRender(name,fn){return add(beforeRenderHandlers,name,fn);},
+  afterRender(name,fn){return add(afterRenderHandlers,name,fn);},
+  afterLoad(name,fn){return add(afterLoadHandlers,name,fn);},
+  onMutation(name,fn){return add(mutationHandlers,name,fn);},
+  inspect(){return {
+    beforeRender:[...beforeRenderHandlers.keys()],
+    afterRender:[...afterRenderHandlers.keys()],
+    afterLoad:[...afterLoadHandlers.keys()],
+    mutation:[...mutationHandlers.keys()]
+  };}
+};
+window.RailOpsLifecycleV155=api;
+
+const baseRenderV155=window.render;
+if(typeof baseRenderV155==='function'){
+  const sharedRenderV155=function(){
+    runSync(beforeRenderHandlers,this,arguments);
+    const result=baseRenderV155.apply(this,arguments);
+    runSync(afterRenderHandlers,this,arguments);
+    return result;
+  };
+  window.render=sharedRenderV155;
+  try{render=sharedRenderV155;}catch(e){}
+}
+
+const baseLoadV155=window.load;
+if(typeof baseLoadV155==='function'){
+  const sharedLoadV155=async function(){
+    const result=await baseLoadV155.apply(this,arguments);
+    await runAsync(afterLoadHandlers,this,arguments);
+    return result;
+  };
+  window.load=sharedLoadV155;
+  try{load=sharedLoadV155;}catch(e){}
+}
+
+const mutationRootV155=document.getElementById('app')||document.body;
+if(mutationRootV155){
+  const observerV155=new MutationObserver(mutations=>runSync(mutationHandlers,null,[mutations]));
+  observerV155.observe(mutationRootV155,{childList:true,subtree:true,characterData:true});
+}
+
+console.info('[RailOps] cycle partagé actif —',VERSION);
+})();
+</script>
+
 <script id="railops-v140-clean-engine">
 /* RailOps v140 — base propre v132 + moteur unique multi-chantier
    - 1 seule occurrence par référence métier et par chantier/sous-chantier
@@ -642,8 +716,8 @@ importCSV=function(input){
 };
 
 // Décoration après rendu, et proposition de réparation après chargement/login.
-try{const oldRender=render;render=function(){const r=oldRender.apply(this,arguments);setTimeout(decorate,20);return r;};}catch(e){}
-try{const oldLoad=load;load=async function(){const r=await oldLoad.apply(this,arguments);setTimeout(()=>{showRepairOffer();decorate();},700);return r;};}catch(e){}
+window.RailOpsLifecycleV155.afterRender('v140-stable',()=>{setTimeout(decorate,20);});
+window.RailOpsLifecycleV155.afterLoad('v140-stable',()=>{setTimeout(()=>{showRepairOffer();decorate();},700);});
 setTimeout(()=>{try{if(S?.mat?.length){showRepairOffer();decorate();}}catch(e){}},1800);
 window.RailOpsStableV140={version:VERSION,businessRef,duplicateGroups,repairDuplicates,importDpi,showRepairOffer};
 console.info('[RailOps] moteur propre actif —',VERSION);
@@ -731,12 +805,8 @@ console.info('[RailOps] moteur propre actif —',VERSION);
   }
   let timer=null;
   function schedule(){clearTimeout(timer);timer=setTimeout(apply,35);}
-  const root=document.getElementById('app')||document.body;
-  if(root){new MutationObserver(schedule).observe(root,{childList:true,subtree:true,characterData:true});}
-  try{
-    const oldRender=window.render;
-    if(typeof oldRender==='function')window.render=function(){const r=oldRender.apply(this,arguments);setTimeout(apply,25);return r;};
-  }catch(e){}
+  window.RailOpsLifecycleV155.onMutation('v142-display',schedule);
+  window.RailOpsLifecycleV155.afterRender('v142-display',()=>setTimeout(apply,25));
   setTimeout(apply,150);setTimeout(apply,1000);
   window.RailOpsDisplayV142={version:VERSION,apply,destinationsFor};
   console.info('[RailOps] affichage multi-chantier corrigé —',VERSION);
@@ -1044,7 +1114,7 @@ function offerLegacyCleanup(){
   document.getElementById('ro145-clean-go').onclick=async()=>{const b=document.getElementById('ro145-clean-go');b.disabled=true;b.textContent='Nettoyage…';const r=await cleanLegacySections();d.remove();if(r.errors.length)toast(`${r.removed} nettoyée(s), ${r.errors.length} erreur(s)`,'danger');else toast(`${r.removed} ligne(s) parasite(s) supprimée(s) ✓`,'ok');};
 }
 setTimeout(offerLegacyCleanup,1200);
-try{const oldLoad145=load;load=async function(){const r=await oldLoad145.apply(this,arguments);setTimeout(offerLegacyCleanup,900);return r;};}catch(e){}
+window.RailOpsLifecycleV155.afterLoad('v145-cleanup',()=>{setTimeout(offerLegacyCleanup,900);});
 
 if(!document.getElementById('ro-v144-style')){const st=document.createElement('style');st.id='ro-v144-style';st.textContent=`
 .ro144-sheet{max-height:90vh;overflow:auto}.ro144-title{font-size:18px;font-weight:650}.ro144-sub{font-size:11px;color:var(--text2);margin:4px 0 12px}.ro144-source{background:var(--bg3);border:.5px solid var(--border);border-radius:10px;padding:9px 11px;margin-bottom:8px;font-size:12px}.ro144-source.bad{border-color:rgba(226,75,74,.55)}.ro144-muted{font-size:10px;color:var(--text2);margin-top:3px}.ro144-danger{font-size:10px;color:#e24b4a;margin-top:5px}.ro144-map{margin:10px 0;max-height:38vh;overflow:auto}.ro144-maprow{background:var(--bg3);border-radius:10px;padding:9px 10px;margin-bottom:7px}.ro144-maprow>div{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:5px;font-size:11px}.ro144-maprow span{font-size:10px;color:var(--text2);white-space:nowrap}.ro144-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:10px 0}.ro144-kpis>div{background:var(--bg3);border-radius:10px;padding:9px 7px;text-align:center}.ro144-kpis b{display:block;font-size:17px}.ro144-kpis span{font-size:9px;color:var(--text2)}.ro144-note,.ro144-targets{font-size:11px;color:var(--text2);background:var(--bg3);border-radius:10px;padding:9px 11px;margin:9px 0}.ro144-okbox{font-size:11px;padding:9px 11px;margin:9px 0;border-radius:10px;background:rgba(29,158,117,.10);border:.5px solid rgba(29,158,117,.35)}.ro144-errorbox{font-size:11px;padding:9px 11px;margin:9px 0;border-radius:10px;background:rgba(226,75,74,.10);border:.5px solid rgba(226,75,74,.35);color:#e24b4a}.ro144-details{font-size:10px;color:var(--text2);margin:8px 0 12px}.ro144-details div{padding:3px 0}.ro144-details span{opacity:.8}.ro144-scroll{max-height:48vh;overflow:auto}.ro144-hist{background:var(--bg3);border-radius:10px;padding:9px 11px;margin-bottom:7px;font-size:11px}.ro144-hist span{color:var(--text2)}.ro144-sources{max-height:22vh}.ro144-sheet button[disabled]{opacity:.45;pointer-events:none}
@@ -1182,18 +1252,11 @@ async function enforceIntegrity(opts={}){
 function schedule(ms=120){clearTimeout(scheduled);scheduled=setTimeout(()=>enforceIntegrity({silent:true}),ms);}
 
 // Tout rendu passe par l'invariant : les titres de sections ne peuvent jamais être comptés comme matériel.
-try{
-  const oldRender146=render;
-  render=function(){sanitizeState();const r=oldRender146.apply(this,arguments);if((st()?.mat||[]).some(safePseudo))schedule(80);return r;};
-  window.render=render;
-}catch(e){}
+window.RailOpsLifecycleV155.beforeRender('v146-integrity',()=>{sanitizeState();});
+window.RailOpsLifecycleV155.afterRender('v146-integrity',()=>{if((st()?.mat||[]).some(safePseudo))schedule(80);});
 
 // Après chargement, vérification réelle de la base + tombstones.
-try{
-  const oldLoad146=load;
-  load=async function(){const r=await oldLoad146.apply(this,arguments);sanitizeState();setTimeout(()=>enforceIntegrity({silent:true}),500);return r;};
-  window.load=load;
-}catch(e){}
+window.RailOpsLifecycleV155.afterLoad('v146-integrity',()=>{sanitizeState();setTimeout(()=>enforceIntegrity({silent:true}),500);});
 
 // Après sélection/import d'un registre, revérifie la base plusieurs fois pour couvrir aussi un ancien listener ou une synchro différée.
 document.addEventListener('change',ev=>{
@@ -1566,11 +1629,7 @@ try{
 }catch(e){}
 
 // Archive after every successful load so Supabase is the authority and old local caches cannot revive these roots.
-try{
-  const oldLoad149=load;
-  load=async function(){const r=await oldLoad149.apply(this,arguments);await archiveConfirmed149({silent:true});return r;};
-  window.load=load;
-}catch(e){}
+window.RailOpsLifecycleV155.afterLoad('v149-archive',()=>archiveConfirmed149({silent:true}));
 
 window.RailOpsArchive149={version:VERSION,activeTree:activeTree149,operationalIds:operationalIds149,archiveConfirmed:()=>archiveConfirmed149({silent:false}),roots:[...CONFIRMED_OBSOLETE_ROOTS]};
 setTimeout(()=>archiveConfirmed149({silent:true}),500);
@@ -1617,10 +1676,10 @@ console.info('[RailOps] Correctif Auth actif —',VERSION);
 })();
 </script>
 
-<script id="railops-v154-inventory-responsible-label-fix">
+<script id="railops-inventory-responsible-label">
 (function(){
 'use strict';
-const VERSION='154-inventory-responsible-label-fix';
+const VERSION='155-inventory-label-normalizer';
 
 function normalizeTextNode(node){
   const before=node.nodeValue||'';
@@ -1660,20 +1719,12 @@ function normalizeInventoryLabels(){
 let timer=null;
 function schedule(){clearTimeout(timer);timer=setTimeout(normalizeInventoryLabels,20);}
 
-try{
-  const oldRender=window.render;
-  if(typeof oldRender==='function'){
-    window.render=function(){const r=oldRender.apply(this,arguments);schedule();return r;};
-    try{render=window.render;}catch(e){}
-  }
-}catch(e){}
-
-const root=document.getElementById('app')||document.body;
-if(root)new MutationObserver(schedule).observe(root,{childList:true,subtree:true,characterData:true});
+window.RailOpsLifecycleV155.afterRender('inventory-label',schedule);
+window.RailOpsLifecycleV155.onMutation('inventory-label',schedule);
 setTimeout(normalizeInventoryLabels,50);
 setTimeout(normalizeInventoryLabels,500);
 
-window.RailOpsInventoryLabel154={version:VERSION,apply:normalizeInventoryLabels};
+window.RailOpsInventoryLabelV155={version:VERSION,apply:normalizeInventoryLabels};
 console.info('[RailOps] libellé responsable inventaire corrigé —',VERSION);
 })();
 </script>
