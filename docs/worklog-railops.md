@@ -95,3 +95,11 @@
 - Le test est inclus dans `tests/run-v150b2b-checks.js`. Commits : `cd72ae042598ea6b24c123c371f24da2e31e8bce` (`tests: guard secure local storage invariants`) et `a758ad7fbd76f1f32e1e7b7534057f05904ae56e` (`tests: include local storage safety guard`).
 - Vérification fraîche : test relu depuis GitHub ; assertions exécutées localement contre les lignes actuelles de persistance du loader avec résultat `PASS: v150B-2B local storage safety invariants` ; Vercel `success` sur `a758ad7fbd76f1f32e1e7b7534057f05904ae56e`.
 - Limite connue : le clone GitHub reste indisponible dans l'environnement d'exécution, donc la suite agrégée complète n'a pas été rejouée contre un checkout frais. Aucun code de production, règle métier, permission, Import, Multi-chantier ou purge hebdomadaire n'a été modifié ; aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
+
+## 2026-08-22 — exhaustivité du lanceur 03:15 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, base `main` inchangée ; Supabase `railops` reste `ACTIVE_HEALTHY` et le Security Advisor a été relu en lecture seule. Aucun changement de base, RLS ou permission.
+- Amélioration réversible : `tests/v150b2b-runner-coverage.test.js` vérifie désormais que **chaque** fichier `tests/v150b2b-*.test.js` présent dans le dossier est référencé par `tests/run-v150b2b-checks.js`, en plus du contrôle existant sur les modules JavaScript injectés dans la preview. Cela évite qu'un nouveau test soit ajouté puis oublié du lanceur agrégé.
+- Commit : `edbdd001b50453ff6f18663159c82138955e437c` (`tests: ensure runner includes every v150B-2B test`).
+- Vérification fraîche : contrôle exécuté localement sur une reconstruction fidèle de la liste actuelle des tests et des scripts de preview : `PASS: aggregate runner covers 8 tests and 7 preview JavaScript modules`; `node --check` du garde-fou passe également ; Vercel `success` sur le commit.
+- Aucun code de production, règle métier, permission, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
