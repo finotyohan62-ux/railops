@@ -1,26 +1,29 @@
 const { spawnSync } = require('node:child_process');
+const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const tests = [
-  'tests/v150b2b-harness-core.test.js',
-  'tests/v150b2b-harness.test.js',
-  'tests/v150b2b-preview-contract.test.js',
-  'tests/v150b2b-chef-chantier-stats.test.js',
-  'tests/v150b2b-chef-chantier-integration.test.js',
-  'tests/v150b2b-static-invariants.test.js',
-  'tests/v150b2b-local-storage-safety.test.js',
-  'tests/v150b2b-runner-coverage.test.js',
-];
-const syntaxTargets = [
-  'v150b2b-harness-core.js',
-  'v150b2b-chef-chantier-stats.js',
-  'v150b2b-loader.js',
-  'v150b2b-maintenance.js',
-  'v150b2b-owner-mode.js',
-  'v150b2b-secure-admin.js',
-  'v150b2b-secure-delete.js',
-];
+const previewPath = path.join(root, 'v150b2b-test.html');
+const preview = fs.readFileSync(previewPath, 'utf8');
+
+const tests = fs.readdirSync(__dirname)
+  .filter(name => /^v150b2b-.*\.test\.js$/i.test(name))
+  .sort()
+  .map(name => `tests/${name}`);
+
+const syntaxTargets = [...new Set(
+  [...preview.matchAll(/\.\/(v150b2b-[a-z0-9-]+\.js)\?build=/gi)]
+    .map(match => match[1])
+)].sort();
+
+if (!tests.length) {
+  console.error('FAIL: no v150B-2B tests discovered');
+  process.exit(1);
+}
+if (!syntaxTargets.length) {
+  console.error('FAIL: no v150B-2B preview modules discovered');
+  process.exit(1);
+}
 
 function run(label, args) {
   process.stdout.write(`\n▶ ${label}\n`);
@@ -38,4 +41,4 @@ function run(label, args) {
 for (const test of tests) run(test, [test]);
 for (const target of syntaxTargets) run(`node --check ${target}`, ['--check', target]);
 
-console.log('\nPASS: all v150B-2B local checks completed');
+console.log(`\nPASS: all v150B-2B local checks completed (${tests.length} tests, ${syntaxTargets.length} syntax targets)`);
