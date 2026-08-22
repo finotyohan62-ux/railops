@@ -30,6 +30,12 @@ Le premier nombre indique les commits présents sur `main` mais absents de la br
 
 Dans ce cas, arrêter toute conclusion de compatibilité avec la version courante de `main`. Ne pas fusionner, merge ou rebase automatiquement la branche sans validation explicite : la synchronisation doit être décidée après examen des changements intervenus sur `main`.
 
+## Vérifier la dérive de l'état Supabase
+
+Avant un smoke-test ou une conclusion de compatibilité, relire l'état réel du projet Supabase **en lecture seule** : santé du projet, activation RLS sur les tables concernées et noms/portées des policies effectivement présentes. Cette vérification est un diagnostic ; elle ne doit appliquer aucune migration, policy, permission ou correction de données.
+
+Comparer ce constat au dernier état documenté dans `docs/worklog-railops.md` et aux hypothèses de la branche. Si l'état Supabase a changé, diffère du baseline attendu ou dérive des hypothèses v150B-2B, **arrêter la conclusion de compatibilité** et documenter l'écart avant toute modification. Une suite locale ou CI verte ne prouve pas à elle seule que la preview reste compatible avec un backend qui a évolué indépendamment.
+
 ## Vérification GitHub Actions
 
 Le workflow `.github/workflows/v150b2b-checks.yml` s'exécute :
