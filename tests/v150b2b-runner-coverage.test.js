@@ -34,8 +34,8 @@ assert(
   'aggregate runner should not require a manually maintained test manifest'
 );
 assert(
-  !runner.includes("const syntaxTargets = ["),
-  'aggregate runner should not require a manually maintained syntax manifest'
+  !runner.includes("'v150b2b-loader.js',"),
+  'aggregate runner should not require a manually maintained preview module manifest'
 );
 
 console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules`);
