@@ -281,3 +281,12 @@
 - État après modification : branche toujours divergente, désormais **12 commits behind / 136 ahead** ; aucun merge/rebase n'a été tenté.
 - Aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié.
 - Point en attente inchangé : la synchronisation avec les 12 commits de `main` et les smoke-tests humains nécessitent toujours une validation explicite ; aucun nouveau choix produit n'a été introduit par cette passe.
+
+## 2026-08-23 — diagnostic stats Chef de chantier manquantes 01:20 Europe/Paris
+
+- État contrôlé avant modifications : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, non fusionnée ; comparaison fraîche avec `main` toujours divergente (**12 commits behind / 137 ahead** au départ). Supabase `railops` reste `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1 ; Security Advisor relu en lecture seule, sans correction backend.
+- Amélioration réversible de diagnostic : `v150b2b-diagnostics.js` ajoute `CHEF_CHANTIER_STATS_MISSING` uniquement lorsqu’un Chef de chantier est en ligne, voit au moins un chantier et n’a reçu aucune ligne de statistiques agrégées. Le signal est désactivé hors ligne pour éviter un faux positif et n’expose aucune donnée métier.
+- Tests/documentation : `tests/v150b2b-diagnostics-warnings.test.js` couvre le cas en ligne et l’absence d’alerte hors ligne ; `docs/v150b2b-diagnostics-guide.md` documente le nouveau code et son usage. Commits : `3761a848af96aac239880f706abaa765556c72eb` (test), `774249b192c28bdc51c4a8ea1dcaa0d83f4bda8a` (diagnostic) et `a38a8417d363798aeed10a4d532569f3facdb709` (documentation).
+- Vérification fraîche : test ciblé et `node --check` passent localement ; GitHub Actions `v150B-2B checks` run #140 et `RailOps lifecycle regression` run #145 sont tous deux `success` sur `a38a8417d363798aeed10a4d532569f3facdb709`; Vercel est également `success`.
+- État après modification : branche toujours divergente, désormais **12 commits behind / 140 ahead** ; aucun merge/rebase n’a été tenté. Aucun changement de règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire.
+- Point en attente inchangé : synchronisation avec les 12 commits de `main` et smoke-tests humains toujours soumis à validation explicite ; aucun nouveau choix produit n’a été introduit par cette passe.
