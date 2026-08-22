@@ -1,0 +1,103 @@
+name: One-time inventory label fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: contains(github.event.head_commit.message, '[inventory-label-fix-bootstrap]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply inventory responsible label fix
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('index.html')
+          source = path.read_text(encoding='utf-8')
+          marker = 'railops-v154-inventory-responsible-label-fix'
+
+          patch = r'''
+          <script id="railops-v154-inventory-responsible-label-fix">
+          (function(){
+          'use strict';
+          const VERSION='154-inventory-responsible-label-fix';
+
+          function normalizeTextNode(node){
+            const before=node.nodeValue||'';
+            let after=before.replace(/RESPONSABLE\s+INVENTAIRE\s*4\b/gi,'RESPONSABLE INVENTAIRE');
+            after=after.replace(/Responsable\s+semaine\s*:/gi,'RESPONSABLE INVENTAIRE :');
+            if(after!==before)node.nodeValue=after;
+          }
+
+          function normalizeInventoryLabels(){
+            try{
+              const root=document.getElementById('app')||document.body;
+              if(!root)return;
+
+              // Le libellé parasite exact peut provenir d'un nœud texte ou de deux enfants voisins.
+              const all=Array.from(root.querySelectorAll('*'));
+              for(const el of all){
+                const txt=(el.textContent||'').replace(/\s+/g,' ').trim();
+                if(/^RESPONSABLE INVENTAIRE\s*4$/i.test(txt)){
+                  el.textContent='RESPONSABLE INVENTAIRE';
+                }
+              }
+
+              // L'ancien libellé « Responsable semaine » n'est renommé que dans les cartes Inventaire.
+              const cards=Array.from(root.querySelectorAll('.card')).filter(card=>{
+                const title=(card.querySelector('h3')?.textContent||'').trim();
+                const txt=(card.textContent||'').replace(/\s+/g,' ').trim();
+                return /^Inventaire$/i.test(title)||/Avancement inventaire/i.test(txt)||/RESPONSABLE INVENTAIRE/i.test(txt);
+              });
+              for(const card of cards){
+                const walker=document.createTreeWalker(card,NodeFilter.SHOW_TEXT);
+                let node;
+                while((node=walker.nextNode()))normalizeTextNode(node);
+              }
+            }catch(e){}
+          }
+
+          let timer=null;
+          function schedule(){clearTimeout(timer);timer=setTimeout(normalizeInventoryLabels,20);}
+
+          try{
+            const oldRender=window.render;
+            if(typeof oldRender==='function'){
+              window.render=function(){const r=oldRender.apply(this,arguments);schedule();return r;};
+              try{render=window.render;}catch(e){}
+            }
+          }catch(e){}
+
+          const root=document.getElementById('app')||document.body;
+          if(root)new MutationObserver(schedule).observe(root,{childList:true,subtree:true,characterData:true});
+          setTimeout(normalizeInventoryLabels,50);
+          setTimeout(normalizeInventoryLabels,500);
+
+          window.RailOpsInventoryLabel154={version:VERSION,apply:normalizeInventoryLabels};
+          console.info('[RailOps] libellé responsable inventaire corrigé —',VERSION);
+          })();
+          </script>
+          '''.strip()
+
+          if marker not in source:
+              if '</body>' not in source:
+                  raise SystemExit('Balise </body> introuvable')
+              source = source.replace('</body>', patch + '\n</body>', 1)
+              path.write_text(source, encoding='utf-8')
+          PY
+      - name: Commit fix and remove bootstrap workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git rm .github/workflows/one-time-inventory-label-fix.yml
+          git commit -m "Fix inventory responsible label"
+          git push
