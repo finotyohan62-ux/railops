@@ -21,6 +21,7 @@ assert(!source.includes("const oldRender=window.render;"), 'a window.render wrap
 
 // v140/v145/v146/v149 must no longer wrap load themselves.
 assert(!source.includes('const oldLoad=load;'), 'a legacy load wrapper is still present');
+assert(!source.includes('const oldLoad145=load;'), 'v145 still wraps load directly');
 assert(!source.includes('const oldLoad146=load;'), 'v146 still wraps load directly');
 assert(!source.includes('const oldLoad149=load;'), 'v149 still wraps load directly');
 
