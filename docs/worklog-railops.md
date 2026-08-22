@@ -178,3 +178,11 @@
 - Commit : `f4944eee449bf496431836779f8063456bca5231` (`tests: keep verification workflow diagnostic-only`).
 - Vérification fraîche : GitHub Actions `v150B-2B checks` run #38 s'est terminé avec conclusion `success` sur ce commit et Vercel est également `success`. `main` reste intact et aucune opération Supabase, migration, permission, RLS ou donnée n'a été appliquée.
 - Aucun changement sur Import, Multi-chantier ou purge hebdomadaire. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
+
+## 2026-08-22 — accessibilité des erreurs preview 13:19 Europe/Paris
+
+- État contrôlé avant modification : PR #1 ouverte en brouillon sur `security/v150b2b-rls-ready`, cible `main`, non fusionnée ; Vercel était vert et Supabase `railops` restait `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1. Le Security Advisor a été relu en lecture seule, sans correction appliquée.
+- Amélioration UX réversible : l'erreur de chargement de `v150b2b-test.html` est désormais rendue avec `role="alert"` et `aria-live="assertive"` pour être annoncée correctement par les technologies d'assistance. Aucun flux applicatif, rôle, permission ou donnée n'est touché.
+- Test associé : `tests/v150b2b-harness.test.js` verrouille ce contrat d'accessibilité. Commits : `00fb4b7e71e796623ea1d31df533674eeca00928` (`tests: require accessible preview errors`) et `5e2a2f7442937748df02b0547d15541ccc3bd2cc` (`ux: announce preview load failures accessibly`).
+- Vérification fraîche : le test harness modifié et `node --check` passent localement ; GitHub Actions `v150B-2B checks` run #48 et `RailOps lifecycle regression` run #89 sont tous deux terminés avec conclusion `success` sur `5e2a2f7442937748df02b0547d15541ccc3bd2cc`.
+- Aucun code métier, règle de permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
