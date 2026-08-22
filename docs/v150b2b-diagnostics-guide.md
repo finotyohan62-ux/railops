@@ -50,11 +50,23 @@ Exemple de forme attendue :
 
 Les nombres de l’exemple sont illustratifs et ne représentent pas les données de production.
 
+## Alertes diagnostiques non sensibles
+
+Le champ `warnings` est volontairement absent lorsque l’état est cohérent, afin de garder la forme historique du snapshot. Il n’apparaît que lorsqu’une incohérence détectable sans lire le contenu métier est présente.
+
+Codes actuellement possibles :
+
+- `CHEF_CHANTIER_MATERIAL_SCOPE_LEAK` : un état `chef_chantier` contient au moins une ligne matériel alors que ce rôle doit fonctionner uniquement avec des statistiques agrégées ;
+- `CHEF_CHANTIER_SCAN_SCOPE_LEAK` : un état `chef_chantier` contient au moins un scan ;
+- `OWNER_ADMIN_MODE_ROLE_MISMATCH` : le mode Administration propriétaire est marqué actif alors que le rôle effectif n’est pas `admin`.
+
+Ces codes sont des signaux de diagnostic uniquement. Ils ne modifient aucun droit, aucune donnée, aucun chargement et ne contiennent ni ID ni référence métier.
+
 ## Lecture rapide
 
 Pour un `chef_chantier`, `materials: 0` et `scans: 0` sont attendus : les compteurs d’avancement proviennent de statistiques agrégées côté serveur, pas de références matérielles chargées dans le navigateur.
 
-Pour un problème de connexion ou de session, vérifier d’abord `role`, `page`, `online` et les comptages. Un diagnostic nécessitant les données brutes doit être arrêté et traité séparément : ce helper n’a pas vocation à contourner le cloisonnement des rôles.
+Pour un problème de connexion ou de session, vérifier d’abord `role`, `page`, `online`, les comptages et, s’il existe, le champ `warnings`. Un diagnostic nécessitant les données brutes doit être arrêté et traité séparément : ce helper n’a pas vocation à contourner le cloisonnement des rôles.
 
 ## Garde-fous
 
