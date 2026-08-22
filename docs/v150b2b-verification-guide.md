@@ -17,6 +17,19 @@ Le lanceur découvre automatiquement :
 
 Il exécute d'abord chaque test Node, puis `node --check` sur chaque module de la preview. Une sortie finale `PASS: all v150B-2B local checks completed (...)` confirme que l'ensemble du lanceur s'est terminé sans erreur.
 
+## Vérifier l'écart avec `main`
+
+Avant un smoke-test humain ou toute conclusion sur la compatibilité de la branche, rafraîchir uniquement la référence distante puis mesurer l'écart, sans modifier la branche :
+
+```bash
+git fetch origin main
+git rev-list --left-right --count origin/main...HEAD
+```
+
+Le premier nombre indique les commits présents sur `main` mais absents de la branche ; le second indique les commits propres à la branche. Si le premier nombre est supérieur à zéro, la branche est **behind** par rapport à `main`. Si les deux nombres sont supérieurs à zéro, les historiques sont **divergents**.
+
+Dans ce cas, arrêter toute conclusion de compatibilité avec la version courante de `main`. Ne pas fusionner, merge ou rebase automatiquement la branche sans validation explicite : la synchronisation doit être décidée après examen des changements intervenus sur `main`.
+
 ## Vérification GitHub Actions
 
 Le workflow `.github/workflows/v150b2b-checks.yml` s'exécute :
