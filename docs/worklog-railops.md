@@ -204,3 +204,12 @@
 - Vercel a refusé le build du commit vert uniquement pour limite de builds du compte (`upgradeToPro=build-rate-limit`) ; ce statut n'est pas interprété comme une régression du code, les deux suites GitHub Actions étant vertes.
 - Aucun code applicatif de la branche, règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié.
 - Point nécessitant validation : décider explicitement comment synchroniser `security/v150b2b-rls-ready` avec les 12 commits récents de `main` avant de reprendre les smoke-tests de compatibilité ; aucun merge/rebase n'a été effectué.
+
+## 2026-08-22 — diagnostic client sans données sensibles 16:21 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, cible `main`, non fusionnée ; comparaison GitHub toujours divergente avec 12 commits présents sur `main` mais pas sur la branche. Supabase `railops` est `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1 ; Security Advisor relu en lecture seule, sans correction appliquée.
+- Amélioration réversible : ajout de `v150b2b-diagnostics.js`, helper de diagnostic qui expose uniquement version, rôle, mode propriétaire, page, état online et **comptages** (chantiers, matériels, scans, utilisateurs, stats Chef de chantier). Aucun nom, ID, référence matériel, QR ou contenu métier n'est inclus dans le snapshot.
+- Cycle rouge/vert vérifié par GitHub Actions : `436a092dd6962121534f649517267eb65f08fc0d` puis `efaf3112013b077f66c1fd3b3f9c2952253d22ea` ont fait échouer `v150B-2B checks` comme attendu avant implémentation/câblage ; `ba32ea62b096a5eba1d262e90294aa01a9d08dc9`, `311b9b80812b0ced5d21aff4406a1aca17ab5269` et `354227a5f8580bd49c6f64f492e2bd2b3a377ea5` ajoutent le helper, l'injection preview build `150b2b11` et les tests associés.
+- Vérification fraîche : `v150B-2B checks` run #82 et `RailOps lifecycle regression` run #116 sont tous deux `success` sur `354227a5f8580bd49c6f64f492e2bd2b3a377ea5`. Vercel reste limité par le quota de builds du compte, sans signal de régression applicative provenant des deux suites GitHub Actions.
+- Aucun changement de règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire. `main` reste intact et aucun merge/rebase n'a été tenté.
+- Point en attente inchangé : la synchronisation avec les 12 commits récents de `main` et les smoke-tests humains restent bloqués sur validation explicite ; aucun nouveau choix produit n'a été introduit par cette passe.
