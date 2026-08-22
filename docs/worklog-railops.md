@@ -239,3 +239,11 @@
 - Commit d'amélioration : `4b752e3f2226de18f1eed4d8d10cc458985e7a54` (`tests: harden safe diagnostics secret coverage`).
 - Vérification fraîche : test relu depuis GitHub puis exécuté localement avec le helper actuel (`PASS: v150B-2B diagnostics snapshot is metadata-only`) ; `node --check` du test passe également.
 - Aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
+
+## 2026-08-22 — durées par contrôle CI 20:19 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, cible `main`, non fusionnée ; comparaison fraîche toujours divergente (**12 commits behind / 121 ahead**) et projet Supabase `railops` `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1. Le Security Advisor a été relu en lecture seule, sans correction backend.
+- Amélioration réversible limitée aux tests/diagnostics : `tests/run-v150b2b-checks.js` mesure maintenant la durée de chaque contrôle et l'affiche avec son `PASS`, ce qui facilite l'identification d'un test qui ralentit avant d'atteindre le timeout de 30 secondes.
+- Cycle rouge/vert vérifié par GitHub Actions : `9c55b36dff3214ab58162afa4d1fe15a2a8c1ebc` (`tests: require per-check duration diagnostics`) a fait échouer `v150B-2B checks` run #104 comme attendu ; `b0d1271d9dc7e487b19011cfe8909e90615ea9e1` (`tests: report per-check durations`) rend `v150B-2B checks` run #106 et `RailOps lifecycle regression` run #128 tous deux `success`.
+- Aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact et aucun merge/rebase n'a été tenté.
+- Point en attente inchangé : la synchronisation de la branche avec les 12 commits récents de `main` et les smoke-tests humains nécessitent toujours une validation explicite ; aucun nouveau choix produit n'a été introduit par cette passe.
