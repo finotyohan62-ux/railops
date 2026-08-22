@@ -37,5 +37,13 @@ assert(
   !runner.includes("'v150b2b-loader.js',"),
   'aggregate runner should not require a manually maintained preview module manifest'
 );
+assert(
+  runner.includes('PASS: ${label}'),
+  'aggregate runner must identify each successful check in CI output'
+);
+assert(
+  runner.includes('FAIL: ${label} exited with code ${result.status ?? 1}'),
+  'aggregate runner must identify the exact failed check and exit code in CI output'
+);
 
-console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules`);
+console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with per-check diagnostics`);
