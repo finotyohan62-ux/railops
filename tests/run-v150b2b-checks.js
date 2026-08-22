@@ -26,11 +26,13 @@ if (!syntaxTargets.length) {
 
 function run(label, args) {
   process.stdout.write(`\n▶ ${label}\n`);
+  const startedAt = Date.now();
   const result = spawnSync(process.execPath, args, {
     cwd: root,
     stdio: 'inherit',
     timeout: CHECK_TIMEOUT_MS,
   });
+  const elapsedMs = Date.now() - startedAt;
   if (result.error?.code === 'ETIMEDOUT') {
     console.error(`FAIL: ${label} timed out after ${CHECK_TIMEOUT_MS}ms`);
     process.exit(1);
@@ -44,7 +46,7 @@ function run(label, args) {
     console.error(`FAIL: ${label} exited with code ${result.status ?? 1}`);
     process.exit(result.status ?? 1);
   }
-  console.log(`PASS: ${label}`);
+  console.log(`PASS: ${label} (${elapsedMs}ms)`);
 }
 
 for (const test of tests) run(test, [test]);
