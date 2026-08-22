@@ -5,6 +5,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const previewPath = path.join(root, 'v150b2b-test.html');
 const preview = fs.readFileSync(previewPath, 'utf8');
+const CHECK_TIMEOUT_MS = 30000;
 
 const tests = fs.readdirSync(__dirname)
   .filter(name => /^v150b2b-.*\.test\.js$/i.test(name))
@@ -30,7 +31,12 @@ function run(label, args) {
   const result = spawnSync(process.execPath, args, {
     cwd: root,
     stdio: 'inherit',
+    timeout: CHECK_TIMEOUT_MS,
   });
+  if (result.error?.code === 'ETIMEDOUT') {
+    console.error(`FAIL: ${label} timed out after ${CHECK_TIMEOUT_MS}ms`);
+    process.exit(1);
+  }
   if (result.error) {
     console.error(`FAIL: ${label} could not start`);
     console.error(result.error);
