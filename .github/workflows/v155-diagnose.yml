@@ -1,0 +1,33 @@
+name: Diagnose v155 refactor
+
+on:
+  push:
+    branches:
+      - refactor/v155-lifecycle-cleanup
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: contains(github.event.head_commit.message, '[v155-diagnose]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run refactor script and capture output
+        shell: bash
+        run: |
+          set +e
+          python scripts/v155_refactor.py > v155-refactor-diagnostic.txt 2>&1
+          status=$?
+          set -e
+          echo "exit_status=$status" >> v155-refactor-diagnostic.txt
+          git checkout -- index.html
+      - name: Commit diagnostic
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add v155-refactor-diagnostic.txt
+          git commit -m "test: capture v155 refactor diagnostic"
+          git push
