@@ -218,7 +218,7 @@
 
 - État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, non fusionnée ; `main` reste à `283fca36c07f990ad80613d2aac97c2de3ef7bcf` avec 12 commits absents de la branche, qui reste divergente. Supabase `railops` est `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.
 - Amélioration documentaire réversible : ajout de `docs/v150b2b-diagnostics-guide.md`, qui documente l’usage du snapshot de diagnostic, les champs autorisés, l’interdiction d’y ajouter noms/IDs/références/QR/payloads métier et la lecture attendue du cas Chef de chantier sans matériels/scans chargés.
-- Commit d’amélioration : `2aca165f81f32e7226c19091886d11703e866150` (`docs: document safe v150B-2B diagnostics`).
+- Commit d'amélioration : `2aca165f81f32e7226c19091886d11703e866150` (`docs: document safe v150B-2B diagnostics`).
 - Vérification fraîche : le document a été relu depuis la branche ; GitHub Actions `v150B-2B checks` run #86 et `RailOps lifecycle regression` run #118 sont `success` sur ce commit, et Vercel est également `success`.
 - Aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n’a été modifié. `main` reste intact ; aucun merge/rebase n’a été tenté.
 - Point en attente inchangé : la synchronisation de la branche avec les 12 commits récents de `main` et les smoke-tests humains nécessitent toujours une validation explicite ; aucun nouveau choix produit n’a été introduit par cette passe.
@@ -255,3 +255,11 @@
 - Cycle rouge/vert vérifié par GitHub Actions : `4fd142e864d2740ec16bdd29397eb8475a875ced` (`test: require CI context diagnostics in v150B2B runner`) fait échouer `v150B-2B checks` run #110 comme attendu ; `9fb72a2e89229d9ab67afbc889aeea8b9b5da6cc` (`test: print CI context in v150B2B runner`) rend `v150B-2B checks` run #112 et `RailOps lifecycle regression` run #131 tous deux `success`. Vercel est également `success` sur le commit vert.
 - Aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n’a été modifié ; `main` reste intact et aucun merge/rebase n’a été tenté.
 - Point en attente inchangé : la synchronisation avec les 12 commits de `main` et les smoke-tests humains restent soumis à validation explicite ; aucun nouveau choix produit n’a été introduit.
+
+## 2026-08-22 — collecte complète des échecs CI 22:16 Europe/Paris
+
+- État contrôlé avant modification : branche `security/v150b2b-rls-ready` toujours divergente de `main` (**12 commits behind / 127 ahead** au départ), PR non fusionnée ; Supabase `railops` `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1. Le Security Advisor a été relu en lecture seule, sans correction backend.
+- Amélioration réversible limitée aux tests/diagnostics : `tests/run-v150b2b-checks.js` ne s'arrête plus au premier contrôle en échec ; il exécute tous les tests et `node --check`, collecte les échecs, imprime un résumé final puis retourne un code non nul si nécessaire. Cela améliore le diagnostic CI sans toucher au runtime RailOps.
+- Commits : `a86eecf7f44b3e60136b65103185172c8335b4e2` (`tests: require full v150B-2B failure collection`) et `cf3a5d288c182711caba9a447fade9d1326a9ded` (`tests: report all v150B-2B check failures`).
+- Vérification fraîche : Vercel `success`; GitHub Actions `v150B-2B checks` run #118 et `RailOps lifecycle regression` run #134 sont tous deux `success` sur `cf3a5d288c182711caba9a447fade9d1326a9ded`.
+- Aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact et aucun merge/rebase n'a été tenté. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
