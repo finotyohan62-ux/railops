@@ -23,6 +23,10 @@ assert(
   html.includes('RailOpsHarness150B2B.neutralizeLegacyHtml(await r.text())'),
   'test page must pass the legacy HTML through the tested neutralizer'
 );
+assert(
+  html.includes('<pre role="alert" aria-live="assertive"'),
+  'preview load failures must be announced accessibly'
+);
 for (const adapter of [
   'v150b2b-loader.js',
   'v150b2b-chef-chantier-stats.js',
