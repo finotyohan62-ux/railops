@@ -4,6 +4,7 @@ on:
     branches:
       - refactor/modules-progressive-offline-css
       - refactor/modules-progressive-offline
+      - refactor/modules-progressive-offline-sync
   pull_request:
     branches:
       - main
@@ -23,3 +24,5 @@ jobs:
         run: node tests/lifecycle-refactor.test.js
       - name: Check legacy core extraction invariants
         run: node tests/legacy-core-extraction.test.js
+      - name: Check offline sync extraction invariants
+        run: node tests/sync-extraction.test.js
