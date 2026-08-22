@@ -13,7 +13,7 @@ assert(!html.includes('<script>const a0ax=a0b;'), 'the historical core must no l
 
 const core = fs.readFileSync(corePath, 'utf8');
 assert(core.includes('const a0ax=a0b;'), 'legacy core marker is missing');
-assert(core.includes("const OFFLINE_KEY='ro_offline_queue';"), 'offline queue logic must remain in the extracted core');
+assert(!core.includes("const OFFLINE_KEY='ro_offline_queue';"), 'offline queue logic must move out of the legacy core');
 assert(core.includes('const S='), 'application state must remain in the extracted core during physical extraction');
 assert(core.includes('createClient(SUPA_URL,SUPA_KEY)'), 'Supabase client initialization must remain in the extracted core');
 assert(core.length > 100000, 'legacy core extraction is unexpectedly small');
