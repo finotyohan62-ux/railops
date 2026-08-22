@@ -137,3 +137,11 @@
 - Commits : `51752628950d0ce707eacc1cdbc5463cb51c83ca` (`tests: guard v150B-2B CI workflow safety`) et `d45b240548991b8d7bb0c433f162f894b1cb8c4b` (`ci: cancel stale v150B-2B verification runs`).
 - Vérification fraîche : GitHub Actions `v150B-2B checks` run #16 est `success` sur `d45b240548991b8d7bb0c433f162f894b1cb8c4b` et Vercel est également `success` sur ce commit.
 - Aucun code de production, règle métier, permission applicative, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
+
+## 2026-08-22 — guide de vérification 08:15 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, base `main` inchangée ; head de départ `1fed829366064255d01cb47b9e24b1dcc4912eac` avec GitHub Actions run #18 `success` et Vercel `success`. Supabase `railops` reste `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.
+- Amélioration documentaire réversible : ajout de `docs/v150b2b-verification-guide.md` pour centraliser la commande de vérification locale, l'auto-découverte du lanceur, le comportement de la CI, la lecture des échecs et les garde-fous avant RLS/merge.
+- Commit : `d28801539943a4cf3e84eb37d53bc384716b5125` (`docs: add v150B-2B verification guide`).
+- Vérification fraîche : le nouveau document a été relu depuis la branche après commit ; la PR reste `draft`, non fusionnée, et cible toujours `main`. Aucun code de production, règle métier, permission, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié.
+- Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
