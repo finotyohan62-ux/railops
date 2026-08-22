@@ -52,4 +52,19 @@ assert.match(
   'CI and the verification guide must use the same runner entrypoint'
 );
 
+const forbiddenWorkflowActions = [
+  /supabase\s+(?:db\s+push|migration\s+up|functions\s+deploy|link)\b/i,
+  /psql\b/i,
+  /railops.*strict_rls\.sql/i,
+  /vercel\s+(?:deploy|--prod)\b/i,
+  /git\s+(?:push|merge)\b/i,
+];
+for (const pattern of forbiddenWorkflowActions) {
+  assert.doesNotMatch(
+    workflow,
+    pattern,
+    `verification CI must stay diagnostic-only and must not match ${pattern}`
+  );
+}
+
 console.log('PASS: v150B-2B verification documentation and CI contract');
