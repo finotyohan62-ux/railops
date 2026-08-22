@@ -34,6 +34,26 @@ assert.deepEqual(
   'Chef de chantier diagnostics must flag material/scan scope anomalies without exposing their contents'
 );
 
+const missingStats = createDiagnosticsSnapshot({
+  ...state,
+  chefChantierStats: [],
+}, { online: true });
+assert.deepEqual(
+  missingStats.warnings,
+  ['CHEF_CHANTIER_STATS_MISSING'],
+  'an online Chef de chantier with visible chantiers must flag missing aggregate stats'
+);
+
+const offlineMissingStats = createDiagnosticsSnapshot({
+  ...state,
+  chefChantierStats: [],
+}, { online: false });
+assert.equal(
+  Object.prototype.hasOwnProperty.call(offlineMissingStats, 'warnings'),
+  false,
+  'offline state must not report a server-stats warning'
+);
+
 const ownerMismatch = createDiagnosticsSnapshot({
   ...state,
   role: 'chef',
