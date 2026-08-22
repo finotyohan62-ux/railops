@@ -145,3 +145,11 @@
 - Commit : `d28801539943a4cf3e84eb37d53bc384716b5125` (`docs: add v150B-2B verification guide`).
 - Vérification fraîche : le nouveau document a été relu depuis la branche après commit ; la PR reste `draft`, non fusionnée, et cible toujours `main`. Aucun code de production, règle métier, permission, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié.
 - Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
+
+## 2026-08-22 — contrat guide / CI 09:17 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, cible `main`, non fusionnée ; Supabase `railops` reste `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1 et le Security Advisor a été relu en lecture seule, sans correction appliquée.
+- Amélioration réversible : ajout de `tests/v150b2b-verification-doc-contract.test.js` pour empêcher une dérive entre le guide de vérification et la CI : commande locale canonique, branche protégée, smoke-tests humains, PR vers `main`, permissions `contents: read`, Node.js 22, annulation des runs obsolètes et même lanceur agrégé.
+- Commit : `1380ffae91cfe0028ccdd1d21a7b0a66d44e34e8` (`tests: guard v150B-2B verification docs contract`).
+- Vérification fraîche : le nouveau test a été relu depuis GitHub et GitHub Actions `v150B-2B checks` run #24 s'est terminé avec conclusion `success` sur ce commit. Le téléchargement direct raw reste indisponible dans l'environnement (`Could not resolve host: raw.githubusercontent.com`), donc aucune vérification locale supplémentaire n'est revendiquée.
+- Aucun code de production, règle métier, permission applicative, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
