@@ -68,5 +68,17 @@ assert(
   runner.includes('PASS: ${label} (${elapsedMs}ms)'),
   'aggregate runner must include each successful check duration in CI output'
 );
+assert(
+  runner.includes("process.env.GITHUB_REF_NAME || 'local'"),
+  'aggregate runner must identify the GitHub ref or local execution context'
+);
+assert(
+  runner.includes("process.env.GITHUB_SHA?.slice(0, 12) || 'local'"),
+  'aggregate runner must include a compact GitHub SHA or local marker'
+);
+assert(
+  runner.includes('node=${process.version} ref=${runRef} sha=${runSha}'),
+  'aggregate runner must print Node, ref and SHA diagnostics before checks run'
+);
 
-console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with per-check diagnostics, durations and timeout guards`);
+console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with per-check diagnostics, durations, timeout guards and CI context`);
