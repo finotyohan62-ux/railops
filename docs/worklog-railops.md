@@ -231,3 +231,11 @@
 - Cycle rouge/vert local vérifié sur les fichiers concernés : le nouveau contrat échoue contre l'ancien guide avec l'assertion Supabase attendue, puis passe après la documentation (`PASS: v150B-2B verification documentation and CI contract`). Commits : `ed2bc45932655735a1ab8f6df02f1b43a3decca5` (`tests: require Supabase drift checkpoint`) et `d3e62191731a23c4d22a803e298e0543bb72340e` (`docs: add Supabase runtime drift gate`). Vercel est `success` sur le commit de test ; aucune conclusion GitHub Actions complète n'est revendiquée avant son statut final.
 - Aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact et aucun merge/rebase n'a été tenté.
 - Point nécessitant validation inchangé mais désormais renforcé : avant les smoke-tests, décider explicitement comment synchroniser la branche avec les 12 commits de `main` et revalider sa compatibilité avec l'état Supabase actuel, qui a évolué depuis le baseline historique.
+
+## 2026-08-22 — couverture secrets du diagnostic 19:13 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours sur `security/v150b2b-rls-ready`, sans merge ; comparaison fraîche avec `main` toujours divergente (**12 commits behind / 117 ahead**) et projet Supabase `railops` `ACTIVE_HEALTHY`. Le Security Advisor a été relu en lecture seule ; aucune correction backend n'a été appliquée.
+- Amélioration réversible limitée aux tests : `tests/v150b2b-diagnostics.test.js` couvre désormais explicitement l'absence de badge, `mdp`, mot de passe, access/refresh token et clé API, y compris lorsqu'ils sont présents dans l'état ou le runtime fourni au helper de diagnostic.
+- Commit d'amélioration : `4b752e3f2226de18f1eed4d8d10cc458985e7a54` (`tests: harden safe diagnostics secret coverage`).
+- Vérification fraîche : test relu depuis GitHub puis exécuté localement avec le helper actuel (`PASS: v150B-2B diagnostics snapshot is metadata-only`) ; `node --check` du test passe également.
+- Aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
