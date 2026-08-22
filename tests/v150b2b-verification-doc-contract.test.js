@@ -22,6 +22,21 @@ assert.match(
   'verification guide must retain the human smoke-test gate before strict RLS'
 );
 assert.match(
+  guide,
+  /git\s+(?:fetch|remote update)[\s\S]*?main/i,
+  'verification guide must explain how to refresh main before compatibility checks'
+);
+assert.match(
+  guide,
+  /behind|diverg/i,
+  'verification guide must require checking whether the security branch is behind or diverged from main'
+);
+assert.match(
+  guide,
+  /ne pas (?:fusionner|merge|rebase)[\s\S]*?sans validation/i,
+  'verification guide must prohibit automatic branch synchronization without approval'
+);
+assert.match(
   workflow,
   /- security\/v150b2b-rls-ready/,
   'CI must continue to run on pushes to the security branch'
