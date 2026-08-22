@@ -1,0 +1,24 @@
+name: RailOps lifecycle regression
+
+on:
+  push:
+    branches:
+      - main
+      - refactor/v155-lifecycle-cleanup
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  lifecycle-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check lifecycle invariants
+        run: node tests/lifecycle-refactor.test.js
