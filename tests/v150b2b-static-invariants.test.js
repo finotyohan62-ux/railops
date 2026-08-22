@@ -1,20 +1,18 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { extractPreviewModules } = require('./v150b2b-preview-modules.js');
 
 const root = path.resolve(__dirname, '..');
-const runtimeFiles = [
-  'v150b2b-loader.js',
-  'v150b2b-chef-chantier-stats.js',
-  'v150b2b-owner-mode.js',
-  'v150b2b-secure-admin.js',
-  'v150b2b-secure-delete.js',
-  'v150b2b-maintenance.js',
-];
 
 function read(file) {
   return fs.readFileSync(path.join(root, file), 'utf8');
 }
+
+const preview = read('v150b2b-test.html');
+const runtimeFiles = extractPreviewModules(preview);
+
+assert.ok(runtimeFiles.length > 0, 'preview must inject at least one v150B-2B runtime module');
 
 for (const file of runtimeFiles) {
   const source = read(file);
@@ -47,7 +45,6 @@ assert.match(
   'Chef de chantier aggregate stats must stay isolated in their dedicated state field'
 );
 
-const preview = read('v150b2b-test.html');
 assert.equal(
   preview.includes('20260821_v150b2b_strict_rls.sql'),
   false,
@@ -58,4 +55,4 @@ assert.ok(
   'secure loader must be injected before the Chef de chantier stats adapter'
 );
 
-console.log('PASS: v150B-2B static safety invariants');
+console.log(`PASS: v150B-2B static safety invariants (${runtimeFiles.length} preview modules covered)`);
