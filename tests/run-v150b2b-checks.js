@@ -10,6 +10,7 @@ const CHECK_TIMEOUT_MS = 30000;
 const runRef = process.env.GITHUB_REF_NAME || 'local';
 const runSha = process.env.GITHUB_SHA?.slice(0, 12) || 'local';
 const failures = [];
+const durations = [];
 
 const tests = fs.readdirSync(__dirname)
   .filter(name => /^v150b2b-.*\.test\.js$/i.test(name))
@@ -39,6 +40,7 @@ function run(label, args) {
     timeout: CHECK_TIMEOUT_MS,
   });
   const elapsedMs = Date.now() - startedAt;
+  durations.push({ label, elapsedMs });
   if (result.error?.code === 'ETIMEDOUT') {
     console.error(`FAIL: ${label} timed out after ${CHECK_TIMEOUT_MS}ms`);
     failures.push({ label, reason: 'timeout' });
@@ -61,6 +63,11 @@ function run(label, args) {
 
 for (const test of tests) run(test, [test]);
 for (const target of syntaxTargets) run(`node --check ${target}`, ['--check', target]);
+
+const slowest = [...durations].sort((a,b)=>b.elapsedMs-a.elapsedMs).slice(0,3);
+if (slowest.length) {
+  console.log(`\nℹ slowest checks: ${slowest.map(item => `${item.label} (${item.elapsedMs}ms)`).join(' · ')}`);
+}
 
 if (failures.length) {
   console.error(`\nFAIL: ${failures.length} v150B-2B check(s) failed`);
