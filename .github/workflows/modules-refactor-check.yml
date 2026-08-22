@@ -21,3 +21,5 @@ jobs:
         run: node tests/modules-refactor.test.js
       - name: Check shared lifecycle invariants
         run: node tests/lifecycle-refactor.test.js
+      - name: Check legacy core extraction invariants
+        run: node tests/legacy-core-extraction.test.js
