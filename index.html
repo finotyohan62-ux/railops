@@ -1617,5 +1617,65 @@ console.info('[RailOps] Correctif Auth actif —',VERSION);
 })();
 </script>
 
+<script id="railops-v154-inventory-responsible-label-fix">
+(function(){
+'use strict';
+const VERSION='154-inventory-responsible-label-fix';
+
+function normalizeTextNode(node){
+  const before=node.nodeValue||'';
+  let after=before.replace(/RESPONSABLE\s+INVENTAIRE\s*4\b/gi,'RESPONSABLE INVENTAIRE');
+  after=after.replace(/Responsable\s+semaine\s*:/gi,'RESPONSABLE INVENTAIRE :');
+  if(after!==before)node.nodeValue=after;
+}
+
+function normalizeInventoryLabels(){
+  try{
+    const root=document.getElementById('app')||document.body;
+    if(!root)return;
+
+    // Le libellé parasite exact peut provenir d'un nœud texte ou de deux enfants voisins.
+    const all=Array.from(root.querySelectorAll('*'));
+    for(const el of all){
+      const txt=(el.textContent||'').replace(/\s+/g,' ').trim();
+      if(/^RESPONSABLE INVENTAIRE\s*4$/i.test(txt)){
+        el.textContent='RESPONSABLE INVENTAIRE';
+      }
+    }
+
+    // L'ancien libellé « Responsable semaine » n'est renommé que dans les cartes Inventaire.
+    const cards=Array.from(root.querySelectorAll('.card')).filter(card=>{
+      const title=(card.querySelector('h3')?.textContent||'').trim();
+      const txt=(card.textContent||'').replace(/\s+/g,' ').trim();
+      return /^Inventaire$/i.test(title)||/Avancement inventaire/i.test(txt)||/RESPONSABLE INVENTAIRE/i.test(txt);
+    });
+    for(const card of cards){
+      const walker=document.createTreeWalker(card,NodeFilter.SHOW_TEXT);
+      let node;
+      while((node=walker.nextNode()))normalizeTextNode(node);
+    }
+  }catch(e){}
+}
+
+let timer=null;
+function schedule(){clearTimeout(timer);timer=setTimeout(normalizeInventoryLabels,20);}
+
+try{
+  const oldRender=window.render;
+  if(typeof oldRender==='function'){
+    window.render=function(){const r=oldRender.apply(this,arguments);schedule();return r;};
+    try{render=window.render;}catch(e){}
+  }
+}catch(e){}
+
+const root=document.getElementById('app')||document.body;
+if(root)new MutationObserver(schedule).observe(root,{childList:true,subtree:true,characterData:true});
+setTimeout(normalizeInventoryLabels,50);
+setTimeout(normalizeInventoryLabels,500);
+
+window.RailOpsInventoryLabel154={version:VERSION,apply:normalizeInventoryLabels};
+console.info('[RailOps] libellé responsable inventaire corrigé —',VERSION);
+})();
+</script>
 </body>
 </html>
