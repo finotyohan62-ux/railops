@@ -263,3 +263,12 @@
 - Commits : `a86eecf7f44b3e60136b65103185172c8335b4e2` (`tests: require full v150B-2B failure collection`) et `cf3a5d288c182711caba9a447fade9d1326a9ded` (`tests: report all v150B-2B check failures`).
 - Vérification fraîche : Vercel `success`; GitHub Actions `v150B-2B checks` run #118 et `RailOps lifecycle regression` run #134 sont tous deux `success` sur `cf3a5d288c182711caba9a447fade9d1326a9ded`.
 - Aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact et aucun merge/rebase n'a été tenté. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
+
+## 2026-08-22 — alertes de diagnostic de périmètre 23:21 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon, non fusionnée, sur `security/v150b2b-rls-ready`; comparaison fraîche toujours divergente (**12 commits behind / 130 ahead** au départ). Supabase `railops` reste `ACTIVE_HEALTHY`; Security Advisor relu en lecture seule, sans aucune correction backend.
+- Amélioration réversible : `v150b2b-diagnostics.js` ajoute uniquement des codes `warnings` metadata-only lorsque des incohérences de périmètre sont détectées : matériel ou scans présents dans un état `chef_chantier`, ou mode Administration propriétaire actif avec un rôle effectif différent de `admin`. Le champ reste absent quand l'état est sain afin de préserver la forme historique du snapshot.
+- Cycle rouge/vert local : le test dédié échoue d'abord avec `warnings === undefined`, puis passe après l'implémentation minimale; `node --check v150b2b-diagnostics.js` passe également. Commits : `1397af6c23f43b7a2491ce5281b805758f2f2f80` (`test: cover safe diagnostics scope warnings`), `6208a62ff6f6294a6a9e508764dd0e9c91833208` (`feat: add metadata-only diagnostics warnings`) et `477e194bf6988020b86f5b2b8f74db6c5fb19b61` (`docs: document diagnostics warning codes`).
+- Documentation mise à jour : `docs/v150b2b-diagnostics-guide.md` décrit les trois codes et rappelle qu'ils ne modifient aucun droit, chargement ni donnée et n'exposent aucun ID/référence métier.
+- Aucun changement de règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire; `main` reste intact et aucun merge/rebase n'a été tenté.
+- Point en attente inchangé : la synchronisation avec les 12 commits de `main` et les smoke-tests humains nécessitent toujours une validation explicite; aucun nouveau choix produit n'a été introduit par cette passe.
