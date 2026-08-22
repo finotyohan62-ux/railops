@@ -88,5 +88,13 @@ assert(
   runner.includes('FAIL: ${failures.length} v150B-2B check(s) failed'),
   'aggregate runner must print one concise failure summary after all checks have run'
 );
+assert(
+  runner.includes('const durations = [];') && runner.includes('durations.push({ label, elapsedMs })'),
+  'aggregate runner must collect per-check durations for an end-of-run summary'
+);
+assert(
+  runner.includes('ℹ slowest checks:') && runner.includes('.sort((a,b)=>b.elapsedMs-a.elapsedMs)') && runner.includes('.slice(0,3)'),
+  'aggregate runner must print the three slowest checks to make CI performance regressions obvious'
+);
 
-console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with per-check diagnostics, durations, timeout guards, CI context and complete failure collection`);
+console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with per-check diagnostics, durations, timeout guards, CI context, complete failure collection and slowest-check summary`);
