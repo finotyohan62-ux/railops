@@ -186,3 +186,11 @@
 - Test associé : `tests/v150b2b-harness.test.js` verrouille ce contrat d'accessibilité. Commits : `00fb4b7e71e796623ea1d31df533674eeca00928` (`tests: require accessible preview errors`) et `5e2a2f7442937748df02b0547d15541ccc3bd2cc` (`ux: announce preview load failures accessibly`).
 - Vérification fraîche : le test harness modifié et `node --check` passent localement ; GitHub Actions `v150B-2B checks` run #48 et `RailOps lifecycle regression` run #89 sont tous deux terminés avec conclusion `success` sur `5e2a2f7442937748df02b0547d15541ccc3bd2cc`.
 - Aucun code métier, règle de permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
+
+## 2026-08-22 — timeout par contrôle 14:14 Europe/Paris
+
+- État contrôlé avant modification : PR #1 ouverte en brouillon sur `security/v150b2b-rls-ready`, cible `main`, non fusionnée ; Supabase `railops` vérifié `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1. Aucun changement de base, RLS, permission ou donnée effectué.
+- Amélioration réversible limitée aux tests : `tests/run-v150b2b-checks.js` impose désormais un timeout de 30 secondes à chaque test/syntax check et affiche le nom exact du contrôle bloqué, afin qu'un processus suspendu ne consomme pas les 5 minutes complètes du workflow.
+- Cycle rouge/vert vérifié via CI : le commit de contrat `f3a34c4f9e848f97f099a53d6112b88a3642a17d` (`tests: require per-check timeout diagnostics`) a fait échouer `v150B-2B checks` run #52 comme attendu ; la correction minimale `a33942114ebe56e81d68f71ad922ae0f613054e3` (`tests: cap individual v150B-2B checks`) rend la suite verte.
+- Vérification fraîche : GitHub Actions `v150B-2B checks` run #54 et `RailOps lifecycle regression` run #92 sont tous deux `success` sur `a33942114ebe56e81d68f71ad922ae0f613054e3` ; Vercel est également `success`.
+- Aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
