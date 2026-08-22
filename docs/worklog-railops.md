@@ -119,3 +119,12 @@
 - Commit CI : `5568d35dcce14207fe84e4c74e8edf801716afeb` (`ci: run v150B-2B verification suite`).
 - Vérification fraîche : GitHub Actions a exécuté le job `checks` jusqu'au bout avec conclusion `success` (Checkout, Node.js 22 et suite v150B-2B tous verts) ; Vercel a également renvoyé `success` sur le même commit.
 - Aucun code de production, règle métier, Import, Multi-chantier, purge hebdomadaire, migration ou sécurité Supabase modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
+
+## 2026-08-22 — auto-découverte des vérifications 06:15 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, base `main` inchangée ; Supabase `railops` reste `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1 ; Vercel était vert sur le head de départ.
+- Amélioration réversible : `tests/run-v150b2b-checks.js` découvre maintenant automatiquement tous les fichiers `tests/v150b2b-*.test.js` et les modules JavaScript réellement injectés par `v150b2b-test.html`, supprimant les deux listes manuelles qui pouvaient devenir obsolètes.
+- Cycle rouge/vert : le garde-fou `tests/v150b2b-runner-coverage.test.js` a d'abord échoué contre l'ancien manifeste, puis passe après l'auto-découverte ; une assertion trop large a été affinée après avoir détecté un faux positif sur la syntaxe dynamique.
+- Commits : `dd34269c5ab3b11164b6c85b54c5e8b5d1b003d2` (`tests: require auto-discovered v150B-2B checks`), `daf1fb7bed4641f503e11872dd5ac530db0105fe` (`tests: auto-discover v150B-2B checks`) et `a12efe95cf60b24f0360c9ea6cea5cb9dece7c41` (`tests: refine runner auto-discovery guard`).
+- Vérification fraîche : `node --check` du lanceur et du garde-fou passe ; le garde-fou s'exécute avec succès sur une reconstruction locale fidèle (`PASS: aggregate runner auto-discovers 1 tests and 7 preview JavaScript modules`) ; GitHub Actions `v150B-2B checks` run #10 est `success` sur `a12efe95cf60b24f0360c9ea6cea5cb9dece7c41`, et Vercel est également `success` sur ce commit.
+- Aucun code de production, règle métier, permission, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
