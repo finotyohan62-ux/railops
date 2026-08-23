@@ -66,8 +66,26 @@ assert.deepEqual(
   'admin mode must be diagnosable when the effective role is not admin'
 );
 
+const staleAnonymous = createDiagnosticsSnapshot({
+  role: null,
+  page: 'login',
+  chantiers: [{ id: 'CHANTIER-SECRET' }],
+  mat: [{ id: 'MATERIAL-SECRET' }],
+  scans: [],
+  users: [],
+  chefChantierStats: [],
+}, { online: true });
+assert.deepEqual(
+  staleAnonymous.warnings,
+  ['SESSION_DATA_WITHOUT_ROLE'],
+  'diagnostics must flag residual in-memory data when no RailOps role is active'
+);
+
 const serialized = JSON.stringify(leaked);
 assert.equal(serialized.includes('MATERIAL-SECRET'), false);
 assert.equal(serialized.includes('SCAN-SECRET'), false);
+const serializedAnonymous = JSON.stringify(staleAnonymous);
+assert.equal(serializedAnonymous.includes('CHANTIER-SECRET'), false);
+assert.equal(serializedAnonymous.includes('MATERIAL-SECRET'), false);
 
 console.log('PASS: v150B-2B diagnostics warnings are metadata-only and backward-compatible');
