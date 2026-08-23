@@ -12,7 +12,7 @@ function assert(condition, message) {
 }
 
 assert(
-  html.includes('<script src="./v150b2b-harness-core.js?build=150b2b11"></script>'),
+  html.includes('<script src="./v150b2b-harness-core.js?build=150b2b12"></script>'),
   'test page must load the extracted harness core'
 );
 assert(
@@ -24,8 +24,8 @@ assert(
   'test page must pass the legacy HTML through the tested neutralizer'
 );
 assert(
-  html.includes('<pre role="alert" aria-live="assertive"'),
-  'preview load failures must be announced accessibly'
+  html.includes('RailOpsHarness150B2B.formatLoadErrorHtml(e)'),
+  'preview load failures must use the safe tested error renderer'
 );
 for (const adapter of [
   'v150b2b-loader.js',
