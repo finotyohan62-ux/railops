@@ -69,7 +69,9 @@ if (slowest.length) {
   console.log(`\nℹ slowest checks: ${slowest.map(item => `${item.label} (${item.elapsedMs}ms)`).join(' · ')}`);
 }
 const totalElapsedMs = durations.reduce((sum,item)=>sum+item.elapsedMs,0);
+const passedChecks = Math.max(0, durations.length - failures.length);
 console.log(`ℹ total check time: ${totalElapsedMs}ms`);
+console.log(`ℹ passed checks: ${passedChecks}/${durations.length}`);
 
 function writeStepSummary() {
   const summaryPath = process.env.GITHUB_STEP_SUMMARY;
@@ -81,6 +83,7 @@ function writeStepSummary() {
     `- Status: **${status}**`,
     `- Tests: **${tests.length}**`,
     `- Syntax targets: **${syntaxTargets.length}**`,
+    `- Passed checks: **${passedChecks}/${durations.length}**`,
     `- Failures: **${failures.length}**`,
     `- Total check time: **${totalElapsedMs}ms**`,
     `- Ref: \`${runRef}\``,
