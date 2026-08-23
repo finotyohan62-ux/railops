@@ -38,6 +38,7 @@ jobs:
           merge_base_sha="$(git merge-base origin/main HEAD | cut -c1-12)"
           merge_base_date="$(git show -s --format=%cI "${merge_base_sha}")"
           main_only_files="$(git diff --name-only HEAD..origin/main | head -n 20)"
+          main_only_commits="$(git log --oneline --no-decorate HEAD..origin/main | head -n 12)"
           echo "ℹ branch drift against main: behind=${behind} ahead=${ahead} main=${main_sha} branch=${head_sha} merge-base=${merge_base_sha} date=${merge_base_date}"
           {
             echo "## Branch drift diagnostic"
@@ -55,6 +56,15 @@ jobs:
               while IFS= read -r file; do
                 printf '%s\n' "- \`${file}\`"
               done <<< "${main_only_files}"
+            else
+              echo "- None"
+            fi
+            echo ""
+            echo "### Main-only commits (up to 12):"
+            if [ -n "${main_only_commits}" ]; then
+              while IFS= read -r commit; do
+                printf '%s\n' "- \`${commit}\`"
+              done <<< "${main_only_commits}"
             else
               echo "- None"
             fi
