@@ -298,3 +298,12 @@
 - Commit documentation : `823ecf9bc7afa66452768cc060e6e0932d5ebf66` (`docs: refresh Supabase advisor snapshot 2026-08-23`).
 - Vérification : le nouveau relevé a été relu depuis la branche ; aucune écriture Supabase, migration, policy, permission, index, donnée, règle métier, Import, Multi-chantier ou purge hebdomadaire n'a été modifiée. Aucun merge/rebase n'a été tenté et `main` reste intact.
 - Point en attente inchangé : la synchronisation avec les 12 commits de `main`, les smoke-tests humains et toute correction de sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
+
+## 2026-08-23 — temps total des contrôles CI 03:16 Europe/Paris
+
+- État contrôlé avant modification : `security/v150b2b-rls-ready` toujours divergente de `main` (**12 commits behind / 143 ahead** au départ), sans merge ; Supabase `railops` vérifié `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1. Contrôle RLS/policies effectué en lecture seule : RLS actif sur les huit tables cœur suivies et aucune policy publique `qual=true` détectée.
+- Amélioration réversible limitée aux tests/diagnostics : `tests/run-v150b2b-checks.js` additionne désormais les durées de tous les contrôles enfants et affiche `total check time`, afin de rendre visible une dérive globale du coût CI en complément du top 3 des checks les plus lents.
+- Cycle test/implémentation : `1da66d700e10db03ec9c5fdcea102482092ad8d3` (`test: require total v150B2B check duration`) pose le contrat ; `91870a62d53a7f2b30221cc33c90be0b54b5cb06` (`tests: report total v150B2B check time`) ajoute l'implémentation minimale.
+- Vérification fraîche : GitHub Actions `v150B-2B checks` run #150 et `RailOps lifecycle regression` run #150 sont tous deux `success` sur `91870a62d53a7f2b30221cc33c90be0b54b5cb06`; Vercel est également `success` sur ce commit.
+- État avant journalisation : branche toujours divergente, désormais **12 commits behind / 145 ahead** ; aucun merge/rebase n'a été tenté.
+- Aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit ; les points en attente historiques (synchronisation de `main`, smoke-tests humains, corrections sécurité/performance) restent inchangés.
