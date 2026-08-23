@@ -68,6 +68,8 @@ const slowest = [...durations].sort((a,b)=>b.elapsedMs-a.elapsedMs).slice(0,3);
 if (slowest.length) {
   console.log(`\nℹ slowest checks: ${slowest.map(item => `${item.label} (${item.elapsedMs}ms)`).join(' · ')}`);
 }
+const totalElapsedMs = durations.reduce((sum,item)=>sum+item.elapsedMs,0);
+console.log(`ℹ total check time: ${totalElapsedMs}ms`);
 
 if (failures.length) {
   console.error(`\nFAIL: ${failures.length} v150B-2B check(s) failed`);
