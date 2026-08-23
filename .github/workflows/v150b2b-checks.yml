@@ -37,6 +37,7 @@ jobs:
           head_sha="$(git rev-parse --short=12 HEAD)"
           merge_base_sha="$(git merge-base origin/main HEAD | cut -c1-12)"
           merge_base_date="$(git show -s --format=%cI "${merge_base_sha}")"
+          main_only_files="$(git diff --name-only HEAD..origin/main | head -n 20)"
           echo "ℹ branch drift against main: behind=${behind} ahead=${ahead} main=${main_sha} branch=${head_sha} merge-base=${merge_base_sha} date=${merge_base_date}"
           {
             echo "## Branch drift diagnostic"
@@ -48,6 +49,15 @@ jobs:
             printf '%s\n' "- Merge base: **\`${merge_base_sha}\`**"
             printf '%s\n' "- Merge-base date: **${merge_base_date}**"
             echo "- Branch drift is informational only; no merge or rebase is performed."
+            echo ""
+            echo "### Main-only changed files (up to 20):"
+            if [ -n "${main_only_files}" ]; then
+              while IFS= read -r file; do
+                printf '%s\n' "- \`${file}\`"
+              done <<< "${main_only_files}"
+            else
+              echo "- None"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Setup Node.js
