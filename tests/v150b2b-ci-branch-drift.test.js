@@ -80,6 +80,14 @@ assert(
   'step summary should expose the complete main-only commit count'
 );
 assert(
+  workflow.includes('app_file_count=') && workflow.includes('tests_file_count=') && workflow.includes('backend_file_count='),
+  'drift diagnostic should classify main-only file impact into app, tests and backend areas'
+);
+assert(
+  workflow.includes('Main-only impact: app=') && workflow.includes('tests=') && workflow.includes('backend='),
+  'step summary should expose main-only impact counts by compatibility area'
+);
+assert(
   workflow.includes('Main SHA:') && workflow.includes('${main_sha}'),
   'step summary should record the main SHA used for the drift calculation'
 );
@@ -100,4 +108,4 @@ assert(
   'step summary must make the non-mutating nature of the diagnostic explicit'
 );
 
-console.log('PASS: v150B-2B CI reports branch drift with immutable comparison context, complete counts and bounded main-only file/commit diagnostics');
+console.log('PASS: v150B-2B CI reports branch drift with immutable comparison context, complete counts, impact categories and bounded main-only file/commit diagnostics');
