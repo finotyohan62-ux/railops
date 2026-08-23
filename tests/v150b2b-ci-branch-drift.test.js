@@ -56,6 +56,14 @@ assert(
   'main-only file diagnostics must stay bounded and readable'
 );
 assert(
+  workflow.includes("git log --oneline --no-decorate HEAD..origin/main | head -n 12"),
+  'drift diagnostic should list a bounded set of commits present on main but absent from the branch'
+);
+assert(
+  workflow.includes('Main-only commits (up to 12):'),
+  'step summary should expose bounded main-only commit subjects for compatibility triage'
+);
+assert(
   workflow.includes('Main SHA:') && workflow.includes('${main_sha}'),
   'step summary should record the main SHA used for the drift calculation'
 );
@@ -76,4 +84,4 @@ assert(
   'step summary must make the non-mutating nature of the diagnostic explicit'
 );
 
-console.log('PASS: v150B-2B CI reports branch drift with immutable comparison context and bounded main-only file diagnostics');
+console.log('PASS: v150B-2B CI reports branch drift with immutable comparison context and bounded main-only file/commit diagnostics');
