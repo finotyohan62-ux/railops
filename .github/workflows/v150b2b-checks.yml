@@ -41,8 +41,8 @@ jobs:
             echo ""
             echo "- Behind main: **${behind}** commit(s)"
             echo "- Ahead of main: **${ahead}** commit(s)"
-            echo '- Main SHA: **`'"${main_sha}"'`**'
-            echo '- Branch SHA: **`'"${head_sha}"'`**'
+            printf '%s\n' "- Main SHA: **\`${main_sha}\`**"
+            printf '%s\n' "- Branch SHA: **\`${head_sha}\`**"
             echo "- Branch drift is informational only; no merge or rebase is performed."
           } >> "$GITHUB_STEP_SUMMARY"
 
