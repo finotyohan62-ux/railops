@@ -16,5 +16,17 @@
     html=html.replace(silentMarker,silentMarker+'return;');
     return html;
   }
-  return {neutralizeLegacyHtml};
+  function escapeHtml(value){
+    return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function formatLoadErrorHtml(error){
+    const message=escapeHtml(error&&error.message||error||'Erreur inconnue');
+    return '<main style="font:16px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;max-width:680px;margin:48px auto;padding:0 20px;color:#f0f0f0">'
+      +'<div role="alert" aria-live="assertive" style="background:#1a1d26;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:20px">'
+      +'<strong style="display:block;margin-bottom:8px">Impossible de charger RailOps v150B-2B</strong>'
+      +'<code style="display:block;overflow-wrap:anywhere;color:#c6cad4">'+message+'</code>'
+      +'<button type="button" onclick="location.reload()" style="margin-top:18px;padding:10px 14px;border:0;border-radius:10px;cursor:pointer">Réessayer</button>'
+      +'</div></main>';
+  }
+  return {neutralizeLegacyHtml,formatLoadErrorHtml};
 });
