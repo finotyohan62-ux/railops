@@ -19,7 +19,11 @@ assert(hasAll(app, ['left:0','right:0','min-width:0','max-width:100%']), '#app m
 assert(hasAll(rule('.screen'), ['min-width:0','max-width:100%','overflow-x:hidden']), 'screens must not widen the app');
 assert(rule('.stat-grid').includes('grid-template-columns:minmax(0,1fr) minmax(0,1fr)'), 'stat grid tracks must be shrinkable');
 assert(rule('.rg2').includes('grid-template-columns:minmax(0,1fr) minmax(0,1fr)'), 'two-column form grid tracks must be shrinkable');
-assert(rule('.bnav').includes('safe-area-inset-bottom') && hasAll(rule('.ni'), ['min-width:0','min-height:44px']), 'bottom navigation must be safe-area aware and shrinkable');
+const bnav = rule('.bnav');
+const navItem = rule('.ni');
+assert(bnav.includes('safe-area-inset-bottom') && hasAll(navItem, ['min-width:0','min-height:44px']), 'bottom navigation must be safe-area aware and shrinkable');
+assert(bnav.includes('padding:0 0 max(8px,env(safe-area-inset-bottom,0px))'), 'bottom navigation must not add extra top padding above the 44px tap row');
+assert(hasAll(navItem, ['justify-content:flex-end','padding:0 0 2px']), 'bottom navigation content must sit low in the safe 44px tap row');
 assert(hasAll(rule('.nl'), ['white-space:nowrap','overflow:hidden']), 'bottom navigation labels must remain inside their tab');
 assert(rule('.fab').includes('safe-area-inset-bottom'), 'floating action button must account for the iPhone home indicator');
 assert(hasAll(rule('.msheet'), ['max-height:92dvh','safe-area-inset-bottom']), 'modal sheet must use dynamic viewport and bottom safe area');

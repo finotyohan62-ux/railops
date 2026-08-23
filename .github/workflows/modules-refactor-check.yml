@@ -5,6 +5,7 @@ on:
       - refactor/modules-progressive-offline-css
       - refactor/modules-progressive-offline
       - fix/iphone-safari-layout-v1
+      - fix/iphone-bottom-nav-v2
   pull_request:
     branches:
       - main
