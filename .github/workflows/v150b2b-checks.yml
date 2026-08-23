@@ -33,12 +33,16 @@ jobs:
         run: |
           git fetch --no-tags origin main:refs/remotes/origin/main
           read -r behind ahead <<< "$(git rev-list --left-right --count origin/main...HEAD)"
-          echo "ℹ branch drift against main: behind=${behind} ahead=${ahead}"
+          main_sha="$(git rev-parse --short=12 origin/main)"
+          head_sha="$(git rev-parse --short=12 HEAD)"
+          echo "ℹ branch drift against main: behind=${behind} ahead=${ahead} main=${main_sha} branch=${head_sha}"
           {
             echo "## Branch drift diagnostic"
             echo ""
             echo "- Behind main: **${behind}** commit(s)"
             echo "- Ahead of main: **${ahead}** commit(s)"
+            echo '- Main SHA: **`'"${main_sha}"'`**'
+            echo '- Branch SHA: **`'"${head_sha}"'`**'
             echo "- Branch drift is informational only; no merge or rebase is performed."
           } >> "$GITHUB_STEP_SUMMARY"
 
