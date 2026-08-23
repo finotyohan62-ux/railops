@@ -71,6 +71,35 @@ if (slowest.length) {
 const totalElapsedMs = durations.reduce((sum,item)=>sum+item.elapsedMs,0);
 console.log(`ℹ total check time: ${totalElapsedMs}ms`);
 
+function writeStepSummary() {
+  const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+  if (!summaryPath) return;
+  const status = failures.length ? '❌ Failed' : '✅ Passed';
+  const lines = [
+    '## v150B-2B verification summary',
+    '',
+    `- Status: **${status}**`,
+    `- Tests: **${tests.length}**`,
+    `- Syntax targets: **${syntaxTargets.length}**`,
+    `- Failures: **${failures.length}**`,
+    `- Total check time: **${totalElapsedMs}ms**`,
+    `- Ref: \`${runRef}\``,
+    `- SHA: \`${runSha}\``,
+  ];
+  if (slowest.length) lines.push(`- Slowest: ${slowest.map(item => `\`${item.label}\` (${item.elapsedMs}ms)`).join(' · ')}`);
+  if (failures.length) {
+    lines.push('', '### Failures');
+    for (const failure of failures) lines.push(`- \`${failure.label}\`: ${failure.reason}`);
+  }
+  try {
+    fs.appendFileSync(summaryPath, `${lines.join('\n')}\n`);
+  } catch (error) {
+    console.warn(`WARN: could not write GitHub step summary: ${error?.message || error}`);
+  }
+}
+
+writeStepSummary();
+
 if (failures.length) {
   console.error(`\nFAIL: ${failures.length} v150B-2B check(s) failed`);
   for (const failure of failures) console.error(` - ${failure.label}: ${failure.reason}`);
