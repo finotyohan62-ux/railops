@@ -78,3 +78,20 @@ Le Security Advisor confirme toujours les cinq informations `RLS Enabled No Poli
 Point de diagnostic important : `public.materiel` et `public.materiels` existent simultanément et n'ont pas le même état de policies (`0` contre `4`). Cette observation est uniquement consignée pour éviter une confusion de nom de table lors des prochains audits ; aucune conclusion fonctionnelle ni correction automatique n'en est déduite.
 
 Ce snapshot ne permet pas d'attribuer l'état actuel à une migration précise ni de considérer la migration préparée `20260821_v150b2b_strict_rls.sql` comme appliquée. Toute modification de sécurité, de droits ou de schéma reste explicitement hors périmètre sans validation utilisateur.
+
+## Relevé comparatif — 2026-08-23 02:12 Europe/Paris
+
+Contrôle effectué en lecture seule avant toute nouvelle intervention sur la branche. Le projet `railops` reste `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1. Aucun changement Supabase n'a été appliqué pendant ce relevé.
+
+Le Security Advisor est stable sur les points déjà documentés :
+
+- les cinq informations `RLS Enabled No Policy` restent présentes sur `public.agents`, `public.inspections`, `public.materiel`, `public.railops_auth_throttle` et `public.railops_legacy_credentials` ;
+- les avertissements `SECURITY DEFINER` exécutables par `authenticated` restent présents sur les RPC RailOps exposées ;
+- la protection Supabase Auth contre les mots de passe compromis reste désactivée ;
+- aucune alerte « RLS désactivée » sur `public.deleted_ids` ou `public.prix_catalogue` n'est remontée par le relevé courant.
+
+Le Performance Advisor signale par ailleurs deux clés étrangères non indexées sur `public.inspections` (`inspections_agent_id_fkey` et `inspections_materiel_id_fkey`). Ces informations sont consignées comme diagnostic uniquement : aucune création d'index ni modification de schéma n'est effectuée automatiquement.
+
+Côté GitHub, `security/v150b2b-rls-ready` est observée divergente de `main` avec 141 commits d'avance et 12 commits de retard au moment du relevé. Cette dérive interdit toute assimilation automatique entre le code de la branche et l'état actuel de production ; aucun merge/rebase n'est tenté depuis ce flux.
+
+Conclusion de ce relevé : aucun nouvel élément ne justifie une modification automatique de sécurité, de permissions ou de schéma. Les écarts restent à traiter uniquement après décision explicite et smoke-tests adaptés.
