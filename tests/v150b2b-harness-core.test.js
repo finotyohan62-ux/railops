@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const { neutralizeLegacyHtml } = require('../v150b2b-harness-core.js');
+const { neutralizeLegacyHtml, formatLoadErrorHtml } = require('../v150b2b-harness-core.js');
 
 function fixture({ load = true, silentSync = true } = {}) {
   return `<!doctype html><body><script>\n${load ? 'async function load(){LEGACY_LOAD_BODY}function eL(' : 'function eL('}\n${silentSync ? 'async function silentSync(){LEGACY_SYNC_BODY}' : 'function otherSync(){LEGACY_SYNC_BODY}'}\n</script></body>`;
@@ -21,5 +21,14 @@ assert.throws(
   () => neutralizeLegacyHtml(fixture({ silentSync: false })),
   /LEGACY_SILENT_SYNC_NOT_FOUND/
 );
+
+{
+  const html = formatLoadErrorHtml(new Error('<img src=x onerror=alert(1)>'));
+  assert.match(html, /role="alert"/);
+  assert.match(html, /aria-live="assertive"/);
+  assert.match(html, /Réessayer/);
+  assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.doesNotMatch(html, /<img src=x onerror=alert\(1\)>/);
+}
 
 console.log('v150b2b harness core: OK');
