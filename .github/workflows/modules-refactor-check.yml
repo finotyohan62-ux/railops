@@ -4,6 +4,7 @@ on:
     branches:
       - refactor/modules-progressive-offline-css
       - refactor/modules-progressive-offline
+      - fix/mobile-horizontal-overflow
   pull_request:
     branches:
       - main
@@ -19,5 +20,7 @@ jobs:
           node-version: '22'
       - name: Check module extraction invariants
         run: node tests/modules-refactor.test.js
+      - name: Check mobile layout invariants
+        run: node tests/mobile-layout-regression.test.js
       - name: Check shared lifecycle invariants
         run: node tests/lifecycle-refactor.test.js
