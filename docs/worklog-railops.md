@@ -290,3 +290,11 @@
 - Vérification fraîche : test ciblé et `node --check` passent localement ; GitHub Actions `v150B-2B checks` run #140 et `RailOps lifecycle regression` run #145 sont tous deux `success` sur `a38a8417d363798aeed10a4d532569f3facdb709`; Vercel est également `success`.
 - État après modification : branche toujours divergente, désormais **12 commits behind / 140 ahead** ; aucun merge/rebase n’a été tenté. Aucun changement de règle métier, permission, migration, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire.
 - Point en attente inchangé : synchronisation avec les 12 commits de `main` et smoke-tests humains toujours soumis à validation explicite ; aucun nouveau choix produit n’a été introduit par cette passe.
+
+## 2026-08-23 — relevé advisors en lecture seule 02:12 Europe/Paris
+
+- État contrôlé avant modification : `security/v150b2b-rls-ready` toujours divergente de `main` (**12 commits behind / 141 ahead** au départ), sans merge ; Supabase `railops` toujours `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.
+- Amélioration documentaire réversible : `docs/security-advisor-baseline.md` reçoit un nouveau relevé comparatif daté. Le Security Advisor reste stable sur les cinq `RLS Enabled No Policy`, les avertissements `SECURITY DEFINER` et la protection contre les mots de passe compromis désactivée. Le Performance Advisor signale deux clés étrangères non indexées sur `public.inspections`, consignées uniquement comme diagnostic.
+- Commit documentation : `823ecf9bc7afa66452768cc060e6e0932d5ebf66` (`docs: refresh Supabase advisor snapshot 2026-08-23`).
+- Vérification : le nouveau relevé a été relu depuis la branche ; aucune écriture Supabase, migration, policy, permission, index, donnée, règle métier, Import, Multi-chantier ou purge hebdomadaire n'a été modifiée. Aucun merge/rebase n'a été tenté et `main` reste intact.
+- Point en attente inchangé : la synchronisation avec les 12 commits de `main`, les smoke-tests humains et toute correction de sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
