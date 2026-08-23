@@ -44,6 +44,14 @@ assert(
   'drift diagnostic should capture the common ancestor commit date'
 );
 assert(
+  workflow.includes('main_only_file_count="$(git diff --name-only HEAD..origin/main | wc -l | tr -d'),
+  'drift diagnostic should count all files changed only on main'
+);
+assert(
+  workflow.includes('main_only_commit_count="$(git rev-list --count HEAD..origin/main)"'),
+  'drift diagnostic should count all commits present only on main'
+);
+assert(
   workflow.includes('git diff --name-only HEAD..origin/main'),
   'drift diagnostic should list files changed only on main since the branch diverged'
 );
@@ -62,6 +70,14 @@ assert(
 assert(
   workflow.includes('Main-only commits (up to 12):'),
   'step summary should expose bounded main-only commit subjects for compatibility triage'
+);
+assert(
+  workflow.includes('Main-only changed file count:') && workflow.includes('${main_only_file_count}'),
+  'step summary should expose the complete main-only changed-file count'
+);
+assert(
+  workflow.includes('Main-only commit count:') && workflow.includes('${main_only_commit_count}'),
+  'step summary should expose the complete main-only commit count'
 );
 assert(
   workflow.includes('Main SHA:') && workflow.includes('${main_sha}'),
@@ -84,4 +100,4 @@ assert(
   'step summary must make the non-mutating nature of the diagnostic explicit'
 );
 
-console.log('PASS: v150B-2B CI reports branch drift with immutable comparison context and bounded main-only file/commit diagnostics');
+console.log('PASS: v150B-2B CI reports branch drift with immutable comparison context, complete counts and bounded main-only file/commit diagnostics');
