@@ -24,5 +24,15 @@ assert.match(
   /totalElapsedMs/,
   'step summary should include the total check duration already measured by the runner'
 );
+assert.match(
+  runner,
+  /Passed checks/,
+  'step summary should report how many discovered checks completed successfully'
+);
+assert.match(
+  runner,
+  /passedChecks/,
+  'passed-check count should be computed explicitly rather than inferred from a success banner'
+);
 
 console.log('PASS: v150B-2B runner publishes a concise GitHub Actions step summary');
