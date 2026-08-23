@@ -38,7 +38,7 @@ jobs:
           merge_base_sha="$(git merge-base origin/main HEAD | cut -c1-12)"
           merge_base_date="$(git show -s --format=%cI "${merge_base_sha}")"
           main_only_all_files="$(git diff --name-only HEAD..origin/main)"
-          main_only_file_count="$(printf '%s\n' "${main_only_all_files}" | awk 'NF{n++} END{print n+0}')"
+          main_only_file_count="$(git diff --name-only HEAD..origin/main | wc -l | tr -d ' ')"
           main_only_commit_count="$(git rev-list --count HEAD..origin/main)"
           app_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^(index\.html|[^/]+\.(js|html))$/{n++} END{print n+0}')"
           tests_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^(tests\/|\.github\/)/{n++} END{print n+0}')"
