@@ -78,6 +78,18 @@ assert.deepEqual(
   'admin mode must be diagnosable when the effective role is not admin'
 );
 
+const adminModeWithoutOwner = createDiagnosticsSnapshot({
+  ...state,
+  role: 'admin',
+  isAdminOwner: false,
+  __ownerAdminMode: true,
+}, {});
+assert.deepEqual(
+  adminModeWithoutOwner.warnings,
+  ['OWNER_ADMIN_MODE_WITHOUT_OWNER'],
+  'admin mode must be diagnosable when no owner privilege is present'
+);
+
 const staleAnonymous = createDiagnosticsSnapshot({
   role: null,
   page: 'login',
