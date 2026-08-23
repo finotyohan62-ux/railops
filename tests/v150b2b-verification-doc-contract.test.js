@@ -77,12 +77,24 @@ assert.match(
   'CI and the verification guide must use the same runner entrypoint'
 );
 
+const forbiddenGitMutation = /git\s+(?:push\b|merge(?=\s|$))/i;
+assert.doesNotMatch(
+  'git merge-base origin/main HEAD',
+  forbiddenGitMutation,
+  'read-only merge-base inspection must not be confused with git merge'
+);
+assert.match(
+  'git merge origin/main',
+  forbiddenGitMutation,
+  'the guard must continue rejecting a real git merge command'
+);
+
 const forbiddenWorkflowActions = [
   /supabase\s+(?:db\s+push|migration\s+up|functions\s+deploy|link)\b/i,
   /psql\b/i,
   /railops.*strict_rls\.sql/i,
   /vercel\s+(?:deploy|--prod)\b/i,
-  /git\s+(?:push|merge)\b/i,
+  forbiddenGitMutation,
 ];
 for (const pattern of forbiddenWorkflowActions) {
   assert.doesNotMatch(
