@@ -34,6 +34,18 @@ assert.deepEqual(
   'Chef de chantier diagnostics must flag material/scan scope anomalies without exposing their contents'
 );
 
+const staleCatalogue = createDiagnosticsSnapshot({
+  ...state,
+  role: 'agent',
+  prixCatalogue: [{ ref: 'CATALOGUE-SECRET', prix: 123 }],
+}, {});
+assert.deepEqual(
+  staleCatalogue.warnings,
+  ['CATALOGUE_SCOPE_LEAK'],
+  'non Chef/Admin diagnostics must flag residual catalogue data without exposing catalogue contents'
+);
+assert.equal(JSON.stringify(staleCatalogue).includes('CATALOGUE-SECRET'), false);
+
 const missingStats = createDiagnosticsSnapshot({
   ...state,
   chefChantierStats: [],
