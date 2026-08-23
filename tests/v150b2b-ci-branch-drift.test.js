@@ -36,6 +36,14 @@ assert(
   'drift diagnostic should capture the exact branch commit being compared'
 );
 assert(
+  workflow.includes('merge_base_sha="$(git merge-base origin/main HEAD | cut -c1-12)"'),
+  'drift diagnostic should capture the common ancestor used to contextualize divergence'
+);
+assert(
+  workflow.includes('merge_base_date="$(git show -s --format=%cI "${merge_base_sha}")"'),
+  'drift diagnostic should capture the common ancestor commit date'
+);
+assert(
   workflow.includes('Main SHA:') && workflow.includes('${main_sha}'),
   'step summary should record the main SHA used for the drift calculation'
 );
@@ -44,8 +52,16 @@ assert(
   'step summary should record the branch SHA used for the drift calculation'
 );
 assert(
+  workflow.includes('Merge base:') && workflow.includes('${merge_base_sha}'),
+  'step summary should record the common ancestor SHA'
+);
+assert(
+  workflow.includes('Merge-base date:') && workflow.includes('${merge_base_date}'),
+  'step summary should record the common ancestor date'
+);
+assert(
   workflow.includes('Branch drift is informational only; no merge or rebase is performed.'),
   'step summary must make the non-mutating nature of the diagnostic explicit'
 );
 
-console.log('PASS: v150B-2B CI reports branch drift without mutating git state');
+console.log('PASS: v150B-2B CI reports branch drift with immutable comparison context');
