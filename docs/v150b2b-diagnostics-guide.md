@@ -59,7 +59,9 @@ Codes actuellement possibles :
 - `CHEF_CHANTIER_MATERIAL_SCOPE_LEAK` : un état `chef_chantier` contient au moins une ligne matériel alors que ce rôle doit fonctionner uniquement avec des statistiques agrégées ;
 - `CHEF_CHANTIER_SCAN_SCOPE_LEAK` : un état `chef_chantier` contient au moins un scan ;
 - `CHEF_CHANTIER_STATS_MISSING` : l’application est en ligne, le rôle `chef_chantier` voit au moins un chantier, mais aucune ligne de statistiques agrégées n’a été chargée ; ce signal aide à distinguer un chargement statistique manquant d’un tableau réellement vide ;
+- `CATALOGUE_SCOPE_LEAK` : un rôle autre que `chef` ou `admin` conserve des lignes de catalogue en mémoire ; seul le comptage est signalé, jamais les références ou les prix ;
 - `OWNER_ADMIN_MODE_ROLE_MISMATCH` : le mode Administration propriétaire est marqué actif alors que le rôle effectif n’est pas `admin` ;
+- `OWNER_ADMIN_MODE_WITHOUT_OWNER` : le mode Administration est marqué actif alors que l’indicateur propriétaire `adminOwner` est faux ; ce signal repère uniquement une incohérence d’état client et ne change aucun droit ;
 - `SESSION_DATA_WITHOUT_ROLE` : aucun rôle RailOps n’est actif mais au moins un des tableaux internes contient encore des lignes ; ce signal permet de repérer un état mémoire résiduel après déconnexion sans exposer le contenu concerné.
 
 Ces codes sont des signaux de diagnostic uniquement. Ils ne modifient aucun droit, aucune donnée, aucun chargement et ne contiennent ni ID ni référence métier. L’alerte `CHEF_CHANTIER_STATS_MISSING` n’est pas produite en mode hors-ligne afin d’éviter un faux positif lorsque le serveur n’est pas joignable.
