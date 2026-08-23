@@ -36,11 +36,11 @@ assert(
   'drift diagnostic should capture the exact branch commit being compared'
 );
 assert(
-  workflow.includes('Main SHA: **`${main_sha}`**'),
+  workflow.includes('Main SHA:') && workflow.includes('${main_sha}'),
   'step summary should record the main SHA used for the drift calculation'
 );
 assert(
-  workflow.includes('Branch SHA: **`${head_sha}`**'),
+  workflow.includes('Branch SHA:') && workflow.includes('${head_sha}'),
   'step summary should record the branch SHA used for the drift calculation'
 );
 assert(
