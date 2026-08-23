@@ -44,6 +44,18 @@ assert(
   'drift diagnostic should capture the common ancestor commit date'
 );
 assert(
+  workflow.includes('git diff --name-only HEAD..origin/main'),
+  'drift diagnostic should list files changed only on main since the branch diverged'
+);
+assert(
+  workflow.includes('Main-only changed files (up to 20):'),
+  'step summary should expose a bounded main-only file list for compatibility triage'
+);
+assert(
+  workflow.includes('head -n 20'),
+  'main-only file diagnostics must stay bounded and readable'
+);
+assert(
   workflow.includes('Main SHA:') && workflow.includes('${main_sha}'),
   'step summary should record the main SHA used for the drift calculation'
 );
@@ -64,4 +76,4 @@ assert(
   'step summary must make the non-mutating nature of the diagnostic explicit'
 );
 
-console.log('PASS: v150B-2B CI reports branch drift with immutable comparison context');
+console.log('PASS: v150B-2B CI reports branch drift with immutable comparison context and bounded main-only file diagnostics');
