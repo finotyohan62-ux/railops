@@ -28,6 +28,7 @@
     if(snapshot.role==='chef_chantier'&&snapshot.counts.scans>0)warnings.push('CHEF_CHANTIER_SCAN_SCOPE_LEAK');
     if(snapshot.role==='chef_chantier'&&snapshot.online===true&&snapshot.counts.chantiers>0&&snapshot.counts.chefChantierStats===0)warnings.push('CHEF_CHANTIER_STATS_MISSING');
     if(snapshot.adminMode&&snapshot.role!=='admin')warnings.push('OWNER_ADMIN_MODE_ROLE_MISMATCH');
+    if(snapshot.role===null&&Object.values(snapshot.counts).some(value=>value>0))warnings.push('SESSION_DATA_WITHOUT_ROLE');
     if(warnings.length)snapshot.warnings=warnings;
     return snapshot;
   }
