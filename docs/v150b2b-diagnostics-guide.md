@@ -59,7 +59,8 @@ Codes actuellement possibles :
 - `CHEF_CHANTIER_MATERIAL_SCOPE_LEAK` : un état `chef_chantier` contient au moins une ligne matériel alors que ce rôle doit fonctionner uniquement avec des statistiques agrégées ;
 - `CHEF_CHANTIER_SCAN_SCOPE_LEAK` : un état `chef_chantier` contient au moins un scan ;
 - `CHEF_CHANTIER_STATS_MISSING` : l’application est en ligne, le rôle `chef_chantier` voit au moins un chantier, mais aucune ligne de statistiques agrégées n’a été chargée ; ce signal aide à distinguer un chargement statistique manquant d’un tableau réellement vide ;
-- `OWNER_ADMIN_MODE_ROLE_MISMATCH` : le mode Administration propriétaire est marqué actif alors que le rôle effectif n’est pas `admin`.
+- `OWNER_ADMIN_MODE_ROLE_MISMATCH` : le mode Administration propriétaire est marqué actif alors que le rôle effectif n’est pas `admin` ;
+- `SESSION_DATA_WITHOUT_ROLE` : aucun rôle RailOps n’est actif mais au moins un des tableaux internes contient encore des lignes ; ce signal permet de repérer un état mémoire résiduel après déconnexion sans exposer le contenu concerné.
 
 Ces codes sont des signaux de diagnostic uniquement. Ils ne modifient aucun droit, aucune donnée, aucun chargement et ne contiennent ni ID ni référence métier. L’alerte `CHEF_CHANTIER_STATS_MISSING` n’est pas produite en mode hors-ligne afin d’éviter un faux positif lorsque le serveur n’est pas joignable.
 
@@ -67,7 +68,7 @@ Ces codes sont des signaux de diagnostic uniquement. Ils ne modifient aucun droi
 
 Pour un `chef_chantier`, `materials: 0` et `scans: 0` sont attendus : les compteurs d’avancement proviennent de statistiques agrégées côté serveur, pas de références matérielles chargées dans le navigateur.
 
-Pour un problème de connexion ou de session, vérifier d’abord `role`, `page`, `online`, les comptages et, s’il existe, le champ `warnings`. Un diagnostic nécessitant les données brutes doit être arrêté et traité séparément : ce helper n’a pas vocation à contourner le cloisonnement des rôles.
+Pour un problème de connexion ou de session, vérifier d’abord `role`, `page`, `online`, les comptages et, s’il existe, le champ `warnings`. `SESSION_DATA_WITHOUT_ROLE` signifie uniquement qu’un état local mérite d’être inspecté ou réinitialisé par le flux normal ; ce diagnostic ne supprime rien lui-même. Un diagnostic nécessitant les données brutes doit être arrêté et traité séparément : ce helper n’a pas vocation à contourner le cloisonnement des rôles.
 
 ## Garde-fous
 
