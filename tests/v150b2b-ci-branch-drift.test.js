@@ -28,6 +28,22 @@ assert(
   'drift diagnostic must compute behind/ahead counts from git history'
 );
 assert(
+  workflow.includes('main_sha="$(git rev-parse --short=12 origin/main)"'),
+  'drift diagnostic should capture the exact main commit being compared'
+);
+assert(
+  workflow.includes('head_sha="$(git rev-parse --short=12 HEAD)"'),
+  'drift diagnostic should capture the exact branch commit being compared'
+);
+assert(
+  workflow.includes('Main SHA: **`${main_sha}`**'),
+  'step summary should record the main SHA used for the drift calculation'
+);
+assert(
+  workflow.includes('Branch SHA: **`${head_sha}`**'),
+  'step summary should record the branch SHA used for the drift calculation'
+);
+assert(
   workflow.includes('Branch drift is informational only; no merge or rebase is performed.'),
   'step summary must make the non-mutating nature of the diagnostic explicit'
 );
