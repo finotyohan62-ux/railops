@@ -39,7 +39,7 @@
 - Point bloquant identifié : `railops_upsert_material_admin(jsonb)` valide le chantier cible d'un Chef non Admin mais ne valide pas le chantier source lorsqu'un `id` existe déjà avant `ON CONFLICT(id) DO UPDATE`. Comme l'RPC est `SECURITY DEFINER`, un conflit d'identifiant hors scope pourrait écraser/déplacer une ligne d'un autre périmètre.
 - Autre point à décider : `saveChantier` conserve encore un chemin d'écriture directe, et la migration RLS stricte maintient des grants directs pour le supporter.
 - Documentation créée : `docs/v150b2b-write-scope-audit.md`.
-- Commit : `b290092632fbffc2f24a3eaf9594bba87b9366b1` (`docs: audit v150B2B write scope before strict RLS`).
+- Commit : `b290092632fbffc2f24a3eaf9594bba87b9366b1` (`docs: audit v150B-2B write scope before strict RLS`).
 - Aucune correction serveur/RLS appliquée : ce point est volontairement arrêté avant changement de sécurité ou de règle d'accès et nécessite validation explicite.
 
 ## 2026-08-21 — correction intégration Chef de chantier 21:57 Europe/Paris
@@ -361,3 +361,13 @@
 - Diagnostic CI : le premier contrat appliquait à tort le nouveau fuseau aux anciens snapshots et a fait échouer `v150B-2B checks` run #410 sur `2026-08-23-0714.md`; cause isolée puis correction minimale prospective. Vérification fraîche : `v150B-2B checks` run #412, `RailOps lifecycle regression` run #287 et `RailOps modules regression` run #57 sont tous `success`; Vercel est également `success` sur `1d1b6870890daaaa949a470879266d16345bec14`.
 - État après correction : branche toujours divergente, **14 commits behind / 276 ahead** avant cette entrée ; aucun merge/rebase ni changement de `main` effectué.
 - Garde-fous : aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié. Points en attente historiques inchangés : synchronisation avec `main` et smoke-tests humains restent soumis à validation explicite.
+
+## 2026-08-24 — relevé GitHub / Supabase 23:17 Europe/Paris
+
+- État contrôlé avant modification : PR #1 ouverte en brouillon, non fusionnée, sur `security/v150b2b-rls-ready`; comparaison fraîche avec `main` = **15 commits behind / 279 ahead** au début de la passe. Supabase `railops` est `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.084.
+- Amélioration documentaire réversible : ajout de `docs/supabase-state/2026-08-24-2317.md`, photographie metadata-only de la divergence GitHub, de l'état RLS/policies des huit tables cœur et des familles Security/Performance Advisor. Commit : `fbb8edf46179dd007dcb0becdf8bb8acafb5ca0f` (`docs: snapshot GitHub and Supabase state at 23:17`).
+- Vérification fraîche : snapshot relu depuis la branche ; `v150B-2B checks` #420, `RailOps lifecycle regression` #293 et `RailOps modules regression` #62 sont tous `success`, ainsi que Vercel sur le commit du snapshot. Les lectures Supabase de cette passe étaient strictement en lecture seule ; aucune nouvelle famille d'alerte n'a été observée.
+- Diagnostic CI de journalisation : `v150B-2B checks` #422 a détecté que le fragment `docs/worklog-railops-append/2026-08-24-2317.md` n'avait pas encore été recopié dans le journal primaire ; `RailOps lifecycle regression` #294, `RailOps modules regression` #63 et Vercel sont restés verts. Cause isolée : contrat `v150b2b-worklog-contract.test.js`, sans régression applicative.
+- État avant correction du journal primaire : branche toujours divergente, **15 commits behind / 281 ahead** ; aucun merge/rebase ni changement de `main` effectué.
+- Garde-fous : aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié.
+- Points en attente historiques inchangés : synchronisation avec `main`, smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
