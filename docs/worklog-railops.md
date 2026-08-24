@@ -371,3 +371,12 @@
 - État avant correction du journal primaire : branche toujours divergente, **15 commits behind / 281 ahead** ; aucun merge/rebase ni changement de `main` effectué.
 - Garde-fous : aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié.
 - Points en attente historiques inchangés : synchronisation avec `main`, smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
+
+## 2026-08-25 — diagnostic catalogue résiduel 00:17 Europe/Paris
+
+- État contrôlé avant modification : PR #1 ouverte en brouillon et non fusionnée sur `security/v150b2b-rls-ready`; comparaison fraîche avec `main` = **15 commits behind / 282 ahead**. Supabase `railops` est `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.084 ; Security Advisor relu strictement en lecture seule, sans changement backend.
+- Amélioration réversible de diagnostic : `v150b2b-diagnostics.js` signale désormais `SESSION_DATA_WITHOUT_ROLE` lorsqu'un catalogue de prix reste en mémoire alors qu'aucun rôle RailOps n'est actif. Le snapshot reste metadata-only et n'expose aucune référence ni prix.
+- Cycle rouge/vert : `dc6a4a91d0f4b8e7793905be51888991f3be8f3d` ajoute le test qui reproduit la zone aveugle ; `345c5890a9ad7eea031b33703ca8b30eafcf70b2` applique la correction minimale. Reproduction locale rouge puis test ciblé et `node --check` verts.
+- Vérification fraîche : GitHub Actions `v150B-2B checks` #428, `RailOps modules regression` #67 et `RailOps lifecycle regression` #298 sont tous `success` sur `345c5890a9ad7eea031b33703ca8b30eafcf70b2`.
+- Garde-fous : aucun rôle, droit, règle métier, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact, sans merge/rebase.
+- Points en attente historiques inchangés : synchronisation avec `main`, smoke-tests humains et toute correction sécurité restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
