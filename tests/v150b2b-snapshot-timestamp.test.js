@@ -27,6 +27,10 @@ for (const name of snapshotFiles) {
     firstLine.includes(expectedTimestamp),
     `snapshot ${name} title must match its filename timestamp (${expectedTimestamp})`
   );
+  assert.ok(
+    firstLine.includes('Europe/Paris'),
+    `snapshot ${name} title must state the Europe/Paris timezone explicitly`
+  );
 }
 
 console.log(`v150b2b snapshot timestamps: OK (${snapshotFiles.length} snapshots checked)`);
