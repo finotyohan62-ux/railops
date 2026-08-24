@@ -35,4 +35,10 @@ assert.throws(
   assert.match(html, /background:#0f1117/);
 }
 
+{
+  const html = formatLoadErrorHtml(new Error('bad "quoted" value'));
+  assert.match(html, /bad &quot;quoted&quot; value/);
+  assert.doesNotMatch(html, /bad "quoted" value/);
+}
+
 console.log('v150b2b harness core: OK');
