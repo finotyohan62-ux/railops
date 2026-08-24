@@ -102,6 +102,21 @@ assert.deepEqual(
   'owner admin role must be diagnosable when Administration mode is not explicitly active'
 );
 
+const staleAnonymousPage = createDiagnosticsSnapshot({
+  role: null,
+  page: 'dashboard',
+  chantiers: [],
+  mat: [],
+  scans: [],
+  users: [],
+  chefChantierStats: [],
+}, { online: true });
+assert.deepEqual(
+  staleAnonymousPage.warnings,
+  ['SESSION_PAGE_WITHOUT_ROLE'],
+  'diagnostics must flag an authenticated page that remains active without a RailOps role'
+);
+
 const staleAnonymous = createDiagnosticsSnapshot({
   role: null,
   page: 'login',
