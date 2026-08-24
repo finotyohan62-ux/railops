@@ -46,4 +46,22 @@ assert.match(
   `latest snapshot ${latestName} must identify the inspected Supabase project without credentials`
 );
 
+const coreTables = [
+  'agents',
+  'chantiers',
+  'deleted_ids',
+  'inspections',
+  'materiels',
+  'prix_catalogue',
+  'scans',
+  'users',
+];
+for (const table of coreTables) {
+  assert.match(
+    latest,
+    new RegExp(`- \\`${table}\\` : \\d+ ;`),
+    `latest snapshot ${latestName} must record the RLS policy count for core table ${table}`
+  );
+}
+
 console.log(`v150b2b snapshot contract: OK (${latestName})`);
