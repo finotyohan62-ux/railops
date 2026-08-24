@@ -32,7 +32,7 @@
     if(snapshot.adminMode&&!snapshot.adminOwner)warnings.push('OWNER_ADMIN_MODE_WITHOUT_OWNER');
     if(snapshot.adminOwner&&snapshot.role==='admin'&&!snapshot.adminMode)warnings.push('OWNER_ADMIN_ROLE_OUTSIDE_MODE');
     if(snapshot.role===null&&snapshot.page!==null&&snapshot.page!=='login')warnings.push('SESSION_PAGE_WITHOUT_ROLE');
-    if(snapshot.role===null&&Object.values(snapshot.counts).some(value=>value>0))warnings.push('SESSION_DATA_WITHOUT_ROLE');
+    if(snapshot.role===null&&(Object.values(snapshot.counts).some(value=>value>0)||count(s.prixCatalogue)>0))warnings.push('SESSION_DATA_WITHOUT_ROLE');
     if(warnings.length)snapshot.warnings=warnings;
     return snapshot;
   }
