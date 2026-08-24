@@ -342,3 +342,13 @@
 - Vérification fraîche : le snapshot a été relu après commit ; Vercel est `success` sur `5a87f179d434fe7f10518a2a0e510c2d2a21b4ab`. Les lectures Supabase de cette passe étaient strictement en lecture seule ; aucune nouvelle famille d'alerte n'a été observée.
 - Garde-fous : aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact et aucun merge/rebase n'a été tenté.
 - Point en attente inchangé : synchronisation avec les 14 commits de `main` et smoke-tests humains restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
+
+## 2026-08-24 — snapshot diagnostic et couverture RLS 20:13 Europe/Paris
+
+- État contrôlé avant modification : PR #1 ouverte en brouillon, non fusionnée, sur `security/v150b2b-rls-ready`; comparaison fraîche avec `main` = **14 commits behind / 269 ahead** au début de la passe. Supabase `railops` reste `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.084 ; toutes les lectures backend ont été strictement en lecture seule.
+- Amélioration réversible : `tests/v150b2b-snapshot-contract.test.js` exige désormais que le snapshot le plus récent consigne explicitement les huit tables cœur (`agents`, `chantiers`, `deleted_ids`, `inspections`, `materiels`, `prix_catalogue`, `scans`, `users`) et leur comptage de policies RLS. Commit initial : `0f2882ca12cc18c60a5cbecf768c64425ce2feaa`.
+- Snapshot ajouté : `docs/supabase-state/2026-08-24-2013.md` avec divergence GitHub, santé Supabase, comptages RLS/policies et familles Security/Performance Advisor. Commit : `bcd0b3a6c15ca27c7e7cd9fbeb87da6cd58f9968`.
+- Diagnostic CI : la première version du test contenait un échappement de backticks invalide dans une template string et a fait échouer `v150B-2B checks` run #402, tandis que les deux workflows fonctionnels restaient verts. Cause reproduite localement ; correction minimale appliquée en construisant la RegExp par concaténation. Commit : `908c3276b2df4fca7fc8d5f6d52407050f1c79cd`.
+- Vérification fraîche sur `908c3276b2df4fca7fc8d5f6d52407050f1c79cd` : `v150B-2B checks` run #404, `RailOps lifecycle regression` run #283 et `RailOps modules regression` run #53 sont tous `success`; Vercel est également `success`.
+- Garde-fous : aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact et aucun merge/rebase n'a été tenté.
+- Point en attente inchangé : synchronisation avec les 14 commits de `main` et smoke-tests humains restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
