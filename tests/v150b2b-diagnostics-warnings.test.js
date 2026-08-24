@@ -132,6 +132,23 @@ assert.deepEqual(
   'diagnostics must flag residual in-memory data when no RailOps role is active'
 );
 
+const staleAnonymousCatalogue = createDiagnosticsSnapshot({
+  role: null,
+  page: 'login',
+  chantiers: [],
+  mat: [],
+  scans: [],
+  users: [],
+  chefChantierStats: [],
+  prixCatalogue: [{ ref: 'CATALOGUE-SECRET-AFTER-LOGOUT', prix: 99 }],
+}, { online: true });
+assert.deepEqual(
+  staleAnonymousCatalogue.warnings,
+  ['SESSION_DATA_WITHOUT_ROLE'],
+  'diagnostics must flag a residual in-memory catalogue when no RailOps role is active'
+);
+assert.equal(JSON.stringify(staleAnonymousCatalogue).includes('CATALOGUE-SECRET-AFTER-LOGOUT'), false);
+
 const serialized = JSON.stringify(leaked);
 assert.equal(serialized.includes('MATERIAL-SECRET'), false);
 assert.equal(serialized.includes('SCAN-SECRET'), false);
