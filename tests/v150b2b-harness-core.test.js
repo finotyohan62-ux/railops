@@ -29,6 +29,10 @@ assert.throws(
   assert.match(html, /Réessayer/);
   assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
   assert.doesNotMatch(html, /<img src=x onerror=alert\(1\)>/);
+  assert.match(html, /min-height:100dvh/);
+  assert.match(html, /padding-top:max\(20px,env\(safe-area-inset-top\)\)/);
+  assert.match(html, /padding-bottom:max\(20px,env\(safe-area-inset-bottom\)\)/);
+  assert.match(html, /background:#0f1117/);
 }
 
 console.log('v150b2b harness core: OK');
