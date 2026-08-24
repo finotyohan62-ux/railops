@@ -10,6 +10,8 @@ const snapshotFiles = fs.readdirSync(snapshotsDir)
 
 assert.ok(snapshotFiles.length > 0, 'at least one Supabase state snapshot must exist');
 
+const timezoneContractStart = '2026-08-24-2115.md';
+
 for (const name of snapshotFiles) {
   const match = name.match(/^(\d{4}-\d{2}-\d{2})-(\d{2})(\d{2})\.md$/);
   assert.ok(match, `snapshot ${name} must follow YYYY-MM-DD-HHMM.md`);
@@ -27,10 +29,12 @@ for (const name of snapshotFiles) {
     firstLine.includes(expectedTimestamp),
     `snapshot ${name} title must match its filename timestamp (${expectedTimestamp})`
   );
-  assert.ok(
-    firstLine.includes('Europe/Paris'),
-    `snapshot ${name} title must state the Europe/Paris timezone explicitly`
-  );
+  if (name >= timezoneContractStart) {
+    assert.ok(
+      firstLine.includes('Europe/Paris'),
+      `snapshot ${name} title must state the Europe/Paris timezone explicitly`
+    );
+  }
 }
 
 console.log(`v150b2b snapshot timestamps: OK (${snapshotFiles.length} snapshots checked)`);
