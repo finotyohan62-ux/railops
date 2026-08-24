@@ -380,3 +380,11 @@
 - Vérification fraîche : GitHub Actions `v150B-2B checks` #428, `RailOps modules regression` #67 et `RailOps lifecycle regression` #298 sont tous `success` sur `345c5890a9ad7eea031b33703ca8b30eafcf70b2`.
 - Garde-fous : aucun rôle, droit, règle métier, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact, sans merge/rebase.
 - Points en attente historiques inchangés : synchronisation avec `main`, smoke-tests humains et toute correction sécurité restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
+
+## 2026-08-25 — relevé GitHub / Supabase 01:20 Europe/Paris
+
+- État contrôlé avant modification : PR #1 ouverte en brouillon et non fusionnée sur `security/v150b2b-rls-ready`; comparaison fraîche avec `main` = **16 commits behind / 286 ahead**. Supabase `railops` est `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.084.
+- Amélioration documentaire réversible : ajout de `docs/supabase-state/2026-08-25-0120.md`, photographie metadata-only de la divergence GitHub, de l'état RLS/policies des huit tables cœur, des migrations observées et des familles Security/Performance Advisor. Commit : `1cb1dc305e689d0fcdd67f9c32b48cd483ce72ed` (`docs: snapshot GitHub and Supabase state at 01:20`).
+- Vérification fraîche : snapshot relu depuis la branche ; Vercel était `success` sur le head de départ. Toutes les lectures Supabase de cette passe étaient strictement en lecture seule ; aucune nouvelle famille d'alerte n'a été observée.
+- Garde-fous : aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact et aucun merge/rebase n'a été tenté.
+- Points en attente historiques inchangés : synchronisation avec les 16 commits de `main`, smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
