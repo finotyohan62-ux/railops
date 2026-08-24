@@ -14,6 +14,12 @@ Les snapshots servent à distinguer clairement :
 
 Les fichiers utilisent `YYYY-MM-DD-HHMM.md` en heure Europe/Paris. Le fichier portant l'horodatage le plus récent est le relevé de référence pour un diagnostic ponctuel ; les anciens fichiers restent conservés pour comparer les évolutions.
 
+## Confidentialité des relevés
+
+Les snapshots restent **metadata-only**. Ils peuvent contenir des identifiants techniques non secrets utiles au diagnostic (SHA Git, nom de branche, identifiant public du projet, noms de tables/functions et états de policies), mais ne doivent jamais contenir de jeton de session, JWT, bearer token, clé `service_role`, clé Supabase secrète, mot de passe ou autre secret d'authentification.
+
+Le test `tests/v150b2b-snapshot-privacy.test.js` vérifie automatiquement les fichiers horodatés du dossier contre plusieurs formes courantes de secrets avant qu'un changement ne soit considéré comme vert. Ce garde-fou est volontairement local aux snapshots et ne lit ni n'écrit aucune donnée Supabase.
+
 ## Règles de lecture
 
 Un snapshot est une **photographie**, pas une migration ni une recommandation automatique. Une alerte Supabase présente dans un relevé ne doit jamais être corrigée directement sur cette seule base : il faut d'abord confirmer son impact et obtenir l'accord requis si la correction touche la sécurité, les droits, le schéma ou les données.
