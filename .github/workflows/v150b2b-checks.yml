@@ -43,6 +43,8 @@ jobs:
           app_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^(index\.html|[^/]+\.(js|html))$/{n++} END{print n+0}')"
           tests_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^(tests\/|\.github\/)/{n++} END{print n+0}')"
           backend_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^supabase\//{n++} END{print n+0}')"
+          docs_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^docs\//{n++} END{print n+0}')"
+          other_file_count=$(( main_only_file_count - app_file_count - tests_file_count - backend_file_count - docs_file_count ))
           main_only_files="$(printf '%s\n' "${main_only_all_files}" | head -n 20)"
           main_only_commits="$(git log --oneline --no-decorate HEAD..origin/main | head -n 12)"
           echo "ℹ branch drift against main: behind=${behind} ahead=${ahead} main=${main_sha} branch=${head_sha} merge-base=${merge_base_sha} date=${merge_base_date}"
@@ -53,7 +55,7 @@ jobs:
             echo "- Ahead of main: **${ahead}** commit(s)"
             echo "- Main-only changed file count: **${main_only_file_count}**"
             echo "- Main-only commit count: **${main_only_commit_count}**"
-            echo "- Main-only impact: app=${app_file_count} · tests=${tests_file_count} · backend=${backend_file_count}"
+            echo "- Main-only impact: app=${app_file_count} · tests=${tests_file_count} · backend=${backend_file_count} · docs=${docs_file_count} · other=${other_file_count}"
             printf '%s\n' "- Main SHA: **\`${main_sha}\`**"
             printf '%s\n' "- Branch SHA: **\`${head_sha}\`**"
             printf '%s\n' "- Merge base: **\`${merge_base_sha}\`**"
