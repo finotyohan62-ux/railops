@@ -62,6 +62,7 @@ Codes actuellement possibles :
 - `CATALOGUE_SCOPE_LEAK` : un rôle autre que `chef` ou `admin` conserve des lignes de catalogue en mémoire ; seul le comptage est signalé, jamais les références ou les prix ;
 - `OWNER_ADMIN_MODE_ROLE_MISMATCH` : le mode Administration propriétaire est marqué actif alors que le rôle effectif n’est pas `admin` ;
 - `OWNER_ADMIN_MODE_WITHOUT_OWNER` : le mode Administration est marqué actif alors que l’indicateur propriétaire `adminOwner` est faux ; ce signal repère uniquement une incohérence d’état client et ne change aucun droit ;
+- `OWNER_ADMIN_ROLE_OUTSIDE_MODE` : le propriétaire a un rôle effectif `admin` alors que le mode Administration explicite est inactif ; ce signal aide à repérer un état client resté trop privilégié sans modifier le rôle ni les permissions ;
 - `SESSION_DATA_WITHOUT_ROLE` : aucun rôle RailOps n’est actif mais au moins un des tableaux internes contient encore des lignes ; ce signal permet de repérer un état mémoire résiduel après déconnexion sans exposer le contenu concerné.
 
 Ces codes sont des signaux de diagnostic uniquement. Ils ne modifient aucun droit, aucune donnée, aucun chargement et ne contiennent ni ID ni référence métier. L’alerte `CHEF_CHANTIER_STATS_MISSING` n’est pas produite en mode hors-ligne afin d’éviter un faux positif lorsque le serveur n’est pas joignable.
