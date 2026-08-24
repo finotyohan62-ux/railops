@@ -2,8 +2,24 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const indexPath = path.join(__dirname, '..', 'index.html');
+const root = path.resolve(__dirname, '..');
+const indexPath = path.join(root, 'index.html');
 const html = fs.readFileSync(indexPath, 'utf8');
+
+function localStyleSources(documentHtml) {
+  const sources = [documentHtml];
+  const linkPattern = /<link\b[^>]*rel=["']stylesheet["'][^>]*href=["']([^"']+)["'][^>]*>/gi;
+  for (const match of documentHtml.matchAll(linkPattern)) {
+    const href = match[1].split(/[?#]/, 1)[0];
+    if (!href || /^(?:https?:)?\/\//i.test(href) || href.startsWith('data:')) continue;
+    const cssPath = path.resolve(root, href);
+    if (!cssPath.startsWith(root + path.sep) || !fs.existsSync(cssPath)) continue;
+    sources.push(fs.readFileSync(cssPath, 'utf8'));
+  }
+  return sources.join('\n');
+}
+
+const styles = localStyleSources(html);
 
 assert.match(
   html,
@@ -18,19 +34,19 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  html,
+  styles,
   /#app\{[^}]*padding-left:env\(safe-area-inset-left,0px\)[^}]*padding-right:env\(safe-area-inset-right,0px\)[^}]*top:env\(safe-area-inset-top,0px\)/i,
   'app shell must preserve iPhone top and side safe areas'
 );
 
 assert.match(
-  html,
+  styles,
   /\.bnav\{[^}]*padding:[^;}]*env\(safe-area-inset-bottom,12px\)/i,
   'bottom navigation must preserve the iPhone home-indicator safe area'
 );
 
 assert.match(
-  html,
+  styles,
   /\.screen\{[^}]*overflow-y:auto[^}]*-webkit-overflow-scrolling:touch/i,
   'scrollable screens must preserve momentum scrolling on iOS'
 );
