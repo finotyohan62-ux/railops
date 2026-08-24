@@ -6,6 +6,8 @@ const beforeRenderHandlers=new Map();
 const afterRenderHandlers=new Map();
 const afterLoadHandlers=new Map();
 const mutationHandlers=new Map();
+let adminModeV155=false;
+let adminToggleBusyV155=false;
 
 function add(map,name,fn){
   if(!name||typeof fn!=='function')throw new TypeError('RailOps lifecycle: handler invalide');
@@ -40,6 +42,8 @@ function clearUnauthenticatedStateV155(){
     S.agent=null;
     S.role=null;
     S.isAdminOwner=false;
+    S.__ownerAdminMode=false;
+    adminModeV155=false;
     S.page='login';
     S.modal=null;
     S.curC=null;
@@ -59,18 +63,24 @@ async function secureLoadV155(){
   if(!ctx?.ok)throw new Error(ctx?.code||'NO_RAILOPS_PROFILE');
 
   S.agent=ctx.nom;
-  S.role=ctx.role;
   S.isAdminOwner=!!ctx.is_admin_owner;
+  if(!S.isAdminOwner)adminModeV155=false;
+  const effectiveRole=adminModeV155&&S.isAdminOwner?'admin':ctx.role;
+  S.role=effectiveRole;
+  S.__ownerAdminMode=effectiveRole==='admin';
   S.page=S.page==='login'?'dashboard':(S.page||'dashboard');
 
-  const chefStatsPromise=ctx.role==='chef_chantier'
+  const chefStatsPromise=effectiveRole==='chef_chantier'
     ?rpcV155('railops_chef_chantier_tree_stats')
     :Promise.resolve([]);
+  const chantierRpc=effectiveRole==='admin'?'railops_admin_chantiers_scope':'railops_chantiers_scope';
+  const materialRpc=effectiveRole==='admin'?'railops_admin_materials_scope':'railops_materials_scope';
+  const scanRpc=effectiveRole==='admin'?'railops_admin_scans_scope':'railops_scans_scope';
 
   const [chantiers,materiels,scans,users,chefStats]=await Promise.all([
-    rpcV155('railops_chantiers_scope'),
-    rpcV155('railops_materials_scope'),
-    rpcV155('railops_scans_scope'),
+    rpcV155(chantierRpc),
+    rpcV155(materialRpc),
+    rpcV155(scanRpc),
     rpcV155('railops_user_directory'),
     chefStatsPromise
   ]);
@@ -85,7 +95,7 @@ async function secureLoadV155(){
     role:u.role,
     is_admin:!!u.is_admin
   }));
-  S.chefChantierStats=ctx.role==='chef_chantier'?(chefStats||[]):[];
+  S.chefChantierStats=effectiveRole==='chef_chantier'?(chefStats||[]):[];
 
   S.prixCatalogue=[];
   if(['chef','admin'].includes(S.role)){
@@ -135,6 +145,50 @@ if(typeof baseLoadV155==='function'){
   try{load=sharedLoadV155;}catch(e){}
   window.RailOpsSecureLoadV155={load:sharedLoadV155,secureLoad:secureLoadV155};
 }
+
+async function enterAdminModeV155(){
+  if(!S?.isAdminOwner)throw new Error('ADMIN_REQUIRED');
+  adminModeV155=true;
+  S.__ownerAdminMode=true;
+  S.page='dashboard';S.curC=null;S.curM=null;
+  return window.load();
+}
+async function exitAdminModeV155(){
+  adminModeV155=false;
+  S.__ownerAdminMode=false;
+  S.page='dashboard';S.curC=null;S.curM=null;
+  return window.load();
+}
+function addAdminToggleV155(){
+  try{
+    const existing=typeof document.getElementById==='function'?document.getElementById('ro-v155-admin-toggle'):null;
+    if(existing&&typeof existing.remove==='function')existing.remove();
+    if(!S?.agent||!S?.isAdminOwner||typeof document.querySelector!=='function'||typeof document.createElement!=='function')return;
+    const top=document.querySelector('.topbar');if(!top)return;
+    const b=document.createElement('button');
+    b.id='ro-v155-admin-toggle';b.type='button';
+    b.textContent=adminModeV155?'← Mode Chef':'Administration';
+    b.style.cssText='border:.5px solid var(--border);background:var(--bg3);color:var(--text);padding:7px 10px;border-radius:9px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0';
+    b.onclick=async()=>{
+      if(adminToggleBusyV155)return;adminToggleBusyV155=true;b.disabled=true;
+      try{
+        if(adminModeV155){await exitAdminModeV155();if(typeof toast==='function')toast('Retour au mode Chef d’équipe','ok');}
+        else{await enterAdminModeV155();if(typeof toast==='function')toast('Mode Administration','ok');}
+        if(typeof render==='function')render();
+      }catch(e){console.error('[RailOps admin mode]',e);if(typeof toast==='function')toast('Impossible de changer de mode.','danger');}
+      finally{adminToggleBusyV155=false;}
+    };
+    top.appendChild(b);
+  }catch(e){console.warn('[RailOps v155] bouton admin',e);}
+}
+window.RailOpsLifecycleV155.afterRender('admin-mode-toggle',addAdminToggleV155);
+window.RailOpsAdminModeV155={
+  version:'155-admin-mode-toggle',
+  enter:enterAdminModeV155,
+  exit:exitAdminModeV155,
+  isActive:()=>adminModeV155,
+  refreshButton:addAdminToggleV155
+};
 
 const mutationRootV155=document.getElementById('app')||document.body;
 if(mutationRootV155){

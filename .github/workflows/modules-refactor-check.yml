@@ -24,6 +24,8 @@ jobs:
         run: node tests/lifecycle-refactor.test.js
       - name: Check secure scoped load
         run: node tests/secure-load.test.js
+      - name: Check Admin mode toggle
+        run: node tests/admin-mode.test.js
       - name: Check legacy core extraction invariants
         run: node tests/legacy-core-extraction.test.js
       - name: Check offline sync extraction invariants
