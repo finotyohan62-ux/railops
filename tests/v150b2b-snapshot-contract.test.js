@@ -59,7 +59,7 @@ const coreTables = [
 for (const table of coreTables) {
   assert.match(
     latest,
-    new RegExp(`- \\`${table}\\` : \\d+ ;`),
+    new RegExp('- `' + table + '` : \\d+ ;'),
     `latest snapshot ${latestName} must record the RLS policy count for core table ${table}`
   );
 }
