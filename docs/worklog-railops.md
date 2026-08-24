@@ -334,3 +334,11 @@
 - Vérification : le relevé a été relu depuis la branche ; les trois workflows du head de départ (`RailOps modules regression` #41, `v150B-2B checks` #384, `RailOps lifecycle regression` #271) étaient `success`, ainsi que Vercel. Aucune écriture Supabase, migration, policy, permission, fonction, index, donnée, règle métier, Import, Multi-chantier ou purge hebdomadaire n'a été modifiée.
 - Garde-fous : `main` reste intact ; aucun merge/rebase ni activation de RLS stricte n'a été tenté.
 - Point en attente inchangé : la branche reste 14 commits derrière `main`; synchronisation et smoke-tests humains restent soumis à validation explicite. Aucun nouveau choix produit n'a été introduit.
+
+## 2026-08-24 — relevé GitHub / Supabase 19:13 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, non fusionnée ; comparaison fraîche avec `main` = **14 commits behind / 267 ahead**. Supabase `railops` est `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.084.
+- Amélioration documentaire réversible : ajout de `docs/supabase-state/2026-08-24-1913.md`, photographie metadata-only de la divergence GitHub, de l'état RLS/policies des huit tables cœur et des familles Security/Performance Advisor. Commit : `5a87f179d434fe7f10518a2a0e510c2d2a21b4ab` (`docs: snapshot GitHub and Supabase state at 19:13`).
+- Vérification fraîche : le snapshot a été relu après commit ; Vercel est `success` sur `5a87f179d434fe7f10518a2a0e510c2d2a21b4ab`. Les lectures Supabase de cette passe étaient strictement en lecture seule ; aucune nouvelle famille d'alerte n'a été observée.
+- Garde-fous : aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact et aucun merge/rebase n'a été tenté.
+- Point en attente inchangé : synchronisation avec les 14 commits de `main` et smoke-tests humains restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
