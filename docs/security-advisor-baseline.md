@@ -95,3 +95,26 @@ Le Performance Advisor signale par ailleurs deux clés étrangères non indexée
 Côté GitHub, `security/v150b2b-rls-ready` est observée divergente de `main` avec 141 commits d'avance et 12 commits de retard au moment du relevé. Cette dérive interdit toute assimilation automatique entre le code de la branche et l'état actuel de production ; aucun merge/rebase n'est tenté depuis ce flux.
 
 Conclusion de ce relevé : aucun nouvel élément ne justifie une modification automatique de sécurité, de permissions ou de schéma. Les écarts restent à traiter uniquement après décision explicite et smoke-tests adaptés.
+
+## Relevé comparatif — 2026-08-24 17:20 Europe/Paris
+
+Contrôle effectué uniquement en lecture seule depuis l'état réel GitHub/Supabase. Le projet `railops` reste `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.084 ; aucune migration, policy, permission, fonction, donnée ou configuration Auth n'a été modifiée.
+
+État RLS/policies observé sur les huit tables cœur suivies :
+
+- `public.agents` : RLS activée, 0 policy ;
+- `public.chantiers` : RLS activée, 4 policies ;
+- `public.deleted_ids` : RLS activée, 1 policy ;
+- `public.inspections` : RLS activée, 0 policy ;
+- `public.materiels` : RLS activée, 4 policies ;
+- `public.prix_catalogue` : RLS activée, 1 policy ;
+- `public.scans` : RLS activée, 4 policies ;
+- `public.users` : RLS activée, 2 policies.
+
+Le Security Advisor ne présente pas de nouvelle famille d'alerte par rapport aux relevés récents : cinq informations `RLS Enabled No Policy` restent présentes sur `agents`, `inspections`, `materiel`, `railops_auth_throttle` et `railops_legacy_credentials`, les avertissements concernant les fonctions `SECURITY DEFINER` exécutables par `authenticated` restent présents, et la protection contre les mots de passe compromis reste désactivée.
+
+Le Performance Advisor reste également stable : seules les deux clés étrangères non indexées déjà connues sur `public.inspections` sont signalées (`inspections_agent_id_fkey` et `inspections_materiel_id_fkey`). Aucun index n'est créé automatiquement.
+
+Côté GitHub, la PR #1 est toujours ouverte, en brouillon et non fusionnée. La branche `security/v150b2b-rls-ready` est observée divergente de `main` à **262 commits d'avance / 14 commits de retard**, avec merge-base `4b50df53ee449c4c907bae6a215672be3a2597d9`. Les trois workflows associés au head observé (`RailOps modules regression`, `v150B-2B checks`, `RailOps lifecycle regression`) sont en succès, tout comme le statut Vercel.
+
+Conclusion : aucun changement de sécurité, de schéma, de données ou de règle métier n'est justifié automatiquement par ce relevé. La divergence Git reste un point volontairement sans action : aucun merge/rebase n'est tenté depuis cette branche de maintenance.
