@@ -40,7 +40,7 @@ jobs:
           main_only_all_files="$(git diff --name-only HEAD..origin/main)"
           main_only_file_count="$(git diff --name-only HEAD..origin/main | wc -l | tr -d ' ')"
           main_only_commit_count="$(git rev-list --count HEAD..origin/main)"
-          app_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^(index\.html|[^/]+\.(js|html))$/{n++} END{print n+0}')"
+          app_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^(index\.html|[^/]+\.(js|html)|css\/|js\/)/{n++} END{print n+0}')"
           tests_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^(tests\/|\.github\/)/{n++} END{print n+0}')"
           backend_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^supabase\//{n++} END{print n+0}')"
           docs_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^docs\//{n++} END{print n+0}')"
