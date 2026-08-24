@@ -17,7 +17,7 @@
     return html;
   }
   function escapeHtml(value){
-    return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+    return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
   function formatLoadErrorHtml(error){
     const message=escapeHtml(error&&error.message||error||'Erreur inconnue');
