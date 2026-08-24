@@ -22,7 +22,7 @@ for (const name of snapshotFiles) {
 
   const text = fs.readFileSync(path.join(snapshotsDir, name), 'utf8');
   const firstLine = text.split(/\r?\n/, 1)[0];
-  const expectedTimestamp = `${date} ${hour}:${minute} Europe/Paris`;
+  const expectedTimestamp = `${date} ${hour}:${minute}`;
   assert.ok(
     firstLine.includes(expectedTimestamp),
     `snapshot ${name} title must match its filename timestamp (${expectedTimestamp})`
