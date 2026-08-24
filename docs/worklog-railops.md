@@ -326,3 +326,11 @@
 - Vérification fraîche sur `8b72b838956d4ab16c7aec4de6e5eef8b0d7048a` : `v150B-2B checks` run #382, `RailOps lifecycle regression` run #270 et `RailOps modules regression` run #40 sont tous `success`; Vercel est également `success`.
 - Aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact et aucun merge/rebase n'a été tenté.
 - Point en attente inchangé : la branche reste 14 commits derrière `main`; synchronisation et smoke-tests humains restent soumis à validation explicite.
+
+## 2026-08-24 — relevé Supabase / GitHub 17:20 Europe/Paris
+
+- État contrôlé avant modification : PR #1 ouverte en brouillon, non fusionnée, sur `security/v150b2b-rls-ready`; comparaison fraîche avec `main` = **14 commits behind / 262 ahead**. Supabase `railops` est `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.084.
+- Amélioration documentaire réversible : `docs/security-advisor-baseline.md` reçoit un relevé comparatif daté avec le comptage frais RLS/policies des huit tables cœur, les catégories Security/Performance Advisor et l'état GitHub/CI observé. Commit : `ac65c6ba2c717229e53ab6ae4267c34e7ea457eb` (`docs: refresh Supabase security baseline snapshot`).
+- Vérification : le relevé a été relu depuis la branche ; les trois workflows du head de départ (`RailOps modules regression` #41, `v150B-2B checks` #384, `RailOps lifecycle regression` #271) étaient `success`, ainsi que Vercel. Aucune écriture Supabase, migration, policy, permission, fonction, index, donnée, règle métier, Import, Multi-chantier ou purge hebdomadaire n'a été modifiée.
+- Garde-fous : `main` reste intact ; aucun merge/rebase ni activation de RLS stricte n'a été tenté.
+- Point en attente inchangé : la branche reste 14 commits derrière `main`; synchronisation et smoke-tests humains restent soumis à validation explicite. Aucun nouveau choix produit n'a été introduit.
