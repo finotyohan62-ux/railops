@@ -84,8 +84,12 @@ assert(
   'drift diagnostic should classify main-only file impact into app, tests and backend areas'
 );
 assert(
-  workflow.includes('Main-only impact: app=') && workflow.includes('tests=') && workflow.includes('backend='),
-  'step summary should expose main-only impact counts by compatibility area'
+  workflow.includes('docs_file_count=') && workflow.includes('other_file_count='),
+  'drift diagnostic should account for documentation and uncategorized main-only files'
+);
+assert(
+  workflow.includes('Main-only impact: app=') && workflow.includes('tests=') && workflow.includes('backend=') && workflow.includes('docs=') && workflow.includes('other='),
+  'step summary should expose complete main-only impact counts without hiding uncategorized files'
 );
 assert(
   workflow.includes('Main SHA:') && workflow.includes('${main_sha}'),
