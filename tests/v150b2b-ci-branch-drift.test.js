@@ -84,6 +84,10 @@ assert(
   'drift diagnostic should classify main-only file impact into app, tests and backend areas'
 );
 assert(
+  workflow.includes('/^(index\\.html|[^/]+\\.(js|html)|css\\/|js\\/)/'),
+  'app drift classification must include extracted css/ and js/ application modules, not only root files'
+);
+assert(
   workflow.includes('docs_file_count=') && workflow.includes('other_file_count='),
   'drift diagnostic should account for documentation and uncategorized main-only files'
 );
