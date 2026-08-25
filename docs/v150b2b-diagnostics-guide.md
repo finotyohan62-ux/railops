@@ -13,7 +13,7 @@ Le résultat contient uniquement :
 - les indicateurs `adminOwner` et `adminMode` ;
 - la page courante ;
 - l’état online/offline ;
-- des comptages : chantiers, matériels, scans, utilisateurs et lignes de statistiques Chef de chantier.
+- des comptages : chantiers, matériels, scans, scans en attente, utilisateurs et lignes de statistiques Chef de chantier.
 
 Le snapshot ne doit pas contenir de nom de chantier, nom d’agent, identifiant, référence matériel, QR, détail de scan, photo, signature ou contenu de tournée.
 
@@ -42,13 +42,14 @@ Exemple de forme attendue :
     chantiers: 3,
     materials: 0,
     scans: 0,
+    pendingScans: 0,
     users: 0,
     chefChantierStats: 3
   }
 }
 ```
 
-Les nombres de l’exemple sont illustratifs et ne représentent pas les données de production.
+Les nombres de l’exemple sont illustratifs et ne représentent pas les données de production. `pendingScans` est uniquement le nombre de scans locaux marqués `_pending === true` ; il ne révèle ni leur identifiant ni leur contenu.
 
 ## Alertes diagnostiques non sensibles
 
@@ -72,7 +73,7 @@ Ces codes sont des signaux de diagnostic uniquement. Ils ne modifient aucun droi
 
 Pour un `chef_chantier`, `materials: 0` et `scans: 0` sont attendus : les compteurs d’avancement proviennent de statistiques agrégées côté serveur, pas de références matérielles chargées dans le navigateur.
 
-Pour un problème de connexion ou de session, vérifier d’abord `role`, `page`, `online`, les comptages et, s’il existe, le champ `warnings`. `SESSION_PAGE_WITHOUT_ROLE` signifie que le rôle a disparu mais que l’état de navigation n’a pas encore rejoint `login`; `SESSION_DATA_WITHOUT_ROLE` signifie qu’un état local contient encore des lignes. Ces diagnostics ne naviguent ni ne suppriment rien eux-mêmes. Un diagnostic nécessitant les données brutes doit être arrêté et traité séparément : ce helper n’a pas vocation à contourner le cloisonnement des rôles.
+Pour un problème de connexion ou de session, vérifier d’abord `role`, `page`, `online`, les comptages et, s’il existe, le champ `warnings`. `pendingScans > 0` indique uniquement qu’au moins une opération de scan reste marquée en attente dans l’état local ; ce compteur ne prouve ni un échec serveur ni une erreur de permission et doit être recoupé avec le contexte de synchronisation. `SESSION_PAGE_WITHOUT_ROLE` signifie que le rôle a disparu mais que l’état de navigation n’a pas encore rejoint `login`; `SESSION_DATA_WITHOUT_ROLE` signifie qu’un état local contient encore des lignes. Ces diagnostics ne naviguent ni ne suppriment rien eux-mêmes. Un diagnostic nécessitant les données brutes doit être arrêté et traité séparément : ce helper n’a pas vocation à contourner le cloisonnement des rôles.
 
 ## Garde-fous
 
