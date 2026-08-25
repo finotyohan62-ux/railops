@@ -258,7 +258,7 @@
 
 ## 2026-08-22 — collecte complète des échecs CI 22:16 Europe/Paris
 
-- État contrôlé avant modification : branche `security/v150b2b-rls-ready` toujours divergente de `main` (**12 commits behind / 127 ahead** au départ), PR non fusionnée ; Supabase `railops` `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1. Le Security Advisor a été relu en lecture seule, sans correction backend.
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, non fusionnée ; comparaison fraîche `main...security/v150b2b-rls-ready` = **12 commits behind / 127 ahead** au départ), PR non fusionnée ; Supabase `railops` `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1. Le Security Advisor a été relu en lecture seule, sans correction backend.
 - Amélioration réversible limitée aux tests/diagnostics : `tests/run-v150b2b-checks.js` ne s'arrête plus au premier contrôle en échec ; il exécute tous les tests et `node --check`, collecte les échecs, imprime un résumé final puis retourne un code non nul si nécessaire. Cela améliore le diagnostic CI sans toucher au runtime RailOps.
 - Commits : `a86eecf7f44b3e60136b65103185172c8335b4e2` (`tests: require full v150B-2B failure collection`) et `cf3a5d288c182711caba9a447fade9d1326a9ded` (`tests: report all v150B-2B check failures`).
 - Vérification fraîche : Vercel `success`; GitHub Actions `v150B-2B checks` run #118 et `RailOps lifecycle regression` run #134 sont tous deux `success` sur `cf3a5d288c182711caba9a447fade9d1326a9ded`.
@@ -394,5 +394,14 @@
 - État contrôlé avant modification : PR #1 ouverte en brouillon et non fusionnée sur `security/v150b2b-rls-ready`; comparaison fraîche avec `main` = **16 commits behind / 290 ahead**. Supabase `railops` est `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.084.
 - Amélioration documentaire réversible : ajout de `docs/supabase-state/2026-08-25-0228.md`, photographie metadata-only de la divergence GitHub, de l'état RLS/policies des huit tables cœur et des familles Security/Performance Advisor. Commit : `5435b35540ccf97b1164a4ad43a214559c88623e` (`docs: refresh GitHub Supabase state snapshot`).
 - Vérification fraîche : snapshot relu depuis la branche ; `v150B-2B checks` #442, `RailOps lifecycle regression` #306 et `RailOps modules regression` #74 sont tous `success`, ainsi que Vercel sur le commit du snapshot. Toutes les lectures Supabase de cette passe étaient strictement en lecture seule ; aucune nouvelle famille d'alerte n'a été observée.
+- Garde-fous : aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact et aucun merge/rebase n'a été tenté.
+- Points en attente historiques inchangés : synchronisation avec les 16 commits de `main`, smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
+
+## 2026-08-25 — relevé GitHub / Supabase 03:52 Europe/Paris
+
+- État contrôlé avant modification : PR #1 ouverte en brouillon et non fusionnée sur `security/v150b2b-rls-ready`; comparaison fraîche avec `main` = **16 commits behind / 292 ahead**. Supabase `railops` est `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.084 ; Security/Performance Advisors et comptages RLS/policies relus strictement en lecture seule.
+- Amélioration documentaire réversible : ajout de `docs/supabase-state/2026-08-25-0352.md`, photographie metadata-only de la divergence GitHub, de l'état RLS/policies et des familles Advisors. Commits : `2f0fce17c8263554596ce9122e87bdecb4aca836` (snapshot) puis `b30cacb44fbe683714c628e063fff656e90dfe63` (alignement du format avec le contrat de vérification existant).
+- Diagnostic CI : le premier snapshot a fait échouer uniquement `v150B-2B checks` #446 parce que les lignes de policies avaient changé de forme (`RLS activé, N policy`) alors que le contrat historique attend `- table : N ;`. Les régressions modules #76 et lifecycle #308 étaient déjà vertes ; cause isolée au format documentaire, sans régression applicative.
+- Vérification fraîche après correction : `v150B-2B checks` #448, `RailOps lifecycle regression` #309 et `RailOps modules regression` #77 sont tous `success`; Vercel est également `success` sur `b30cacb44fbe683714c628e063fff656e90dfe63`.
 - Garde-fous : aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact et aucun merge/rebase n'a été tenté.
 - Points en attente historiques inchangés : synchronisation avec les 16 commits de `main`, smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
