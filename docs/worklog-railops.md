@@ -440,3 +440,12 @@
 - Diagnostic logs : les refus RLS `materiels` visibles dans la fenêtre consultée sont historiques ; la dernière occurrence correspondante retournée est `2026-08-24T23:02:28.854Z` et aucune occurrence plus récente du même message n'a été observée. Aucune cause n'est attribuée et aucune correction backend n'est appliquée.
 - Garde-fous : aucune donnée, migration, policy, permission, fonction Supabase, règle métier, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifiée ; `main` reste intact et aucun merge/rebase n'a été tenté.
 - Points en attente historiques inchangés : synchronisation avec les 16 commits de `main`, smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
+
+## 2026-08-25 — diagnostics groupés du runner 09:13 Europe/Paris
+
+- État contrôlé avant modification : PR #1 ouverte en brouillon et non fusionnée sur `security/v150b2b-rls-ready`; comparaison fraîche avec `main` = **16 commits behind / 312 ahead**. Supabase `railops` est `ACTIVE_HEALTHY`; Security Advisor relu strictement en lecture seule.
+- Amélioration réversible limitée aux tests/diagnostics : `tests/run-v150b2b-checks.js` regroupe désormais les causes d’échec (`timeout`, codes de sortie, erreurs de lancement) et les affiche dans la sortie console ainsi que dans le GitHub Step Summary. Le contrat est verrouillé par `tests/v150b2b-runner-coverage.test.js`.
+- Commits : `a10a6f2793dd68c1f15918eff90903e1bc6cd55c` (contrat) et `295c3f05a6ff88d63afa02f13936800f40a2ea67` (implémentation).
+- Vérification fraîche : `RailOps lifecycle regression` run #329 est `success` sur `295c3f05a6ff88d63afa02f13936800f40a2ea67`; Vercel est également `success`.
+- Garde-fous : aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n’a été modifié ; `main` reste intact et aucun merge/rebase n’a été tenté.
+- Points en attente historiques inchangés : synchronisation avec les 16 commits de `main`, smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n’a été introduit.
