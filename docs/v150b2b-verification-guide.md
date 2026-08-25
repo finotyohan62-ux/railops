@@ -30,6 +30,22 @@ Le premier nombre indique les commits présents sur `main` mais absents de la br
 
 Dans ce cas, arrêter toute conclusion de compatibilité avec la version courante de `main`. Ne pas fusionner, merge ou rebase automatiquement la branche sans validation explicite : la synchronisation doit être décidée après examen des changements intervenus sur `main`.
 
+### Lire le résumé de dérive CI
+
+Sur les pushes de la branche, l'étape `Report branch drift (non-blocking)` ajoute au GitHub Step Summary un diagnostic de dérive purement informatif. Elle ne réalise aucun merge, rebase ni autre mutation Git.
+
+Le diagnostic conserve le SHA de `main`, le SHA de la branche et le **merge-base** (ancêtre commun), puis mesure les fichiers touchés sur `main` depuis cet ancêtre commun. Cette origine évite de masquer un changement intervenu sur `main` simplement parce que le même fichier a aussi évolué sur la branche.
+
+La ligne `Main-only impact` classe ces fichiers en cinq groupes :
+
+- `app` : code applicatif et modules web ;
+- `tests` : tests et workflow GitHub ;
+- `backend` : fichiers sous `supabase/` ;
+- `docs` : documentation ;
+- `other` : fichiers qui ne rentrent pas dans les catégories précédentes.
+
+Ces compteurs servent uniquement au triage. Une valeur `backend > 0` ou `app > 0` ne donne aucune autorisation de synchroniser automatiquement la branche ; elle indique seulement qu'une revue de compatibilité doit précéder tout smoke-test ou décision de merge/rebase.
+
 ## Vérifier la dérive de l'état Supabase
 
 Avant un smoke-test ou une conclusion de compatibilité, relire l'état réel du projet Supabase **en lecture seule** : santé du projet, activation RLS sur les tables concernées et noms/portées des policies effectivement présentes. Cette vérification est un diagnostic ; elle ne doit appliquer aucune migration, policy, permission ou correction de données.
