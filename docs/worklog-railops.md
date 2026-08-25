@@ -484,3 +484,12 @@
 - Diagnostic CI : les deux premières exécutions ont détecté uniquement des écarts de forme documentaire ; aucune régression runtime n'a été diagnostiquée. Vérification fraîche sur `ae2127510e3b5d07e741d88a84a828cc6dee8f6a` : GitHub Actions `v150B-2B checks` run #544 est `success`, y compris `Report branch drift (non-blocking)` et la suite agrégée.
 - Garde-fous : aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact.
 - Point en attente inchangé : le commit de rafraîchissement de déploiement présent uniquement sur `main` reste volontairement non copié ; smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite. Aucun nouveau choix produit n'a été introduit.
+
+## 2026-08-26 — contexte événement/run des contrôles CI 00:19 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon et non fusionnée sur `security/v150b2b-rls-ready`; `main` observé à `e89c57c995fe0661cffcdbfcf88b9f30a408a093`. Supabase `railops` reste `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.084 ; Security Advisor relu strictement en lecture seule, sans correction backend.
+- Amélioration réversible limitée aux tests/diagnostics : ajout de `tests/v150b2b-ci-context.test.js`; `tests/run-v150b2b-checks.js` affiche désormais aussi `GITHUB_EVENT_NAME` et `GITHUB_RUN_ID` dans le contexte console et le GitHub Step Summary, afin de rattacher immédiatement un diagnostic à son type d'événement et à son run.
+- Cycle TDD vérifié : `51cebbfd1d5f4e075e0d9be0a95225daafbc8c43` (`tests: require CI event and run diagnostics`) a fait échouer `v150B-2B checks` run #559 comme attendu ; `765cf8afd831cd0d8ac09dcc496570afe893a747` (`tests: enrich v150B2B CI run context`) rend le job `checks` du run #560 `success`.
+- État après changement : comparaison fraîche avec `main` = **1 commit behind / 366 ahead**, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`. Aucun merge, rebase ou cherry-pick n'a été tenté.
+- Garde-fous : aucun code runtime RailOps, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact.
+- Point en attente inchangé : le commit de rafraîchissement de déploiement présent uniquement sur `main` reste volontairement non copié ; smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite. Aucun nouveau choix produit n'a été introduit.
