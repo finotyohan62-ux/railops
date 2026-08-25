@@ -467,3 +467,11 @@
 - Vérification fraîche : GitHub Actions `v150B-2B checks` run #520 est `success`; le step `Report branch drift (non-blocking)` et la suite agrégée sont tous deux `success`.
 - Garde-fous : aucun code runtime RailOps, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n’a été modifié ; `main` reste intact et aucun merge/rebase n’a été tenté.
 - Points en attente historiques inchangés : synchronisation avec `main`, smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n’a été introduit.
+
+## 2026-08-25 — lecture guidée du diagnostic de dérive CI 15:17 Europe/Paris
+
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon et non fusionnée sur `security/v150b2b-rls-ready`; comparaison fraîche avec `main` = **17 commits behind / 342 ahead** après les changements de cette passe. Supabase `railops` reste `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.084 ; Security Advisor relu en lecture seule, sans correction backend.
+- Amélioration réversible limitée aux tests/documentation : le guide de vérification explique désormais comment lire le Step Summary `Report branch drift (non-blocking)`, pourquoi le diff part du `merge-base`, et comment interpréter les catégories `app`, `tests`, `backend`, `docs` et `other` sans en déduire une autorisation de merge/rebase.
+- Cycle TDD vérifié : `0c7daba89fa0dd401cebac2a1af998197c24650b` a ajouté le contrat documentaire et le workflow `v150B-2B checks` #523 a échoué comme attendu ; `521a96dff5f9f261efe15d5093e228446a360d7d` a ajouté la documentation et le run #524 est `success`.
+- Garde-fous : aucun code runtime RailOps, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact et aucun merge/rebase n'a été tenté.
+- Points en attente historiques inchangés : synchronisation avec `main`, smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
