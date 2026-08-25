@@ -1,0 +1,71 @@
+name: Apply agent inventory hotfix
+
+on:
+  push:
+    branches:
+      - hotfix/agent-inventory-rls-save
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch agent material persistence
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          marker = "const DEF_USERS=[];"
+          helper = """const DEF_USERS=[];async function roPersistExistingMaterial(row){if(!row||!row.id)throw new Error('Materiel existant invalide');const {prix,autreChantier,...payload}=row;const result=await db.from('materiels').update(payload).eq('id',payload.id);if(result?.error)throw result.error;return result;}async function roPersistMaterial(row){if(String(S?.role||'').trim().toLowerCase()==='agent')return await roPersistExistingMaterial(row);if(!row||!row.id)throw new Error('Materiel invalide');const {prix,autreChantier,...payload}=row;const result=await db.from('materiels').upsert([payload],{onConflict:'id'});if(result?.error)throw result.error;return result;}"""
+          if 'async function roPersistExistingMaterial(' not in s:
+              if marker not in s:
+                  raise SystemExit('DEF_USERS insertion marker not found')
+              s = s.replace(marker, helper, 1)
+          old_scan = "j!==-0x1&&await db['from'](aw(0x338))[aw(0x33d)]([S[aw(0x684)][j]],{'onConflict':'id'})"
+          if old_scan in s:
+              s = s.replace(old_scan, "j!==-0x1&&await roPersistMaterial(S[aw(0x684)][j])", 1)
+          old_queued_mat = "await db[aw(0x432)]('materiels')['upsert']([i[aw(0x1f4)]],{'onConflict':'id'})"
+          if old_queued_mat in s:
+              s = s.replace(old_queued_mat, "await roPersistMaterial(i[aw(0x1f4)])", 1)
+          pattern = re.compile(r"async function saveMat\(a\)\{.*?\}async function saveChantier", re.S)
+          repl = "async function saveMat(a){const b=S.mat.find(c=>c.id===a);if(!b)return;try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));await roPersistMaterial(b);}catch(h){toast('Erreur réseau article','danger');}}async function saveChantier"
+          s, count = pattern.subn(repl, s, count=1)
+          if count != 1:
+              raise SystemExit(f'saveMat replacement count={count}')
+          required = ['async function roPersistExistingMaterial(',"db.from('materiels').update(payload).eq('id',payload.id)",'return await roPersistExistingMaterial(row)','await roPersistMaterial(b)','await roPersistMaterial(S[aw(0x684)][j])',"await roPersistMaterial(i[aw(0x1f4)])"]
+          missing = [x for x in required if x not in s]
+          if missing:
+              raise SystemExit('post-patch markers missing: ' + repr(missing))
+          p.write_text(s, encoding='utf-8')
+      - name: Run focused regression
+        run: node tests/agent-material-save-hotfix.test.js
+      - name: Run repository checks
+        shell: bash
+        run: |
+          if [ -f package.json ]; then
+            npm test --if-present
+          fi
+          if [ -f tests/run-v150b2b-checks.js ]; then
+            node tests/run-v150b2b-checks.js
+          fi
+      - name: Commit hotfix
+        shell: bash
+        run: |
+          rm .github/workflows/apply-agent-inventory-hotfix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html .github/workflows/apply-agent-inventory-hotfix.yml
+          git commit -m 'fix: persist agent inventory material updates without upsert'
+          git push origin HEAD:hotfix/agent-inventory-rls-save
