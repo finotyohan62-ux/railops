@@ -388,3 +388,11 @@
 - Vérification fraîche : snapshot relu depuis la branche ; Vercel était `success` sur le head de départ. Toutes les lectures Supabase de cette passe étaient strictement en lecture seule ; aucune nouvelle famille d'alerte n'a été observée.
 - Garde-fous : aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact et aucun merge/rebase n'a été tenté.
 - Points en attente historiques inchangés : synchronisation avec les 16 commits de `main`, smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
+
+## 2026-08-25 — relevé GitHub / Supabase 02:28 Europe/Paris
+
+- État contrôlé avant modification : PR #1 ouverte en brouillon et non fusionnée sur `security/v150b2b-rls-ready`; comparaison fraîche avec `main` = **16 commits behind / 290 ahead**. Supabase `railops` est `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.084.
+- Amélioration documentaire réversible : ajout de `docs/supabase-state/2026-08-25-0228.md`, photographie metadata-only de la divergence GitHub, de l'état RLS/policies des huit tables cœur et des familles Security/Performance Advisor. Commit : `5435b35540ccf97b1164a4ad43a214559c88623e` (`docs: refresh GitHub Supabase state snapshot`).
+- Vérification fraîche : snapshot relu depuis la branche ; `v150B-2B checks` #442, `RailOps lifecycle regression` #306 et `RailOps modules regression` #74 sont tous `success`, ainsi que Vercel sur le commit du snapshot. Toutes les lectures Supabase de cette passe étaient strictement en lecture seule ; aucune nouvelle famille d'alerte n'a été observée.
+- Garde-fous : aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact et aucun merge/rebase n'a été tenté.
+- Points en attente historiques inchangés : synchronisation avec les 16 commits de `main`, smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
