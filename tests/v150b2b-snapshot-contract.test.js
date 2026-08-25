@@ -64,4 +64,20 @@ for (const table of coreTables) {
   );
 }
 
+assert.match(
+  latest,
+  /Ces alertes restent des signaux de diagnostic uniquement\./,
+  `latest snapshot ${latestName} must label Advisor findings as diagnostic signals only`
+);
+assert.match(
+  latest,
+  /Aucune permission, fonction, policy, Auth ou RLS n'est modifiée automatiquement\./,
+  `latest snapshot ${latestName} must explicitly prohibit automatic security remediation`
+);
+assert.match(
+  latest,
+  /Aucun index ni changement de schéma n'est appliqué\./,
+  `latest snapshot ${latestName} must explicitly prohibit automatic performance-schema remediation`
+);
+
 console.log(`v150b2b snapshot contract: OK (${latestName})`);
