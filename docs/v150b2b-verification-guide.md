@@ -30,6 +30,17 @@ Le premier nombre indique les commits présents sur `main` mais absents de la br
 
 Dans ce cas, arrêter toute conclusion de compatibilité avec la version courante de `main`. Ne pas fusionner, merge ou rebase automatiquement la branche sans validation explicite : la synchronisation doit être décidée après examen des changements intervenus sur `main`.
 
+### Triage en lecture seule lorsque la branche est behind
+
+Pour préparer une décision sans toucher à l'historique Git, relever d'abord les commits absents de la branche et les fichiers modifiés sur `main` depuis l'ancêtre commun :
+
+```bash
+git log --oneline --no-decorate HEAD..origin/main
+git diff --name-only "$(git merge-base origin/main HEAD)"..origin/main
+```
+
+Ce relevé sert uniquement à qualifier l'impact potentiel. Si les changements de `main` touchent le runtime applicatif, `supabase/`, l'import, le Multi-chantier, la purge hebdomadaire, les permissions ou les règles métier, ne pas tenter de résolution automatique : consigner le périmètre concerné et attendre une décision explicite. Si seuls des fichiers documentaires ou des tests indépendants sont concernés, la branche reste néanmoins divergente ; cela ne constitue pas une autorisation de merge/rebase.
+
 ### Lire le résumé de dérive CI
 
 Sur les pushes de la branche, l'étape `Report branch drift (non-blocking)` ajoute au GitHub Step Summary un diagnostic de dérive purement informatif. Elle ne réalise aucun merge, rebase ni autre mutation Git.
