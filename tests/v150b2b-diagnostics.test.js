@@ -14,7 +14,7 @@ const state = {
   page: 'dashboard',
   chantiers: [{ id: 'C-SECRET' }, { id: 'C-2' }],
   mat: [],
-  scans: [],
+  scans: [{ id: 'SCAN-PENDING-SECRET', _pending: true }, { id: 'SCAN-SYNCED-SECRET' }],
   users: [{ id: 'U-SECRET', badge: 'USER-BADGE-SECRET', mdp: 'USER-PASSWORD-SECRET' }],
   chefChantierStats: [{ chantier_id: 'C-SECRET' }],
 };
@@ -37,10 +37,12 @@ assert.deepEqual(snapshot, {
   counts: {
     chantiers: 2,
     materials: 0,
-    scans: 0,
+    scans: 2,
+    pendingScans: 1,
     users: 1,
     chefChantierStats: 1,
   },
+  warnings: ['CHEF_CHANTIER_SCAN_SCOPE_LEAK'],
 });
 
 const serialized = JSON.stringify(snapshot);
@@ -48,6 +50,8 @@ for (const secret of [
   'Sensitive Name',
   'C-SECRET',
   'U-SECRET',
+  'SCAN-PENDING-SECRET',
+  'SCAN-SYNCED-SECRET',
   'BADGE-SECRET',
   'PASSWORD-SECRET',
   'PASSWORD-ALT-SECRET',
@@ -79,7 +83,7 @@ assert.deepEqual(
     adminMode: false,
     page: null,
     online: null,
-    counts: { chantiers: 0, materials: 0, scans: 0, users: 0, chefChantierStats: 0 },
+    counts: { chantiers: 0, materials: 0, scans: 0, pendingScans: 0, users: 0, chefChantierStats: 0 },
   },
   'diagnostics must be safe on an empty state'
 );
