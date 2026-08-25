@@ -100,5 +100,13 @@ assert(
   runner.includes('const totalElapsedMs = durations.reduce(') && runner.includes('ℹ total check time: ${totalElapsedMs}ms'),
   'aggregate runner must print total child-check time so global CI cost drift is visible'
 );
+assert(
+  runner.includes('const failureReasonCounts = failures.reduce(') && runner.includes('ℹ failure reasons:'),
+  'aggregate runner must group failure reasons so repeated timeout/exit patterns are obvious at a glance'
+);
+assert(
+  runner.includes('Failure reasons:') && runner.includes('failureReasonSummary'),
+  'GitHub step summary must include grouped failure reasons when checks fail'
+);
 
-console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with per-check diagnostics, durations, timeout guards, CI context, complete failure collection, slowest-check summary and total check time`);
+console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with per-check diagnostics, durations, timeout guards, CI context, complete failure collection, grouped failure reasons, slowest-check summary and total check time`);
