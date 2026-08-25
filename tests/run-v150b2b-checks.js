@@ -70,8 +70,17 @@ if (slowest.length) {
 }
 const totalElapsedMs = durations.reduce((sum,item)=>sum+item.elapsedMs,0);
 const passedChecks = Math.max(0, durations.length - failures.length);
+const failureReasonCounts = failures.reduce((counts, failure) => {
+  counts[failure.reason] = (counts[failure.reason] || 0) + 1;
+  return counts;
+}, {});
+const failureReasonSummary = Object.entries(failureReasonCounts)
+  .sort((a,b)=>b[1]-a[1] || a[0].localeCompare(b[0]))
+  .map(([reason,count])=>`${reason}=${count}`)
+  .join(' · ');
 console.log(`ℹ total check time: ${totalElapsedMs}ms`);
 console.log(`ℹ passed checks: ${passedChecks}/${durations.length}`);
+if (failureReasonSummary) console.log(`ℹ failure reasons: ${failureReasonSummary}`);
 
 function writeStepSummary() {
   const summaryPath = process.env.GITHUB_STEP_SUMMARY;
@@ -90,6 +99,7 @@ function writeStepSummary() {
     `- SHA: \`${runSha}\``,
   ];
   if (slowest.length) lines.push(`- Slowest: ${slowest.map(item => `\`${item.label}\` (${item.elapsedMs}ms)`).join(' · ')}`);
+  if (failureReasonSummary) lines.push(`- Failure reasons: \`${failureReasonSummary}\``);
   if (failures.length) {
     lines.push('', '### Failures');
     for (const failure of failures) lines.push(`- \`${failure.label}\`: ${failure.reason}`);
