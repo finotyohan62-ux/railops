@@ -95,6 +95,7 @@ function writeStepSummary() {
     `- Passed checks: **${passedChecks}/${durations.length}**`,
     `- Failures: **${failures.length}**`,
     `- Total check time: **${totalElapsedMs}ms**`,
+    `- Node: \`${process.version}\``,
     `- Ref: \`${runRef}\``,
     `- SHA: \`${runSha}\``,
   ];
