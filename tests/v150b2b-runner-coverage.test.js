@@ -108,5 +108,9 @@ assert(
   runner.includes('Failure reasons:') && runner.includes('failureReasonSummary'),
   'GitHub step summary must include grouped failure reasons when checks fail'
 );
+assert(
+  runner.includes('`- Node: \\`${process.version}\\``'),
+  'GitHub step summary must include the Node version so CI runtime context is preserved with the result'
+);
 
-console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with per-check diagnostics, durations, timeout guards, CI context, complete failure collection, grouped failure reasons, slowest-check summary and total check time`);
+console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with per-check diagnostics, durations, timeout guards, CI context, complete failure collection, grouped failure reasons, slowest-check summary, total check time and Node-version summary context`);
