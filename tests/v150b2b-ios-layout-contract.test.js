@@ -35,6 +35,18 @@ assert.doesNotMatch(
 
 assert.match(
   styles,
+  /-webkit-text-size-adjust\s*:\s*100%/i,
+  'Safari must keep predictable text sizing without disabling system text scaling'
+);
+
+assert.match(
+  html,
+  /<meta\s+name="apple-mobile-web-app-title"\s+content="RailOps"\s*>/i,
+  'iOS standalone mode must keep the RailOps app title'
+);
+
+assert.match(
+  styles,
   /#app\{[^}]*padding-left:env\(safe-area-inset-left,0px\)[^}]*padding-right:env\(safe-area-inset-right,0px\)[^}]*top:env\(safe-area-inset-top,0px\)/i,
   'app shell must preserve iPhone top and side safe areas'
 );
