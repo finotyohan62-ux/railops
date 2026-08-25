@@ -134,3 +134,13 @@ Le Performance Advisor est également stable : seules les deux clés étrangère
 Côté GitHub, la PR #1 est toujours ouverte, en brouillon et non fusionnée, avec `main` comme base et `security/v150b2b-rls-ready` comme branche de travail. Le head observé avant modification est `59ded742911ab03fdc2852bf43911fd8d253e2e0` (`fix: update existing materials for agent inventory saves`).
 
 Conclusion : aucun nouveau signal ne justifie une action automatique sur les droits, RLS, données, schéma ou règles métier. Cette passe se limite donc à conserver une photographie diagnostique datée et vérifiable de l'état réel.
+
+## Relevé comparatif — 2026-08-25 20:14 Europe/Paris
+
+Contrôle effectué en lecture seule juste avant cette passe. Le projet Supabase `railops` reste `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.084. Le Security Advisor est stable dans ses familles connues : cinq informations `RLS Enabled No Policy` (`agents`, `inspections`, `materiel`, `railops_auth_throttle`, `railops_legacy_credentials`), des avertissements sur les RPC `SECURITY DEFINER` exécutables par `authenticated`, et la protection contre les mots de passe compromis désactivée.
+
+Aucune correction automatique n'est appliquée à ces alertes : elles peuvent toucher aux permissions, au modèle de sécurité ou aux règles d'accès et nécessitent donc une décision explicite et des smoke-tests adaptés.
+
+Côté GitHub, `security/v150b2b-rls-ready` est observée divergente de `main` à **350 commits d'avance / 17 commits de retard** ; `main` pointe sur `20f7e028ac5e3d0ac401d41ec3561af09e252694` et le head de la branche avant cette note est `2225b9b4a2203560959c24f6d637bb43d734b554`. Aucun merge/rebase n'est tenté et aucun code runtime n'est modifié dans cette passe.
+
+Conclusion : l'état Supabase ne justifie toujours aucune action automatique sur les RLS, permissions, schéma ou données. La synchronisation de la branche avec les 17 commits de `main` reste un point nécessitant une décision explicite avant toute reprise de changements runtime pouvant chevaucher ces fichiers.
