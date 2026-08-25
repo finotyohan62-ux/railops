@@ -60,12 +60,16 @@ assert(
   'step summary should expose a bounded main-only file list for compatibility triage'
 );
 assert(
-  workflow.includes('head -n 20'),
-  'main-only file diagnostics must stay bounded and readable'
+  workflow.includes("sed -n '1,20p'"),
+  'main-only file diagnostics must stay bounded without SIGPIPE-prone head pipelines'
 );
 assert(
-  workflow.includes("git log --oneline --no-decorate HEAD..origin/main | head -n 12"),
-  'drift diagnostic should list a bounded set of commits present on main but absent from the branch'
+  workflow.includes("git log --oneline --no-decorate HEAD..origin/main | sed -n '1,12p'"),
+  'drift diagnostic should list bounded main-only commits without SIGPIPE-prone head pipelines'
+);
+assert(
+  !workflow.includes('| head -n 20') && !workflow.includes('| head -n 12'),
+  'branch drift diagnostics must avoid head pipelines under bash pipefail'
 );
 assert(
   workflow.includes('Main-only commits (up to 12):'),
@@ -116,4 +120,4 @@ assert(
   'step summary must make the non-mutating nature of the diagnostic explicit'
 );
 
-console.log('PASS: v150B-2B CI reports branch drift with immutable comparison context, complete counts, impact categories and bounded main-only file/commit diagnostics');
+console.log('PASS: v150B-2B CI reports branch drift with immutable comparison context, complete counts, impact categories and SIGPIPE-safe bounded diagnostics');
