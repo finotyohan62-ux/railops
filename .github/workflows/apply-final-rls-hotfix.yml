@@ -1,0 +1,66 @@
+name: Apply final RLS hotfix
+
+on:
+  push:
+    branches:
+      - hotfix/final-rls-writes
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch live material paths and load secure admin
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p=Path('js/legacy-core.js')
+          s=p.read_text(encoding='utf-8')
+          pattern=re.compile(r"async function saveMat\(a\)\{.*?\}async function saveChantier",re.S)
+          repl="async function saveMat(a){const b=S.mat.find(c=>c.id===a);if(!b)return;try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));await roPersistMaterial(b);}catch(h){toast('Erreur réseau article','danger');}}async function saveChantier"
+          s,count=pattern.subn(repl,s,count=1)
+          if count!=1: raise SystemExit(f'saveMat replacement count={count}')
+
+          old_scan="j!==-0x1&&await db['from'](aw(0x338))[aw(0x33d)]([S[aw(0x684)][j]],{'onConflict':'id'})"
+          new_scan="j!==-0x1&&await roPersistMaterial(S[aw(0x684)][j])"
+          if old_scan in s:
+              s=s.replace(old_scan,new_scan,1)
+          if new_scan not in s:
+              raise SystemExit('live scan material upsert marker not found')
+          if 'await roPersistMaterial(b)' not in s:
+              raise SystemExit('saveMat role-aware marker missing')
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          tag='<script src="js/core/secure-admin.js?v=157"></script>'
+          if tag not in s:
+              m=re.search(r'<script src="js/core/lifecycle\.js\?v=\d+"></script>',s)
+              if not m: raise SystemExit('lifecycle script marker not found')
+              s=s[:m.end()]+'\n'+tag+s[m.end():]
+          p.write_text(s,encoding='utf-8')
+      - name: Run focused regressions
+        run: |
+          node tests/final-agent-material-save.test.js
+          node tests/final-secure-user-admin.test.js
+      - name: Remove one-shot patch workflow and commit
+        shell: bash
+        run: |
+          rm .github/workflows/apply-final-rls-hotfix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add js/legacy-core.js index.html .github/workflows/apply-final-rls-hotfix.yml
+          git commit -m 'fix: finalize production RLS write paths'
+          git push origin HEAD:hotfix/final-rls-writes
