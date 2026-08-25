@@ -458,3 +458,12 @@
 - Vérification fraîche : `v150B-2B checks` run #517 est `success`; le step `Report branch drift (non-blocking)` et la suite v150B-2B sont tous deux `success`. Aucun code runtime RailOps n'a été modifié.
 - Garde-fous : aucune donnée, migration, policy, permission, fonction, index ou schéma Supabase n'a été modifié ; aucun changement de règle métier, Import, logique Multi-chantier ou purge hebdomadaire ; aucun merge/rebase ni changement volontaire de `main`.
 - Points en attente historiques inchangés : synchronisation de la branche avec `main`, smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
+
+## 2026-08-25 — diagnostic de dérive depuis l’ancêtre commun 14:20 Europe/Paris
+
+- État contrôlé avant modification : PR #1 ouverte, en brouillon et non fusionnée sur `security/v150b2b-rls-ready`; comparaison fraîche avec `main` = **17 commits behind / 335 ahead** avant cette passe. Supabase `railops` reste `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.084 ; Security Advisor relu strictement en lecture seule, sans correction backend.
+- Amélioration réversible limitée aux tests/diagnostics : le diagnostic CI des fichiers présents côté `main` utilise désormais l’ancêtre commun (`merge-base`) comme origine du diff, afin de ne pas masquer un fichier touché sur `main` lorsqu’il a aussi divergé sur la branche. Le SHA complet de l’ancêtre commun est conservé pour les calculs et une version courte uniquement pour l’affichage.
+- Commits : `a3bbada79dbad3bbbf9f57801fe13db9706337e6` (`tests: require merge-base scoped drift diagnostics`) et `7c54755bffef0c7480183df6988adc443eef68cc` (`ci: scope main drift files from merge base`).
+- Vérification fraîche : GitHub Actions `v150B-2B checks` run #520 est `success`; le step `Report branch drift (non-blocking)` et la suite agrégée sont tous deux `success`.
+- Garde-fous : aucun code runtime RailOps, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n’a été modifié ; `main` reste intact et aucun merge/rebase n’a été tenté.
+- Points en attente historiques inchangés : synchronisation avec `main`, smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n’a été introduit.
