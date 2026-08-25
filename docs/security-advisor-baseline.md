@@ -118,3 +118,19 @@ Le Performance Advisor reste également stable : seules les deux clés étrangè
 Côté GitHub, la PR #1 est toujours ouverte, en brouillon et non fusionnée. La branche `security/v150b2b-rls-ready` est observée divergente de `main` à **262 commits d'avance / 14 commits de retard**, avec merge-base `4b50df53ee449c4c907bae6a215672be3a2597d9`. Les trois workflows associés au head observé (`RailOps modules regression`, `v150B-2B checks`, `RailOps lifecycle regression`) sont en succès, tout comme le statut Vercel.
 
 Conclusion : aucun changement de sécurité, de schéma, de données ou de règle métier n'est justifié automatiquement par ce relevé. La divergence Git reste un point volontairement sans action : aucun merge/rebase n'est tenté depuis cette branche de maintenance.
+
+## Relevé comparatif — 2026-08-25 12:13 Europe/Paris
+
+Contrôle effectué exclusivement en lecture seule avant cette passe de maintenance. Le projet Supabase `railops` est `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.084. Aucune migration, policy, permission, fonction, donnée, configuration Auth ou règle métier n'a été modifiée.
+
+Le Security Advisor reste stable par rapport au relevé du 24 août :
+
+- cinq informations `RLS Enabled No Policy` restent présentes sur `public.agents`, `public.inspections`, `public.materiel`, `public.railops_auth_throttle` et `public.railops_legacy_credentials` ;
+- les avertissements concernant les fonctions `SECURITY DEFINER` exécutables par `authenticated` restent présents ;
+- la protection Supabase Auth contre les mots de passe compromis reste désactivée.
+
+Le Performance Advisor est également stable : seules les deux clés étrangères non indexées déjà connues sur `public.inspections` sont signalées (`inspections_agent_id_fkey` et `inspections_materiel_id_fkey`). Aucun index ni changement de schéma n'est appliqué automatiquement.
+
+Côté GitHub, la PR #1 est toujours ouverte, en brouillon et non fusionnée, avec `main` comme base et `security/v150b2b-rls-ready` comme branche de travail. Le head observé avant modification est `59ded742911ab03fdc2852bf43911fd8d253e2e0` (`fix: update existing materials for agent inventory saves`).
+
+Conclusion : aucun nouveau signal ne justifie une action automatique sur les droits, RLS, données, schéma ou règles métier. Cette passe se limite donc à conserver une photographie diagnostique datée et vérifiable de l'état réel.
