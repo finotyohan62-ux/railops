@@ -75,6 +75,20 @@ Pour un `chef_chantier`, `materials: 0` et `scans: 0` sont attendus : les compte
 
 Pour un problème de connexion ou de session, vérifier d’abord `role`, `page`, `online`, les comptages et, s’il existe, le champ `warnings`. `pendingScans > 0` indique uniquement qu’au moins une opération de scan reste marquée en attente dans l’état local ; ce compteur ne prouve ni un échec serveur ni une erreur de permission et doit être recoupé avec le contexte de synchronisation. `SESSION_PAGE_WITHOUT_ROLE` signifie que le rôle a disparu mais que l’état de navigation n’a pas encore rejoint `login`; `SESSION_DATA_WITHOUT_ROLE` signifie qu’un état local contient encore des lignes. Ces diagnostics ne naviguent ni ne suppriment rien eux-mêmes. Un diagnostic nécessitant les données brutes doit être arrêté et traité séparément : ce helper n’a pas vocation à contourner le cloisonnement des rôles.
 
+## Lecture des logs Supabase
+
+Le connecteur de logs expose une fenêtre glissante des dernières **24 h**. Une erreur encore visible dans cette fenêtre peut donc être historique : sa simple présence ne prouve pas qu’elle se reproduit actuellement.
+
+Pour trier un signal sans modifier le backend :
+
+- regrouper les erreurs par message et table/service, sans recopier d’identifiant ni de donnée métier ;
+- relever l’horodatage exact du **dernier** événement correspondant ;
+- comparer cet horodatage avec le dernier relevé connu et, lorsqu’un test utilisateur existe, avec l’heure de l’action reproduite ;
+- considérer un message ancien, sans occurrence plus récente, comme un élément historique à conserver au diagnostic ;
+- considérer une occurrence nouvelle après l’action reproduite comme un signal récent à investiguer, sans en déduire automatiquement la cause.
+
+Les logs seuls ne suffisent jamais pour modifier une policy, une permission ou la RLS. Une évolution de sécurité doit rester bloquée jusqu’à une reproduction attribuable, une analyse du chemin client/serveur concerné et une validation explicite. Les erreurs PostgreSQL de routine (`checkpoint`, reconnexions de réplication, EOF de standby) doivent également être séparées des erreurs applicatives avant toute conclusion.
+
 ## Garde-fous
 
 - Ne pas étendre ce helper avec des noms, IDs, références, QR ou payloads métier pour faciliter un debug ponctuel.
