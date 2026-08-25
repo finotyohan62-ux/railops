@@ -1,0 +1,26 @@
+name: Final RLS hotfix check
+
+on:
+  push:
+    branches:
+      - hotfix/final-rls-writes
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Agent material regression
+        run: node tests/final-agent-material-save.test.js
+      - name: Secure user administration regression
+        run: node tests/final-secure-user-admin.test.js
