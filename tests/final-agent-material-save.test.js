@@ -11,5 +11,5 @@ if(!sync.includes('return await roPersistExistingMaterial(row)'))fail('agent gat
 if(!sync.includes('await roPersistMaterial(S[aw(0x684)][j])'))fail('offline scan material save still bypasses role-aware persistence');
 if(!sync.includes("await roPersistMaterial(i[aw(0x1f4)])"))fail('offline material queue still bypasses role-aware persistence');
 if(!legacy.includes('await roPersistMaterial(b)'))fail('live saveMat still bypasses role-aware persistence');
-if(!legacy.includes('j!==-0x1&&await roPersistMaterial(S[aw(0x684)][j])'))fail('live scan material save still bypasses role-aware persistence');
+if(!legacy.includes("if(i!==-0x1)saveMat(S['curM'])"))fail('live scan no longer routes material state through saveMat');
 console.log('PASS: agent material persistence uses UPDATE for existing rows on live/offline paths');
