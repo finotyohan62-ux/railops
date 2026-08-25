@@ -20,52 +20,62 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Patch agent material persistence
+      - name: Patch live agent material persistence
         shell: python
         run: |
           from pathlib import Path
           import re
-          p = Path('index.html')
+
+          p = Path('js/legacy-core.js')
           s = p.read_text(encoding='utf-8')
-          marker = "const DEF_USERS=[];"
-          helper = """const DEF_USERS=[];async function roPersistExistingMaterial(row){if(!row||!row.id)throw new Error('Materiel existant invalide');const {prix,autreChantier,...payload}=row;const result=await db.from('materiels').update(payload).eq('id',payload.id);if(result?.error)throw result.error;return result;}async function roPersistMaterial(row){if(String(S?.role||'').trim().toLowerCase()==='agent')return await roPersistExistingMaterial(row);if(!row||!row.id)throw new Error('Materiel invalide');const {prix,autreChantier,...payload}=row;const result=await db.from('materiels').upsert([payload],{onConflict:'id'});if(result?.error)throw result.error;return result;}"""
-          if 'async function roPersistExistingMaterial(' not in s:
-              if marker not in s:
-                  raise SystemExit('DEF_USERS insertion marker not found')
-              s = s.replace(marker, helper, 1)
-          old_scan = "j!==-0x1&&await db['from'](aw(0x338))[aw(0x33d)]([S[aw(0x684)][j]],{'onConflict':'id'})"
-          if old_scan in s:
-              s = s.replace(old_scan, "j!==-0x1&&await roPersistMaterial(S[aw(0x684)][j])", 1)
-          old_queued_mat = "await db[aw(0x432)]('materiels')['upsert']([i[aw(0x1f4)]],{'onConflict':'id'})"
-          if old_queued_mat in s:
-              s = s.replace(old_queued_mat, "await roPersistMaterial(i[aw(0x1f4)])", 1)
+
           pattern = re.compile(r"async function saveMat\(a\)\{.*?\}async function saveChantier", re.S)
           repl = "async function saveMat(a){const b=S.mat.find(c=>c.id===a);if(!b)return;try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));await roPersistMaterial(b);}catch(h){toast('Erreur réseau article','danger');}}async function saveChantier"
           s, count = pattern.subn(repl, s, count=1)
           if count != 1:
               raise SystemExit(f'saveMat replacement count={count}')
-          required = ['async function roPersistExistingMaterial(',"db.from('materiels').update(payload).eq('id',payload.id)",'return await roPersistExistingMaterial(row)','await roPersistMaterial(b)','await roPersistMaterial(S[aw(0x684)][j])',"await roPersistMaterial(i[aw(0x1f4)])"]
-          missing = [x for x in required if x not in s]
-          if missing:
-              raise SystemExit('post-patch markers missing: ' + repr(missing))
+
+          old_scan = "j!==-0x1&&await db['from'](aw(0x338))[aw(0x33d)]([S[aw(0x684)][j]],{'onConflict':'id'})"
+          new_scan = "j!==-0x1&&await roPersistMaterial(S[aw(0x684)][j])"
+          if old_scan not in s and new_scan not in s:
+              raise SystemExit('live scan material upsert marker not found')
+          if old_scan in s:
+              s = s.replace(old_scan, new_scan, 1)
+
+          if 'await roPersistMaterial(b)' not in s or new_scan not in s:
+              raise SystemExit('live role-aware persistence markers missing after patch')
           p.write_text(s, encoding='utf-8')
+
+          test = Path('tests/agent-material-save-hotfix.test.js')
+          test.write_text(r'''const fs = require('node:fs');
+          const path = require('node:path');
+          const root = path.resolve(__dirname, '..');
+          const sync = fs.readFileSync(path.join(root, 'js/core/sync.js'), 'utf8');
+          const legacy = fs.readFileSync(path.join(root, 'js/legacy-core.js'), 'utf8');
+          function fail(message) { console.error(`FAIL: ${message}`); process.exit(1); }
+          if (!sync.includes('async function roPersistExistingMaterial(')) fail('update-only helper missing');
+          if (!sync.includes("db.from('materiels').update(payload).eq('id',payload.id)")) fail('existing material helper is not UPDATE by id');
+          if (!sync.includes("String(S?.role||'').trim().toLowerCase()==='agent'")) fail('agent role gate missing');
+          if (!sync.includes('return await roPersistExistingMaterial(row)')) fail('agent gate does not use UPDATE helper');
+          if (!sync.includes('await roPersistMaterial(S[aw(0x684)][j])')) fail('offline scan path is not role-aware');
+          if (!sync.includes("await roPersistMaterial(i[aw(0x1f4)])")) fail('offline material queue is not role-aware');
+          if (!legacy.includes('await roPersistMaterial(b)')) fail('live saveMat path is not role-aware');
+          if (!legacy.includes('j!==-0x1&&await roPersistMaterial(S[aw(0x684)][j])')) fail('live scan path is not role-aware');
+          console.log('PASS: agent inventory persistence avoids material upsert on live and offline paths');
+          ''', encoding='utf-8')
       - name: Run focused regression
         run: node tests/agent-material-save-hotfix.test.js
       - name: Run repository checks
         shell: bash
         run: |
-          if [ -f package.json ]; then
-            npm test --if-present
-          fi
-          if [ -f tests/run-v150b2b-checks.js ]; then
-            node tests/run-v150b2b-checks.js
-          fi
-      - name: Commit hotfix
+          if [ -f package.json ]; then npm test --if-present; fi
+          if [ -f tests/run-v150b2b-checks.js ]; then node tests/run-v150b2b-checks.js; fi
+      - name: Remove one-shot workflow and commit hotfix
         shell: bash
         run: |
           rm .github/workflows/apply-agent-inventory-hotfix.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add index.html .github/workflows/apply-agent-inventory-hotfix.yml
+          git add js/legacy-core.js js/core/sync.js tests/agent-material-save-hotfix.test.js .github/workflows/apply-agent-inventory-hotfix.yml
           git commit -m 'fix: persist agent inventory material updates without upsert'
           git push origin HEAD:hotfix/agent-inventory-rls-save
