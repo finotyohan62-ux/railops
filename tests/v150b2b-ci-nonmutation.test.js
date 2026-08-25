@@ -27,9 +27,14 @@ assert.match(
 
 for (const forbidden of [
   /^git\s+push\b/,
+  /^git\s+commit\b/,
   /^git\s+merge\b/,
   /^git\s+rebase\b/,
+  /^git\s+cherry-pick\b/,
   /^git\s+reset\s+--hard\b/,
+  /^git\s+branch\s+(-d|-D|--delete)\b/,
+  /^git\s+checkout\s+main\b/,
+  /^git\s+switch\s+main\b/,
   /^gh\s+pr\s+merge\b/,
   /^vercel\s+(deploy\b|--prod\b)/,
   /^npx\s+vercel\s+(deploy\b|--prod\b)/,
@@ -52,4 +57,4 @@ assert.equal(
   'verification workflow must not deploy, reset, repair, link, or apply Supabase changes'
 );
 
-console.log('PASS: v150B-2B CI remains read-only, non-mutating, and non-deploying');
+console.log('PASS: v150B-2B CI remains read-only, non-mutating, non-merging, and non-deploying');
