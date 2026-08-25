@@ -9,6 +9,8 @@ const preview = fs.readFileSync(previewPath, 'utf8');
 const CHECK_TIMEOUT_MS = 30000;
 const runRef = process.env.GITHUB_REF_NAME || 'local';
 const runSha = process.env.GITHUB_SHA?.slice(0, 12) || 'local';
+const runEvent = process.env.GITHUB_EVENT_NAME || 'local';
+const runId = process.env.GITHUB_RUN_ID || 'local';
 const failures = [];
 const durations = [];
 
@@ -28,7 +30,7 @@ if (!syntaxTargets.length) {
   process.exit(1);
 }
 
-console.log(`ℹ v150B-2B checks context: node=${process.version} ref=${runRef} sha=${runSha}`);
+console.log(`ℹ v150B-2B checks context: node=${process.version} ref=${runRef} sha=${runSha} event=${runEvent} run=${runId}`);
 console.log(`ℹ discovered checks: ${tests.length} tests, ${syntaxTargets.length} syntax targets`);
 
 function run(label, args) {
@@ -98,6 +100,8 @@ function writeStepSummary() {
     `- Node: \`${process.version}\``,
     `- Ref: \`${runRef}\``,
     `- SHA: \`${runSha}\``,
+    `- Event: \`${runEvent}\``,
+    `- Run ID: \`${runId}\``,
   ];
   if (slowest.length) lines.push(`- Slowest: ${slowest.map(item => `\`${item.label}\` (${item.elapsedMs}ms)`).join(' · ')}`);
   if (failureReasonSummary) lines.push(`- Failure reasons: \`${failureReasonSummary}\``);
