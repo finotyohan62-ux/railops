@@ -45,8 +45,8 @@ jobs:
           backend_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^supabase\//{n++} END{print n+0}')"
           docs_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^docs\//{n++} END{print n+0}')"
           other_file_count=$(( main_only_file_count - app_file_count - tests_file_count - backend_file_count - docs_file_count ))
-          main_only_files="$(printf '%s\n' "${main_only_all_files}" | head -n 20)"
-          main_only_commits="$(git log --oneline --no-decorate HEAD..origin/main | head -n 12)"
+          main_only_files="$(printf '%s\n' "${main_only_all_files}" | sed -n '1,20p')"
+          main_only_commits="$(git log --oneline --no-decorate HEAD..origin/main | sed -n '1,12p')"
           echo "ℹ branch drift against main: behind=${behind} ahead=${ahead} main=${main_sha} branch=${head_sha} merge-base=${merge_base_sha} date=${merge_base_date}"
           {
             echo "## Branch drift diagnostic"
