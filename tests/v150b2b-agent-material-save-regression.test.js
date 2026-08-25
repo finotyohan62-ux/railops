@@ -12,17 +12,20 @@ function fail(message) {
 if (!index.includes('async function roPersistExistingMaterial(')) {
   fail('agent-safe existing-material persistence helper is missing');
 }
-
 if (!index.includes("db.from('materiels').update(payload).eq('id',payload.id)")) {
   fail('existing material persistence must use UPDATE by id');
 }
-
-if (!index.includes('await roPersistExistingMaterial(S[')) {
-  fail('material save path is not wired to the UPDATE helper');
+if (!index.includes('async function roPersistMaterial(') || !index.includes('return await roPersistExistingMaterial(row)')) {
+  fail('agent role is not routed to update-only material persistence');
 }
-
-if (!index.includes('await roPersistExistingMaterial(S[') || !index.includes("i['data']['materielId']")) {
-  fail('offline scan material synchronization is not guarded by existing-material UPDATE persistence');
+if (!index.includes('await roPersistMaterial(b)')) {
+  fail('live material save path is not wired to role-aware persistence');
+}
+if (!index.includes('await roPersistMaterial(S[aw(0x684)][j])')) {
+  fail('offline scan material synchronization is not wired to role-aware persistence');
+}
+if (!index.includes("await roPersistMaterial(i[aw(0x1f4)])")) {
+  fail('offline queued material persistence is not wired to role-aware persistence');
 }
 
 console.log('PASS: agent inventory material persistence is update-only for existing rows');
