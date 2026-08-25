@@ -33,6 +33,16 @@ assert.match(
 );
 assert.match(
   guide,
+  /merge[- ]base[\s\S]*?(?:app|tests)[\s\S]*?backend[\s\S]*?docs[\s\S]*?other/i,
+  'verification guide must explain the merge-base scoped CI drift impact categories'
+);
+assert.match(
+  guide,
+  /(?:informatif|informational)[\s\S]*?(?:aucun|no)\s+(?:merge|rebase)|aucun\s+(?:merge|rebase)[\s\S]*?(?:informatif|informational)/i,
+  'verification guide must make clear that CI branch drift diagnostics are non-mutating and informational'
+);
+assert.match(
+  guide,
   /ne pas (?:fusionner|merge|rebase)[\s\S]*?sans validation/i,
   'verification guide must prohibit automatic branch synchronization without approval'
 );
