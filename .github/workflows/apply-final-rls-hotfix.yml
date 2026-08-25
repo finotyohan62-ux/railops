@@ -1,4 +1,4 @@
-name: Diagnose final live material path
+name: Apply final RLS hotfix
 
 on:
   push:
@@ -6,28 +6,64 @@ on:
       - hotfix/final-rls-writes
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnose:
+  patch:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Locate live material persistence
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch live material and user write paths
         shell: python
         run: |
           from pathlib import Path
-          s=Path('js/legacy-core.js').read_text(encoding='utf-8')
-          for needle in ['materielId','findIndex','onConflict']:
-              print('===',needle,'===')
-              pos=0
-              count=0
-              while True:
-                  i=s.find(needle,pos)
-                  if i<0: break
-                  count+=1
-                  print(f'[{count}]',s[max(0,i-350):min(len(s),i+650)])
-                  pos=i+len(needle)
-              print('count=',count)
+          import re
+
+          p=Path('js/legacy-core.js')
+          s=p.read_text(encoding='utf-8')
+          pattern=re.compile(r"async function saveMat\(a\)\{.*?\}async function saveChantier",re.S)
+          repl="async function saveMat(a){const b=S.mat.find(c=>c.id===a);if(!b)return;try{localStorage.setItem('ro3_m',JSON.stringify(S.mat));await roPersistMaterial(b);}catch(h){toast('Erreur réseau article','danger');}}async function saveChantier"
+          s,count=pattern.subn(repl,s,count=1)
+          if count!=1: raise SystemExit(f'saveMat replacement count={count}')
+          if "if(i!==-0x1)saveMat(S['curM'])" not in s:
+              raise SystemExit('live scan does not route through saveMat')
+
+          generic_users="if(S[aC(0x20a)]['length'])await db[aC(0x432)](aC(0x20a))['upsert'](S[aC(0x20a)],{'onConflict':'id'});"
+          if generic_users in s:
+              s=s.replace(generic_users,'',1)
+          if generic_users in s:
+              raise SystemExit('generic users upsert still present')
+
+          bootstrap_users="if(!v||!v['length'])await db[aM(0x432)]('users')[aM(0x33d)](S[aM(0x20a)],{'onConflict':'id'});"
+          if bootstrap_users in s:
+              s=s.replace(bootstrap_users,'',1)
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          tag='<script src="js/core/secure-admin.js?v=157"></script>'
+          if tag not in s:
+              m=re.search(r'<script src="js/core/lifecycle\.js\?v=\d+"></script>',s)
+              if not m: raise SystemExit('lifecycle script marker not found')
+              s=s[:m.end()]+'\n'+tag+s[m.end():]
+          p.write_text(s,encoding='utf-8')
+      - name: Run focused regressions
+        run: |
+          node tests/final-agent-material-save.test.js
+          node tests/final-secure-user-admin.test.js
+      - name: Remove one-shot patch workflow and commit
+        shell: bash
+        run: |
+          rm .github/workflows/apply-final-rls-hotfix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add js/legacy-core.js index.html .github/workflows/apply-final-rls-hotfix.yml
+          git commit -m 'fix: finalize production RLS write paths'
+          git push origin HEAD:hotfix/final-rls-writes
