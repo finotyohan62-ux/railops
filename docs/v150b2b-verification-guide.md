@@ -41,6 +41,19 @@ git diff --name-only "$(git merge-base origin/main HEAD)"..origin/main
 
 Ce relevé sert uniquement à qualifier l'impact potentiel. Si les changements de `main` touchent le runtime applicatif, `supabase/`, l'import, le Multi-chantier, la purge hebdomadaire, les permissions ou les règles métier, ne pas tenter de résolution automatique : consigner le périmètre concerné et attendre une décision explicite. Si seuls des fichiers documentaires ou des tests indépendants sont concernés, la branche reste néanmoins divergente ; cela ne constitue pas une autorisation de merge/rebase.
 
+### Cas d'un commit de rafraîchissement de déploiement
+
+Un commit absent de la branche peut avoir été créé uniquement pour provoquer une nouvelle livraison ou une révalidation de cache. Le message de commit ne suffit jamais pour conclure qu'il est sans impact : inspecter le patch réel et les fichiers touchés avant de le classer.
+
+Pour un écart limité à ce type de commit, consigner séparément :
+
+- le SHA du commit `main` absent de la branche ;
+- les fichiers réellement modifiés et le nombre de lignes changées ;
+- si le patch modifie du comportement exécutable ou seulement un commentaire/marqueur de rafraîchissement ;
+- le statut de la CI et, si pertinent, du déploiement correspondant.
+
+Même lorsqu'un patch est purement documentaire dans un fichier runtime (par exemple un commentaire ajouté pour forcer une révalidation), **ne pas le recopier, cherry-pick, merge ou rebase automatiquement**. Le diagnostic sert seulement à distinguer une dérive fonctionnelle d'une dérive de livraison et à éviter de déclencher inutilement une décision produit ou sécurité.
+
 ### Lire le résumé de dérive CI
 
 Sur les pushes de la branche, l'étape `Report branch drift (non-blocking)` ajoute au GitHub Step Summary un diagnostic de dérive purement informatif. Elle ne réalise aucun merge, rebase ni autre mutation Git.
