@@ -4,6 +4,7 @@
   else root.RailOpsDiagnostics150B2B=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
   function count(value){return Array.isArray(value)?value.length:0;}
+  function countPendingScans(value){return Array.isArray(value)?value.filter(item=>item&&item._pending===true).length:0;}
 
   function createDiagnosticsSnapshot(state,runtime){
     const s=state&&typeof state==='object'?state:{};
@@ -19,6 +20,7 @@
         chantiers:count(s.chantiers),
         materials:count(s.mat),
         scans:count(s.scans),
+        pendingScans:countPendingScans(s.scans),
         users:count(s.users),
         chefChantierStats:count(s.chefChantierStats),
       },
