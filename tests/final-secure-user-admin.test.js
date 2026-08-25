@@ -3,6 +3,7 @@ const path=require('node:path');
 function fail(m){console.error('FAIL:',m);process.exit(1)}
 const root=path.resolve(__dirname,'..');
 const index=fs.readFileSync(path.join(root,'index.html'),'utf8');
+const legacy=fs.readFileSync(path.join(root,'js/legacy-core.js'),'utf8');
 const modulePath=path.join(root,'js/core/secure-admin.js');
 if(!fs.existsSync(modulePath))fail('secure user-admin module missing');
 const admin=fs.readFileSync(modulePath,'utf8');
@@ -12,4 +13,5 @@ for(const action of ['update_profile','delete_user','change_password'])if(!admin
 if(!admin.includes('window.saveUser='))fail('legacy saveUser is not overridden');
 if(!admin.includes('window.doDeleteUser='))fail('legacy delete user is not overridden');
 if(!admin.includes('window.doChangePass='))fail('legacy password change is not overridden');
-console.log('PASS: authenticated user administration routes through secure Edge Function');
+if(legacy.includes("if(S[aC(0x20a)]['length'])await db[aC(0x432)](aC(0x20a))['upsert']"))fail('generic save() still bulk-upserts users through RLS');
+console.log('PASS: authenticated user administration routes through secure Edge Function without generic users upsert');
