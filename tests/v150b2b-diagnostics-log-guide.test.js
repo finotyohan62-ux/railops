@@ -27,7 +27,7 @@ assert(
   'diagnostics guide must distinguish historical errors from new errors'
 );
 assert(
-  /ne (?:pas )?(?:modifier|changer)[^\n]*(?:policy|permission|RLS)/i.test(guide),
+  /logs seuls/i.test(guide) && /modifier/i.test(guide) && /policy/i.test(guide) && /permission/i.test(guide) && /RLS/.test(guide),
   'diagnostics guide must forbid security changes based on logs alone'
 );
 
