@@ -9,7 +9,7 @@ const state = {
   agent: 'PRIVATE_AGENT_NAME',
   chantiers: [{ id: 'PRIVATE_CHANTIER_ID', nom: 'PRIVATE_CHANTIER_NAME' }],
   mat: [{ id: 'PRIVATE_MATERIAL_REF', scan: 'PRIVATE_QR_VALUE', photo: 'PRIVATE_PHOTO_DATA' }],
-  scans: [{ id: 'PRIVATE_SCAN_ID', observations: 'PRIVATE_SCAN_CONTENT', lat: 50.1, lng: 1.8 }],
+  scans: [{ id: 'PRIVATE_SCAN_ID', observations: 'PRIVATE_SCAN_CONTENT', lat: 50.1, lng: 1.8, _pending: true }],
   users: [{ id: 'PRIVATE_USER_ID', nom: 'PRIVATE_USER_NAME', badge: 'PRIVATE_BADGE' }],
   chefChantierStats: [{ chantier_id: 'PRIVATE_STATS_CHANTIER_ID', total_materiels: 1 }],
 };
@@ -24,7 +24,7 @@ assert.deepEqual(
 );
 assert.deepEqual(
   Object.keys(snapshot.counts).sort(),
-  ['chantiers', 'materials', 'scans', 'users', 'chefChantierStats'].sort(),
+  ['chantiers', 'materials', 'scans', 'pendingScans', 'users', 'chefChantierStats'].sort(),
   'diagnostic counts must stay aggregate-only'
 );
 
@@ -49,6 +49,7 @@ assert.deepEqual(snapshot.counts, {
   chantiers: 1,
   materials: 1,
   scans: 1,
+  pendingScans: 1,
   users: 1,
   chefChantierStats: 1,
 });
