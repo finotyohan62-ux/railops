@@ -405,3 +405,12 @@
 - Vérification fraîche après correction : `v150B-2B checks` #448, `RailOps lifecycle regression` #309 et `RailOps modules regression` #77 sont tous `success`; Vercel est également `success` sur `b30cacb44fbe683714c628e063fff656e90dfe63`.
 - Garde-fous : aucun code applicatif, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact et aucun merge/rebase n'a été tenté.
 - Points en attente historiques inchangés : synchronisation avec les 16 commits de `main`, smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
+
+## 2026-08-25 — diagnostic scans en attente 05:15 Europe/Paris
+
+- État contrôlé avant modification : branche `security/v150b2b-rls-ready` à `0ac1ad936137d926312c9029106f774e44556e7c`, PR #1 toujours en brouillon et non fusionnée ; comparaison fraîche avec `main` = **16 commits behind / 296 ahead**. Supabase `railops` vérifié `ACTIVE_HEALTHY`; Security Advisor relu strictement en lecture seule.
+- Amélioration réversible de diagnostic : `v150b2b-diagnostics.js` expose désormais uniquement le **nombre** `pendingScans` de scans marqués `_pending`, sans ID, QR, observation, position ni autre contenu métier. Cela facilite le diagnostic des opérations encore en attente sans modifier la synchronisation ni les données.
+- Cycle test/correction : `477c0ea3ecd69684fa887f6bde9a9680f3a1d493` ajoute la couverture fonctionnelle ; `c844b180f130bcbe693d2ba56cded51fba071513` ajoute le compteur. La première CI v150B-2B a révélé que le contrat de confidentialité devait accepter ce nouveau agrégat ; cause isolée puis correction minimale dans `1ba453f1959f349f4597d0829ca2c67ac00295f5`.
+- Vérification fraîche : test ciblé et `node --check` passent localement ; GitHub Actions `v150B-2B checks` #458, `RailOps lifecycle regression` #314 et `RailOps modules regression` #82 sont tous `success` sur `1ba453f1959f349f4597d0829ca2c67ac00295f5`.
+- Garde-fous : aucun droit, rôle, règle métier, flux de synchronisation, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact et aucun merge/rebase n'a été tenté.
+- Points en attente historiques inchangés : synchronisation avec `main`, smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
