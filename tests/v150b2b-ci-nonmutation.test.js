@@ -31,6 +31,8 @@ for (const forbidden of [
   /^git\s+rebase\b/,
   /^git\s+reset\s+--hard\b/,
   /^gh\s+pr\s+merge\b/,
+  /^vercel\s+(deploy\b|--prod\b)/,
+  /^npx\s+vercel\s+(deploy\b|--prod\b)/,
 ]) {
   assert.equal(
     lines.some(line => forbidden.test(line)),
@@ -45,9 +47,9 @@ assert.equal(
   'verification workflow must never reference the strict RLS migration'
 );
 assert.equal(
-  /supabase\s+(db\s+push|migration\s+up|functions\s+deploy)/i.test(workflow),
+  /supabase\s+(db\s+(push|reset)|migration\s+(up|repair)|functions\s+deploy|link\b)/i.test(workflow),
   false,
-  'verification workflow must not deploy or apply Supabase changes'
+  'verification workflow must not deploy, reset, repair, link, or apply Supabase changes'
 );
 
-console.log('PASS: v150B-2B CI remains read-only and non-mutating');
+console.log('PASS: v150B-2B CI remains read-only, non-mutating, and non-deploying');
