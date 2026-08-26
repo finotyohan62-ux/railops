@@ -31,6 +31,16 @@ assert.doesNotMatch(
   /^\s*schedule\s*:/m,
   'v150B-2B workflow must remain event-scoped and not become scheduled automation'
 );
+assert.doesNotMatch(
+  workflow,
+  /^\s*workflow_dispatch\s*:/m,
+  'v150B-2B workflow must not gain a manual trigger outside the branch verification flow'
+);
+assert.doesNotMatch(
+  workflow,
+  /^\s*repository_dispatch\s*:/m,
+  'v150B-2B workflow must not accept external repository dispatch events'
+);
 assert.match(
   workflow,
   /permissions:\s*\n\s+contents:\s*read\b/,
