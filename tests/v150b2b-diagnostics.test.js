@@ -88,4 +88,84 @@ assert.deepEqual(
   'diagnostics must be safe on an empty state'
 );
 
-console.log('PASS: v150B-2B diagnostics snapshot is metadata-only');
+function warningsFor(testState, runtime = { online: true }) {
+  return createDiagnosticsSnapshot(testState, runtime).warnings || [];
+}
+
+const warningCases = [
+  {
+    warning: 'CHEF_CHANTIER_MATERIAL_SCOPE_LEAK',
+    state: { role: 'chef_chantier', page: 'dashboard', mat: [{ id: 'M-SECRET' }] },
+  },
+  {
+    warning: 'CHEF_CHANTIER_SCAN_SCOPE_LEAK',
+    state: { role: 'chef_chantier', page: 'dashboard', scans: [{ id: 'S-SECRET' }] },
+  },
+  {
+    warning: 'CHEF_CHANTIER_STATS_MISSING',
+    state: { role: 'chef_chantier', page: 'dashboard', chantiers: [{ id: 'C-SECRET' }], chefChantierStats: [] },
+  },
+  {
+    warning: 'CATALOGUE_SCOPE_LEAK',
+    state: { role: 'agent', page: 'dashboard', prixCatalogue: [{ ref: 'PRICE-SECRET' }] },
+  },
+  {
+    warning: 'OWNER_ADMIN_MODE_ROLE_MISMATCH',
+    state: { role: 'chef', page: 'dashboard', isAdminOwner: true, __ownerAdminMode: true },
+  },
+  {
+    warning: 'OWNER_ADMIN_MODE_WITHOUT_OWNER',
+    state: { role: 'admin', page: 'dashboard', isAdminOwner: false, __ownerAdminMode: true },
+  },
+  {
+    warning: 'OWNER_ADMIN_ROLE_OUTSIDE_MODE',
+    state: { role: 'admin', page: 'dashboard', isAdminOwner: true, __ownerAdminMode: false },
+  },
+  {
+    warning: 'SESSION_PAGE_WITHOUT_ROLE',
+    state: { role: null, page: 'dashboard' },
+  },
+  {
+    warning: 'SESSION_DATA_WITHOUT_ROLE',
+    state: { role: null, page: 'login', chantiers: [{ id: 'C-SECRET' }] },
+  },
+];
+
+for (const testCase of warningCases) {
+  assert.equal(
+    warningsFor(testCase.state).includes(testCase.warning),
+    true,
+    `diagnostics must emit ${testCase.warning} when its invariant is violated`
+  );
+}
+
+assert.deepEqual(
+  warningsFor({
+    role: 'chef_chantier',
+    page: 'dashboard',
+    chantiers: [{ id: 'C-SECRET' }],
+    mat: [],
+    scans: [],
+    chefChantierStats: [{ chantier_id: 'C-SECRET' }],
+    prixCatalogue: [],
+    isAdminOwner: false,
+    __ownerAdminMode: false,
+  }),
+  [],
+  'diagnostics must not warn on a normal scoped Chef de chantier state'
+);
+
+assert.deepEqual(
+  warningsFor({
+    role: 'chef_chantier',
+    page: 'dashboard',
+    chantiers: [{ id: 'C-SECRET' }],
+    mat: [],
+    scans: [],
+    chefChantierStats: [],
+  }, { online: false }),
+  [],
+  'offline Chef de chantier state must not report missing server statistics'
+);
+
+console.log('PASS: v150B-2B diagnostics snapshot is metadata-only and warning contracts are covered');
