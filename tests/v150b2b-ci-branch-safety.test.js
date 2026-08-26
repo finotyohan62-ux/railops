@@ -26,6 +26,11 @@ assert.match(
   /persist-credentials:\s*false\b/,
   'checkout credentials must not persist in the v150B-2B workflow'
 );
+assert.match(
+  workflow,
+  /- name: Report branch drift \(non-blocking\)[\s\S]*?if:\s*github\.event_name\s*==\s*'push'[\s\S]*?continue-on-error:\s*true\b/,
+  'branch drift reporting must remain push-only and non-blocking'
+);
 
 const forbiddenMutations = [
   { label: 'contents write permission', pattern: /contents:\s*write\b/i },
