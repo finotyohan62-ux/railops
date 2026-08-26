@@ -78,14 +78,6 @@
 - Amélioration réversible : ajout de `tests/v150b2b-preview-contract.test.js` pour verrouiller le contrat technique de la preview : un seul build tag pour tous les adaptateurs, chaque script injecté une seule fois et dans l'ordre attendu, chargement frais de `index.html`, absence de référence directe aux migrations.
 - Le nouveau test est inclus dans `tests/run-v150b2b-checks.js`. Commits : `91e1a2c6308834a4df102e90a9a251da674d0d98` (`tests: lock preview adapter contract`) et `38ee6c06045ca4264aa8b35f710cd1593e190a4e` (`tests: include preview contract in local checks`).
 - Vérification fraîche : le test de contrat a été exécuté localement contre le `v150b2b-test.html` relu depuis la branche et renvoie `PASS: v150B-2B preview contract (150b2b10)`.
-- Aucun code de production, règle métier, permission, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire n'a été modifié. Les points de sécurité déjà documentés restent volontairement en attente de validation humaine.
-
-## 2026-08-22 — couverture du lanceur de vérifications 01:14 Europe/Paris
-
-- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, base `main` inchangée ; Supabase `railops` `ACTIVE_HEALTHY`. Security Advisor relu en lecture seule, sans migration ni modification de droits/RLS.
-- Amélioration réversible : ajout de `tests/v150b2b-runner-coverage.test.js`, qui vérifie que chaque module JavaScript chargé par `v150b2b-test.html` est bien présent dans les contrôles de syntaxe du lanceur agrégé et que ce garde-fou est lui-même exécuté par le lanceur.
-- Cycle rouge/vert vérifié localement : le nouveau test échouait d'abord car il n'était pas référencé par `tests/run-v150b2b-checks.js`, puis passe après son ajout (`PASS: aggregate runner covers 7 preview JavaScript modules`).
-- Commits : `434fb953d52d839f54905ccf08b472ff28ec7fc3` (`tests: guard aggregate preview check coverage`) et `1896a4a41509f09711660ea20c72c438d0178b1a` (`tests: include aggregate runner coverage guard`).
 - Aucun code de production, règle métier, permission, donnée Supabase, RLS, Import, Multi-chantier ou purge hebdomadaire modifié. Aucun nouveau point nécessitant une décision utilisateur n'a été introduit.
 
 ## 2026-08-22 — garde-fou stockage local 02:17 Europe/Paris
@@ -502,3 +494,12 @@
 - Vérification fraîche : GitHub Actions `v150B-2B checks` run #568 est terminé avec conclusion `success` sur ce commit. Aucune écriture Supabase, migration, policy, permission, donnée ou RLS n’a été appliquée.
 - Garde-fous : aucun code runtime RailOps, règle métier, Import, logique Multi-chantier ou purge hebdomadaire n’a été modifié ; aucun merge/rebase/cherry-pick n’a été tenté et `main` reste intact.
 - Points en attente inchangés : smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n’a été introduit.
+
+## 2026-08-26 — snapshot GitHub / Supabase 03:18 Europe/Paris
+
+- État contrôlé avant modification : branche `security/v150b2b-rls-ready` à `88107545796c92da61b6a7f4847af012082d7cb2`; `main` observé à `e89c57c995fe0661cffcdbfcf88b9f30a408a093`; comparaison fraîche = **1 commit behind / 371 ahead**, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`. Aucun merge, rebase ou cherry-pick n'a été tenté.
+- Supabase relu strictement en lecture seule : projet `railops` `ACTIVE_HEALTHY`, PostgreSQL 17.6.1.084 ; RLS activé sur les huit tables cœur avec comptages de policies `agents` 0, `chantiers` 4, `deleted_ids` 1, `inspections` 0, `materiels` 4, `prix_catalogue` 1, `scans` 4 et `users` 2. Security Advisor : mêmes familles connues ; Performance Advisor : deux clés étrangères non indexées sur `public.inspections`.
+- Amélioration documentaire réversible : ajout de `docs/supabase-state/2026-08-26-0318.md` via `405593bb3b52ee60019f6534f32f18a98b13b598` (`docs: snapshot RailOps state at 03:18`).
+- Vérification fraîche : GitHub Actions `v150B-2B checks` run #573 est terminé avec conclusion `success` sur le commit du snapshot.
+- Garde-fous : aucun code runtime RailOps, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact.
+- Points en attente inchangés : le commit de rafraîchissement de déploiement présent uniquement sur `main`, les smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
