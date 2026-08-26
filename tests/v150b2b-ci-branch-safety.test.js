@@ -28,6 +28,16 @@ assert.match(
 );
 assert.match(
   workflow,
+  /concurrency:[\s\S]*?cancel-in-progress:\s*true\b/,
+  'v150B-2B workflow must cancel superseded duplicate runs'
+);
+assert.match(
+  workflow,
+  /jobs:[\s\S]*?checks:[\s\S]*?timeout-minutes:\s*5\b/,
+  'v150B-2B checks must keep the five-minute runaway guard'
+);
+assert.match(
+  workflow,
   /- name: Report branch drift \(non-blocking\)[\s\S]*?if:\s*github\.event_name\s*==\s*'push'[\s\S]*?continue-on-error:\s*true\b/,
   'branch drift reporting must remain push-only and non-blocking'
 );
