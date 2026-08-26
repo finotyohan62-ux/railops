@@ -493,3 +493,12 @@
 - État après changement : comparaison fraîche avec `main` = **1 commit behind / 366 ahead**, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`. Aucun merge, rebase ou cherry-pick n'a été tenté.
 - Garde-fous : aucun code runtime RailOps, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact.
 - Point en attente inchangé : le commit de rafraîchissement de déploiement présent uniquement sur `main` reste volontairement non copié ; smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite. Aucun nouveau choix produit n'a été introduit.
+
+## 2026-08-26 — garde-fou adaptateur Chef de chantier 02:16 Europe/Paris
+
+- État contrôlé avant modification : branche `security/v150b2b-rls-ready` à `319300bb35c88c1f1f900ff82dcc2f6cf562949f`; `main` n’a pas été modifié. Supabase `railops` est `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.084 ; Security Advisor relu strictement en lecture seule, sans correction backend.
+- Amélioration réversible limitée aux tests : `tests/v150b2b-static-invariants.test.js` verrouille désormais que `v150b2b-chef-chantier-stats.js` reste un adaptateur d’affichage pur, sans appel direct `db.*` à Supabase et sans primitive de mutation `insert/update/upsert/delete`.
+- Commit : `55be4ec31f5b02b699b7264ac490ae4e830cb115` (`tests: keep Chef chantier stats adapter read-only`).
+- Vérification fraîche : GitHub Actions `v150B-2B checks` run #568 est terminé avec conclusion `success` sur ce commit. Aucune écriture Supabase, migration, policy, permission, donnée ou RLS n’a été appliquée.
+- Garde-fous : aucun code runtime RailOps, règle métier, Import, logique Multi-chantier ou purge hebdomadaire n’a été modifié ; aucun merge/rebase/cherry-pick n’a été tenté et `main` reste intact.
+- Points en attente inchangés : smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n’a été introduit.
