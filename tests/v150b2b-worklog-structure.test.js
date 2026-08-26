@@ -19,7 +19,7 @@ const fragments = fs.readdirSync(appendDir)
 assert.ok(fragments.length > 0, 'at least one worklog append fragment is expected');
 
 for (const name of fragments) {
-  const match = /^(\d{4}-\d{2}-\d{2})-(\d{4})\.md$/.exec(name);
+  const match = /^(\d{4}-\d{2}-\d{2})-(\d{4})(?:\.note)?\.md$/.exec(name);
   assert.ok(match, `invalid worklog append filename: ${name}`);
 
   const [, date, hhmm] = match;
