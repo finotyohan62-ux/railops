@@ -31,9 +31,9 @@
 
 ## 2026-08-26 — garde-fous timeout et concurrence CI 23:17 Europe/Paris
 
-- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` uniquement ; `main` est resté à `e89c57c995fe0661cffcdbfcf88b9f30a408a093`. Supabase `railops` a été relu en lecture seule : RLS activé mais non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` uniquement ; `main` était à `e89c57c995fe0661cffcdbfcf88b9f30a408a093` au diagnostic initial. Pendant la vérification, `main` a avancé indépendamment à `37b216936a6692d54f82cbc004b30c936d13785a` (`Fix ghost scan integrity`) ; aucun changement de `main` n’a été effectué depuis cette branche. Supabase `railops` a été relu en lecture seule : RLS activé mais non forcé sur `chantiers`, `materiels`, `scans` et `users`.
 - Amélioration réversible : `tests/v150b2b-ci-branch-safety.test.js` protège désormais aussi `timeout-minutes: 5` et `concurrency.cancel-in-progress: true`, afin d’éviter qu’une future modification du workflow ne supprime accidentellement la limite anti-runaway ou l’annulation des exécutions CI devenues obsolètes. Aucun workflow ni code runtime n’a été modifié.
 - Commit principal : `cef1f8b02b3a6422142f9e33f00184ef3a13fa1a` (`test: preserve CI timeout and concurrency guards`).
-- Vérification fraîche : `v150B-2B checks` run `33014795052`, job `checks` `98330099405`, est `success`; l’étape complète `Run v150B-2B verification suite` est passée.
+- Vérification fraîche : `v150B-2B checks` run `33014795052`, job `checks` `98330099405`, est `success`; le commit de journal `bbba7142e45d714fbe6ed3ffd813e5ca23aa4896` a aussi passé `v150B-2B checks` run `33014866846`, job `98330346723`, en `success`.
 - Garde-fous respectés : aucune règle métier, permission, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué.
-- Point en attente : aucun nouveau point nécessitant une décision ou un test utilisateur ; les changements sécurité/data/performance restent hors scope sans validation explicite.
+- Point en attente : aucun nouveau point nécessitant une décision ou un test utilisateur ; la nouvelle dérive de `main` doit simplement être relue avant toute future intégration, qui reste hors scope de cette passe.
