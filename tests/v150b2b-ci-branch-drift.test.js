@@ -112,6 +112,14 @@ assert(
   'step summary should expose the runtime-impact count directly'
 );
 assert(
+  workflow.includes('runtime_impact_files="$(printf') && workflow.includes("awk '/^(index\\.html|[^/]+\\.(js|html)|css\\/|js\\/|supabase\\/)/'"),
+  'drift diagnostic should derive the concrete runtime-impact file list from the same app/backend classification'
+);
+assert(
+  workflow.includes('Main-only runtime-impact file list (up to 20):'),
+  'step summary should expose a bounded runtime-impact file list for focused compatibility review'
+);
+assert(
   workflow.includes('Compatibility review: **recommended** before any merge/rebase/cherry-pick.'),
   'runtime-impact drift should emit a clear non-blocking compatibility review hint'
 );
@@ -140,4 +148,4 @@ assert(
   'step summary must make the non-mutating nature of the diagnostic explicit'
 );
 
-console.log('PASS: v150B-2B CI reports branch drift with immutable comparison context, merge-base scoped main impact, complete counts, impact categories, runtime review hints and SIGPIPE-safe bounded diagnostics');
+console.log('PASS: v150B-2B CI reports branch drift with immutable comparison context, merge-base scoped main impact, complete counts, impact categories, concrete runtime file hints and SIGPIPE-safe bounded diagnostics');
