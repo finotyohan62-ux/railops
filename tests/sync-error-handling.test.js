@@ -90,8 +90,18 @@ async function testRelatedMaterielErrorKeepsScanQueuedForRetry() {
   assert.deepStrictEqual(harness.getQueue(), [item], 'scan must stay queued if its related material update fails');
 }
 
+async function testMissingRelatedMaterielNeverUploadsScan() {
+  const item = { type: 'scan', data: { id: 'scan-ghost', materielId: 'missing-mat' }, ts: 3 };
+  const harness = createHarness({ queue: [item] });
+  harness.context.S.mat = [];
+  await harness.context.flushOfflineQueue();
+  assert.deepStrictEqual(harness.getQueue(), [item], 'scan must stay queued while its related material is missing');
+  assert.strictEqual(harness.calls.filter(call => call.table === 'scans').length, 0, 'orphan scan must not be uploaded');
+  assert.strictEqual(harness.calls.filter(call => call.table === 'materiels').length, 0, 'missing material must not trigger a material write');
+}
+
 async function testMaterielSupabaseErrorStaysQueued() {
-  const item = { type: 'materiel', data: { id: 'mat-2' }, ts: 3 };
+  const item = { type: 'materiel', data: { id: 'mat-2' }, ts: 4 };
   const harness = createHarness({
     queue: [item],
     materielResults: [{ data: null, error: new Error('Supabase rejected materiel') }]
@@ -101,7 +111,7 @@ async function testMaterielSupabaseErrorStaysQueued() {
 }
 
 async function testSuccessfulSyncDrainsQueue() {
-  const item = { type: 'scan', data: { id: 'scan-3', materielId: 'mat-1' }, ts: 4 };
+  const item = { type: 'scan', data: { id: 'scan-3', materielId: 'mat-1' }, ts: 5 };
   const harness = createHarness({ queue: [item] });
   await harness.context.flushOfflineQueue();
   assert.deepStrictEqual(harness.getQueue(), [], 'successful scan sync must drain queue');
@@ -111,7 +121,7 @@ async function testSuccessfulSyncDrainsQueue() {
 }
 
 async function testOfflineDoesNotAttemptSync() {
-  const item = { type: 'scan', data: { id: 'scan-4', materielId: 'mat-1' }, ts: 5 };
+  const item = { type: 'scan', data: { id: 'scan-4', materielId: 'mat-1' }, ts: 6 };
   const harness = createHarness({ queue: [item], online: false });
   await harness.context.flushOfflineQueue();
   assert.deepStrictEqual(harness.getQueue(), [item], 'offline queue must remain untouched while offline');
@@ -119,7 +129,7 @@ async function testOfflineDoesNotAttemptSync() {
 }
 
 async function testRetryUsesSameStableScanId() {
-  const item = { type: 'scan', data: { id: 'scan-stable', materielId: 'mat-1' }, ts: 6 };
+  const item = { type: 'scan', data: { id: 'scan-stable', materielId: 'mat-1' }, ts: 7 };
   const harness = createHarness({
     queue: [item],
     scanResults: [
@@ -141,11 +151,12 @@ async function testRetryUsesSameStableScanId() {
 (async () => {
   await testScanSupabaseErrorStaysQueued();
   await testRelatedMaterielErrorKeepsScanQueuedForRetry();
+  await testMissingRelatedMaterielNeverUploadsScan();
   await testMaterielSupabaseErrorStaysQueued();
   await testSuccessfulSyncDrainsQueue();
   await testOfflineDoesNotAttemptSync();
   await testRetryUsesSameStableScanId();
-  console.log('sync error handling checks passed (6 cases)');
+  console.log('sync error handling checks passed (7 cases)');
 })().catch(err => {
   console.error(err.stack || err);
   process.exit(1);
