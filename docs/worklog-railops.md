@@ -503,3 +503,21 @@
 - Vérification fraîche : GitHub Actions `v150B-2B checks` run #573 est terminé avec conclusion `success` sur le commit du snapshot.
 - Garde-fous : aucun code runtime RailOps, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact.
 - Points en attente inchangés : le commit de rafraîchissement de déploiement présent uniquement sur `main`, les smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
+
+## 2026-08-26 — snapshot GitHub / Supabase 04:14 Europe/Paris
+
+- État contrôlé avant modification : branche `security/v150b2b-rls-ready` observée à `ce01f47575b3e45fffb9fea2a33b178f390cc2e0`; `main` à `e89c57c995fe0661cffcdbfcf88b9f30a408a093`; comparaison fraîche = **1 commit behind / 373 ahead**, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`. Aucun merge, rebase ou cherry-pick n'a été tenté.
+- Supabase relu strictement en lecture seule : projet `railops` `ACTIVE_HEALTHY`, PostgreSQL 17.6.1.084 ; RLS/policies des huit tables cœur inchangés (`agents` 0, `chantiers` 4, `deleted_ids` 1, `inspections` 0, `materiels` 4, `prix_catalogue` 1, `scans` 4, `users` 2). Advisors : familles connues inchangées.
+- Amélioration documentaire réversible : ajout puis alignement de `docs/supabase-state/2026-08-26-0414.md`; commits `193ae36568c62d969f722ba7f78158ee8741c3ba` et `0490622516daa8311df733e461eb9776ced785cc`.
+- Vérification fraîche : workflows de régression observés verts sur le head final, sans modification runtime/backend.
+- Garde-fous : aucun code runtime, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact.
+- Points en attente inchangés : le commit de rafraîchissement de déploiement présent uniquement sur `main`, les smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite.
+
+## 2026-08-26 — snapshot GitHub / Supabase 05:14 Europe/Paris
+
+- État contrôlé avant modification : branche `security/v150b2b-rls-ready` à `0490622516daa8311df733e461eb9776ced785cc`; `main` observé à `e89c57c995fe0661cffcdbfcf88b9f30a408a093`; comparaison fraîche = **1 commit behind / 375 ahead**, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`. Aucun merge, rebase ou cherry-pick n'a été tenté.
+- Supabase relu strictement en lecture seule : `railops` `ACTIVE_HEALTHY`, PostgreSQL 17.6.1.084 ; RLS/policies des huit tables cœur inchangés (`agents` 0, `chantiers` 4, `deleted_ids` 1, `inspections` 0, `materiels` 4, `prix_catalogue` 1, `scans` 4, `users` 2). Security/Performance Advisors : mêmes familles connues, dont deux clés étrangères non indexées sur `public.inspections`.
+- Amélioration documentaire réversible : ajout et mise en conformité de `docs/supabase-state/2026-08-26-0514.md`; commits `1cb269605f5a6ea312afe6efc82d75e2392b3537`, `3e7934a83b5fdecdeecddd4571dc1d7ec20111e7` puis `47ef8828b39643837580bfe30e0267d671eaf39b`.
+- Diagnostic CI : la première mise en conformité restait sensible à la casse sur le marqueur `aucun merge, rebase ou changement de main`; correction purement documentaire appliquée. Vérification fraîche : GitHub Actions `v150B-2B checks` run #584 est `success` sur `47ef8828b39643837580bfe30e0267d671eaf39b`.
+- Garde-fous : aucune donnée, migration, policy, permission, fonction, index, schéma, code runtime, règle métier, Import, Multi-chantier ou purge hebdomadaire n'a été modifié ; RLS stricte non activée et `main` reste intact.
+- Points en attente inchangés : le commit de rafraîchissement de déploiement présent uniquement sur `main`, les smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
