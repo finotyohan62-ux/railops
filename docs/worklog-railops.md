@@ -10,3 +10,11 @@
 - Vérification fraîche : `v150B-2B checks` run `32999265839` est `success` sur `fa96232cb5a8defc9cc3fe046e52958805b9a85b`; `RailOps modules regression` est également `success` sur ce head.
 - Garde-fous respectés : aucun code runtime, règle métier, permission, donnée, migration, RLS, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué.
 - Point en attente : aucun nouveau point nécessitant une décision de Yohan ; les validations humaines et changements sécurité/performance historiques restent volontairement hors scope.
+
+## 2026-08-26 — snapshot d’état frais et contrôle lecture seule 21:12 Europe/Paris
+
+- État réel relu avant changement : branche `security/v150b2b-rls-ready` uniquement, `main` inchangé à `e89c57c995fe0661cffcdbfcf88b9f30a408a093`, Supabase `railops` `ACTIVE_HEALTHY` contrôlé en lecture seule.
+- Amélioration réversible : ajout du snapshot `docs/supabase-state/2026-08-26-2112.md` avec divergence GitHub, volumétrie cœur, état RLS, Security Advisor et Performance Advisor ; aucune correction automatique ni mutation Supabase.
+- Vérification : `v150B-2B checks` run `33004363974` est `success` sur `5f6827862bb6df33a373015f8b4889a51543419a`. Les deux premiers passages ont uniquement révélé puis fait corriger un marqueur documentaire sensible à la casse (`b8212d7a779cd73862e9a0fa3f6a432d84722c05`, `7e7c4b7b81489ba1af377db44ee2855bd33d9574`).
+- Garde-fous respectés : aucun code runtime, règle métier, permission, donnée, migration, schéma, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick, RLS stricte ni déploiement production effectué.
+- Point en attente : aucun nouveau point nécessitant une décision de Yohan ; les remédiations sécurité/performance observées restent volontairement hors scope.
