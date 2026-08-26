@@ -19,11 +19,23 @@ const tests = fs.readdirSync(__dirname)
   .sort()
   .map(name => `tests/${name}`);
 
+const criticalTests = [
+  'tests/v150b2b-agent-material-save-regression.test.js',
+  'tests/v150b2b-ci-branch-safety.test.js',
+  'tests/v150b2b-static-invariants.test.js',
+];
+
 const syntaxTargets = extractPreviewModules(preview);
 
 if (!tests.length) {
   console.error('FAIL: no v150B-2B tests discovered');
   process.exit(1);
+}
+for (const criticalTest of criticalTests) {
+  if (!tests.includes(criticalTest)) {
+    console.error(`FAIL: critical v150B-2B regression guard is not discovered: ${criticalTest}`);
+    process.exit(1);
+  }
 }
 if (!syntaxTargets.length) {
   console.error('FAIL: no v150B-2B preview modules discovered');
@@ -32,6 +44,7 @@ if (!syntaxTargets.length) {
 
 console.log(`ℹ v150B-2B checks context: node=${process.version} ref=${runRef} sha=${runSha} event=${runEvent} run=${runId}`);
 console.log(`ℹ discovered checks: ${tests.length} tests, ${syntaxTargets.length} syntax targets`);
+console.log(`ℹ critical regression guards: ${criticalTests.length}/${criticalTests.length} discovered`);
 
 function run(label, args) {
   process.stdout.write(`\n▶ ${label}\n`);
@@ -93,6 +106,7 @@ function writeStepSummary() {
     '',
     `- Status: **${status}**`,
     `- Tests: **${tests.length}**`,
+    `- Critical regression guards: **${criticalTests.length}/${criticalTests.length}**`,
     `- Syntax targets: **${syntaxTargets.length}**`,
     `- Passed checks: **${passedChecks}/${durations.length}**`,
     `- Failures: **${failures.length}**`,
