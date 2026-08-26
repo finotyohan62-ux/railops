@@ -14,6 +14,16 @@ Les snapshots servent à distinguer clairement :
 
 Les fichiers utilisent `YYYY-MM-DD-HHMM.md` en heure Europe/Paris. Le fichier portant l'horodatage le plus récent est le relevé de référence pour un diagnostic ponctuel ; les anciens fichiers restent conservés pour comparer les évolutions.
 
+## Convention de comptage
+
+Les snapshots doivent nommer explicitement la métrique mesurée afin d'éviter toute confusion entre **volume de données** et **configuration de sécurité** :
+
+- `row_count` = nombre de lignes réellement présentes dans la table au moment du relevé ;
+- `policy_count` = nombre de policies RLS définies pour cette table ;
+- `rls_enabled` = état d'activation de la RLS, séparé des deux compteurs précédents.
+
+Un tableau ou une liste de nombres ne doit donc jamais être présenté sous le seul terme « comptage » lorsqu'il s'agit de policies. Si les volumes de données ne sont pas nécessaires au diagnostic, le snapshot peut les omettre plutôt que de les déduire d'un autre indicateur.
+
 ## Confidentialité des relevés
 
 Les snapshots restent **metadata-only**. Ils peuvent contenir des identifiants techniques non secrets utiles au diagnostic (SHA Git, nom de branche, identifiant public du projet, noms de tables/functions et états de policies), mais ne doivent jamais contenir de jeton de session, JWT, bearer token, clé `service_role`, clé Supabase secrète, mot de passe ou autre secret d'authentification.
