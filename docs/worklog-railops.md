@@ -46,3 +46,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33018983532`, job `checks` `98344319220`, est `success`; la suite `Run v150B-2B verification suite` est passée avec succès.
 - Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué.
 - Point en attente : aucun nouveau point nécessitant une décision ou un test utilisateur ; les alertes Supabase de sécurité observées restent volontairement hors scope tant qu'une validation explicite n'est pas donnée.
+
+## 2026-08-27 — périmètre événementiel CI resserré 01:17 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` uniquement, head initial `bc4f4232895f40d9b07ea6100c3f06ca1994bad6`; `main` est resté intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` est `ACTIVE_HEALTHY`; le Security Advisor a été relu strictement en lecture seule, sans remédiation ni mutation.
+- Amélioration réversible : `tests/v150b2b-ci-branch-safety.test.js` protège désormais aussi contre l'ajout futur de déclencheurs `workflow_dispatch` et `repository_dispatch`, afin que la CI de cette branche reste limitée au flux de vérification prévu. Aucun workflow ni code runtime n'a été modifié.
+- Commit principal : `afc277af87356d9d7ef349759138937a37e083b8` (`test: keep branch CI event scope narrow`).
+- Vérification fraîche : `v150B-2B checks` run `33022784789`, job `checks` `98356927714`, a exécuté `Run v150B-2B verification suite` avec conclusion `success`.
+- Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué.
+- Point en attente : aucun nouveau point nécessitant une décision ou un test utilisateur ; les alertes Supabase de sécurité déjà observées restent volontairement hors scope sans validation explicite.
