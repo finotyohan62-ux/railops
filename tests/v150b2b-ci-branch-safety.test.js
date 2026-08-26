@@ -35,6 +35,11 @@ const forbiddenMutations = [
   { label: 'git rebase command', pattern: /^\s*git\s+rebase\b/im },
   { label: 'git cherry-pick command', pattern: /^\s*git\s+cherry-pick\b/im },
   { label: 'forced reset command', pattern: /^\s*git\s+reset\s+--hard\b/im },
+  { label: 'Vercel production deploy', pattern: /\bvercel\b[^\n]*\b(?:deploy\b[^\n]*--prod|--prod\b)/i },
+  { label: 'Supabase database push', pattern: /\bsupabase\s+db\s+push\b/i },
+  { label: 'Supabase migration apply', pattern: /\bsupabase\s+migration\s+(?:up|repair)\b/i },
+  { label: 'Supabase function deploy', pattern: /\bsupabase\s+functions\s+deploy\b/i },
+  { label: 'deployment action', pattern: /uses:\s*[^\n]*(?:vercel|supabase)[^\n]*(?:deploy|production)/i },
 ];
 
 for (const rule of forbiddenMutations) {
