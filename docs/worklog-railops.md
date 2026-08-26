@@ -90,7 +90,7 @@
 
 ## 2026-08-22 — exhaustivité du lanceur 03:15 Europe/Paris
 
-- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, base `main` inchangée ; Supabase `railops` reste `ACTIVE_HEALTHY` et le Security Advisor a été relu en lecture seule. Aucun changement de base, RLS ou permission.
+- État contrôlé avant modification : PR #1 toujours ouverte en brouillon sur `security/v150b2b-rls-ready`, base `main` inchangée ; Supabase `railops` reste `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1 et le Security Advisor a été relu en lecture seule. Aucun changement de base, RLS ou permission.
 - Amélioration réversible : `tests/v150b2b-runner-coverage.test.js` vérifie désormais que **chaque** fichier `tests/v150b2b-*.test.js` présent dans le dossier est référencé par `tests/run-v150b2b-checks.js`, en plus du contrôle existant sur les modules JavaScript injectés dans la preview. Cela évite qu'un nouveau test soit ajouté puis oublié du lanceur agrégé.
 - Commit : `edbdd001b50453ff6f18663159c82138955e437c` (`tests: ensure runner includes every v150B-2B test`).
 - Vérification fraîche : contrôle exécuté localement sur une reconstruction fidèle de la liste actuelle des tests et des scripts de preview : `PASS: aggregate runner covers 8 tests and 7 preview JavaScript modules`; `node --check` du garde-fou passe également ; Vercel `success` sur le commit.
@@ -370,7 +370,7 @@
 - Amélioration réversible de diagnostic : `v150b2b-diagnostics.js` signale désormais `SESSION_DATA_WITHOUT_ROLE` lorsqu'un catalogue de prix reste en mémoire alors qu'aucun rôle RailOps n'est actif. Le snapshot reste metadata-only et n'expose aucune référence ni prix.
 - Cycle rouge/vert : `dc6a4a91d0f4b8e7793905be51888991f3be8f3d` ajoute le test qui reproduit la zone aveugle ; `345c5890a9ad7eea031b33703ca8b30eafcf70b2` applique la correction minimale. Reproduction locale rouge puis test ciblé et `node --check` verts.
 - Vérification fraîche : GitHub Actions `v150B-2B checks` #428, `RailOps modules regression` #67 et `RailOps lifecycle regression` #298 sont tous `success` sur `345c5890a9ad7eea031b33703ca8b30eafcf70b2`.
-- Garde-fous : aucun rôle, droit, règle métier, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact, sans merge/rebase.
+- Garde-fous : aucun rôle, droit, règle métier, flux de synchronisation, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; `main` reste intact, sans merge/rebase.
 - Points en attente historiques inchangés : synchronisation avec `main`, smoke-tests humains et toute correction sécurité restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
 
 ## 2026-08-25 — relevé GitHub / Supabase 01:20 Europe/Paris
@@ -539,3 +539,11 @@
 - Diagnostic CI : les premières exécutions ont détecté uniquement des écarts de forme documentaire (marqueur exact, ponctuation et format pluriel de divergence), sans régression runtime. Vérification fraîche : GitHub Actions `v150B-2B checks` run #605 est `success` sur `dc7d71740ebcb578166f9e8f309cfbd2b36c133c`.
 - Garde-fous : aucune donnée, migration, policy, permission, fonction, index, schéma, code runtime, règle métier, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; RLS stricte non activée et `main` reste intact.
 - Points en attente inchangés : le commit de rafraîchissement de déploiement présent uniquement sur `main`, les smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
+
+## 2026-08-26 — diagnostic CI de dérive runtime 11:12 Europe/Paris
+
+- État contrôlé avant changement : branche `security/v150b2b-rls-ready` isolée de `main`; comparaison fraîche initiale = **1 commit behind / 400 ahead**, avec le changement `index.html` de `main` volontairement non intégré. Supabase `railops` relu strictement en lecture seule et `ACTIVE_HEALTHY`; Security Advisor consulté sans aucune correction backend.
+- Amélioration réversible limitée aux tests/diagnostics : le diagnostic `Report branch drift (non-blocking)` calcule désormais le nombre de fichiers runtime présents uniquement côté `main` (`app + backend`) et affiche une recommandation explicite de revue de compatibilité lorsqu'il est non nul, sans bloquer la CI ni autoriser une synchronisation.
+- Cycle TDD vérifié par GitHub Actions : `2f551e5b9bac64e5b54e139e67e76ea998f871db` (`tests: require runtime-impact branch drift hint`) a fait échouer `v150B-2B checks` comme attendu ; `a4211979db8668906965ad0ff4d53223be55670e` (`ci: surface runtime-impact branch drift`) rend le workflow `v150B-2B checks` vert.
+- Garde-fous : aucun code runtime RailOps, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; aucun merge, rebase, cherry-pick ni changement de `main` n'a été tenté.
+- Point en attente inchangé : le commit de rafraîchissement/déploiement présent uniquement sur `main` reste volontairement non copié et doit faire l'objet d'une revue de compatibilité avant toute intégration ; aucun nouveau choix produit n'a été introduit par cette passe.
