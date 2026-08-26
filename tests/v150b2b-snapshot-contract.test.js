@@ -36,7 +36,7 @@ for (const marker of requiredMarkers) {
 
 assert.match(
   latest,
-  /\*\*\d+ commits behind \/ \d+ ahead\*\*/,
+  /\*\*\d+ commits? behind \/ \d+ ahead\*\*/,
   `latest snapshot ${latestName} must record fresh branch divergence`
 );
 
