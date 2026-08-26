@@ -46,6 +46,7 @@ jobs:
           backend_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^supabase\//{n++} END{print n+0}')"
           docs_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^docs\//{n++} END{print n+0}')"
           other_file_count=$(( main_only_file_count - app_file_count - tests_file_count - backend_file_count - docs_file_count ))
+          runtime_impact_file_count=$(( app_file_count + backend_file_count ))
           main_only_files="$(printf '%s\n' "${main_only_all_files}" | sed -n '1,20p')"
           main_only_commits="$(git log --oneline --no-decorate HEAD..origin/main | sed -n '1,12p')"
           echo "ℹ branch drift against main: behind=${behind} ahead=${ahead} main=${main_sha} branch=${head_sha} merge-base=${merge_base_sha} date=${merge_base_date}"
@@ -57,6 +58,12 @@ jobs:
             echo "- Main-only changed file count: **${main_only_file_count}**"
             echo "- Main-only commit count: **${main_only_commit_count}**"
             echo "- Main-only impact: app=${app_file_count} · tests=${tests_file_count} · backend=${backend_file_count} · docs=${docs_file_count} · other=${other_file_count}"
+            echo "- Main-only runtime-impact files: **${runtime_impact_file_count}**"
+            if [ "${runtime_impact_file_count}" -gt 0 ]; then
+              echo "- Compatibility review: **recommended** before any merge/rebase/cherry-pick."
+            else
+              echo "- Compatibility review: not required from runtime drift."
+            fi
             printf '%s\n' "- Main SHA: **\`${main_sha}\`**"
             printf '%s\n' "- Branch SHA: **\`${head_sha}\`**"
             printf '%s\n' "- Merge base: **\`${merge_base_sha}\`**"
