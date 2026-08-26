@@ -28,3 +28,12 @@
 - Contrôle Supabase après vérification, toujours en lecture seule : RLS reste activé et non forcé sur `chantiers`, `materiels`, `scans` et `users` ; aucune policy ni donnée modifiée.
 - Garde-fous respectés : aucun code runtime, règle métier, permission, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué.
 - Point en attente : aucun nouveau point nécessitant une décision ou un test utilisateur ; les sujets sécurité/performance nécessitant validation restent volontairement hors scope.
+
+## 2026-08-26 — garde-fous timeout et concurrence CI 23:17 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` uniquement ; `main` est resté à `e89c57c995fe0661cffcdbfcf88b9f30a408a093`. Supabase `railops` a été relu en lecture seule : RLS activé mais non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- Amélioration réversible : `tests/v150b2b-ci-branch-safety.test.js` protège désormais aussi `timeout-minutes: 5` et `concurrency.cancel-in-progress: true`, afin d’éviter qu’une future modification du workflow ne supprime accidentellement la limite anti-runaway ou l’annulation des exécutions CI devenues obsolètes. Aucun workflow ni code runtime n’a été modifié.
+- Commit principal : `cef1f8b02b3a6422142f9e33f00184ef3a13fa1a` (`test: preserve CI timeout and concurrency guards`).
+- Vérification fraîche : `v150B-2B checks` run `33014795052`, job `checks` `98330099405`, est `success`; l’étape complète `Run v150B-2B verification suite` est passée.
+- Garde-fous respectés : aucune règle métier, permission, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué.
+- Point en attente : aucun nouveau point nécessitant une décision ou un test utilisateur ; les changements sécurité/data/performance restent hors scope sans validation explicite.
