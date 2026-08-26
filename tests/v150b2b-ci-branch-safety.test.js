@@ -16,6 +16,21 @@ assert.match(
   /pull_request:\s*\n\s+branches:\s*\n\s+- main/,
   'v150B-2B pull-request checks must keep main as the review target'
 );
+assert.doesNotMatch(
+  workflow,
+  /\bpull_request_target\s*:/,
+  'v150B-2B workflow must not run with pull_request_target privileges'
+);
+assert.doesNotMatch(
+  workflow,
+  /\bworkflow_run\s*:/,
+  'v150B-2B workflow must not be chained from another workflow run'
+);
+assert.doesNotMatch(
+  workflow,
+  /^\s*schedule\s*:/m,
+  'v150B-2B workflow must remain event-scoped and not become scheduled automation'
+);
 assert.match(
   workflow,
   /permissions:\s*\n\s+contents:\s*read\b/,
