@@ -37,3 +37,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33014795052`, job `checks` `98330099405`, est `success`; le commit de journal `bbba7142e45d714fbe6ed3ffd813e5ca23aa4896` a aussi passé `v150B-2B checks` run `33014866846`, job `98330346723`, en `success`.
 - Garde-fous respectés : aucune règle métier, permission, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué.
 - Point en attente : aucun nouveau point nécessitant une décision ou un test utilisateur ; la nouvelle dérive de `main` doit simplement être relue avant toute future intégration, qui reste hors scope de cette passe.
+
+## 2026-08-27 — garde-fous des déclencheurs CI 00:16 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` uniquement ; `main` est resté intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` est `ACTIVE_HEALTHY`; le Security Advisor a été relu en lecture seule et aucune remédiation sécurité n'a été appliquée.
+- Amélioration réversible : `tests/v150b2b-ci-branch-safety.test.js` protège désormais explicitement le workflow de branche contre l'ajout futur de déclencheurs `pull_request_target`, `workflow_run` ou `schedule`, afin de préserver son périmètre événementiel et ses faibles privilèges. Aucun workflow ni code runtime n'a été modifié.
+- Commit principal : `871358935b1fdc1ed5d7999b5a5da4eb959e70af` (`test: guard CI trigger privilege boundaries`).
+- Vérification fraîche : `v150B-2B checks` run `33018983532`, job `checks` `98344319220`, est `success`; la suite `Run v150B-2B verification suite` est passée avec succès.
+- Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué.
+- Point en attente : aucun nouveau point nécessitant une décision ou un test utilisateur ; les alertes Supabase de sécurité observées restent volontairement hors scope tant qu'une validation explicite n'est pas donnée.
