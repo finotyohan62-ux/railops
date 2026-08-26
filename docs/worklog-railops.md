@@ -18,3 +18,13 @@
 - Vérification : `v150B-2B checks` run `33004363974` est `success` sur `5f6827862bb6df33a373015f8b4889a51543419a`. Les deux premiers passages ont uniquement révélé puis fait corriger un marqueur documentaire sensible à la casse (`b8212d7a779cd73862e9a0fa3f6a432d84722c05`, `7e7c4b7b81489ba1af377db44ee2855bd33d9574`).
 - Garde-fous respectés : aucun code runtime, règle métier, permission, donnée, migration, schéma, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick, RLS stricte ni déploiement production effectué.
 - Point en attente : aucun nouveau point nécessitant une décision de Yohan ; les remédiations sécurité/performance observées restent volontairement hors scope.
+
+## 2026-08-26 — garde-fou diagnostic de dérive non bloquant 22:15 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au commit `2f21f531110eaceb94881d002744b6713f78163f`, `main` laissé intact ; Supabase relu en lecture seule avec `chantiers=22`, `materiels=1689`, `scans=121`, `users=34`.
+- Amélioration réversible : le test `tests/v150b2b-ci-branch-safety.test.js` protège maintenant explicitement le diagnostic `Report branch drift (non-blocking)` afin qu’il reste limité aux événements `push` et `continue-on-error: true`. Aucun fichier runtime ni workflow n’a été modifié.
+- Commit principal : `2c514d80e5fcf05134295663d5e43af92e32e070` (`test: keep branch drift diagnostic non-blocking`).
+- Vérification fraîche : `v150B-2B checks` run `33009471557` (push) et run `33009474558` (pull_request) sont `success` sur ce commit ; `RailOps lifecycle regression`, `RailOps modules regression` et `Final RLS hotfix check` sont également `success` sur le même head.
+- Contrôle Supabase après vérification, toujours en lecture seule : RLS reste activé et non forcé sur `chantiers`, `materiels`, `scans` et `users` ; aucune policy ni donnée modifiée.
+- Garde-fous respectés : aucun code runtime, règle métier, permission, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué.
+- Point en attente : aucun nouveau point nécessitant une décision ou un test utilisateur ; les sujets sécurité/performance nécessitant validation restent volontairement hors scope.
