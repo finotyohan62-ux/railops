@@ -104,6 +104,22 @@ assert(
   'step summary should expose complete main-only impact counts without hiding uncategorized files'
 );
 assert(
+  workflow.includes('runtime_impact_file_count=$(( app_file_count + backend_file_count ))'),
+  'drift diagnostic should compute a simple runtime-impact count from app and backend files'
+);
+assert(
+  workflow.includes('Main-only runtime-impact files:') && workflow.includes('${runtime_impact_file_count}'),
+  'step summary should expose the runtime-impact count directly'
+);
+assert(
+  workflow.includes('Compatibility review: **recommended** before any merge/rebase/cherry-pick.'),
+  'runtime-impact drift should emit a clear non-blocking compatibility review hint'
+);
+assert(
+  workflow.includes('Compatibility review: not required from runtime drift.'),
+  'non-runtime drift should explicitly say no runtime compatibility review is required'
+);
+assert(
   workflow.includes('Main SHA:') && workflow.includes('${main_sha}'),
   'step summary should record the main SHA used for the drift calculation'
 );
@@ -124,4 +140,4 @@ assert(
   'step summary must make the non-mutating nature of the diagnostic explicit'
 );
 
-console.log('PASS: v150B-2B CI reports branch drift with immutable comparison context, merge-base scoped main impact, complete counts, impact categories and SIGPIPE-safe bounded diagnostics');
+console.log('PASS: v150B-2B CI reports branch drift with immutable comparison context, merge-base scoped main impact, complete counts, impact categories, runtime review hints and SIGPIPE-safe bounded diagnostics');
