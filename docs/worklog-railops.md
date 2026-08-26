@@ -521,3 +521,12 @@
 - Diagnostic CI : la première mise en conformité restait sensible à la casse sur le marqueur `aucun merge, rebase ou changement de main`; correction purement documentaire appliquée. Vérification fraîche : GitHub Actions `v150B-2B checks` run #584 est `success` sur `47ef8828b39643837580bfe30e0267d671eaf39b`.
 - Garde-fous : aucune donnée, migration, policy, permission, fonction, index, schéma, code runtime, règle métier, Import, Multi-chantier ou purge hebdomadaire n'a été modifié ; RLS stricte non activée et `main` reste intact.
 - Points en attente inchangés : le commit de rafraîchissement de déploiement présent uniquement sur `main`, les smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
+
+## 2026-08-26 — garde-fou confidentialité du journal 06:14 Europe/Paris
+
+- État contrôlé avant modification : branche `security/v150b2b-rls-ready` à `09116da48f4d1f5afca4de9b6dca07a87cfe9c14`; `main` observé à `e89c57c995fe0661cffcdbfcf88b9f30a408a093`; Supabase `railops` `ACTIVE_HEALTHY` sous PostgreSQL 17.6.1.084. Security Advisor relu strictement en lecture seule, sans correction backend.
+- Amélioration réversible limitée aux tests : ajout de `tests/v150b2b-worklog-privacy.test.js`, qui vérifie `docs/worklog-railops.md` et les fragments Markdown de `docs/worklog-railops-append/` contre les JWT, clés Supabase secrètes/service-role et en-têtes Bearer accidentellement journalisés.
+- Commit d'amélioration : `8f108be525f117b5b6bc27cc82c742dfc8ecc053` (`tests: guard RailOps worklogs against secret leaks`).
+- Vérification fraîche : GitHub Actions `v150B-2B checks` run #588 est terminé avec conclusion `success` sur ce commit. Comparaison fraîche avant journalisation : **1 commit behind / 380 ahead**, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`.
+- Garde-fous : aucun code runtime RailOps, règle métier, permission, migration, donnée Supabase, RLS, Import, logique Multi-chantier ou purge hebdomadaire n'a été modifié ; aucun merge/rebase/cherry-pick ni changement de `main` n'a été tenté.
+- Points en attente inchangés : le commit de rafraîchissement de déploiement présent uniquement sur `main`, les smoke-tests humains et toute correction sécurité/performance restent soumis à validation explicite ; aucun nouveau choix produit n'a été introduit.
