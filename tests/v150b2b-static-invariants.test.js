@@ -45,6 +45,18 @@ assert.match(
   'Chef de chantier aggregate stats must stay isolated in their dedicated state field'
 );
 
+const chefStatsAdapter = read('v150b2b-chef-chantier-stats.js');
+assert.equal(
+  /\bdb\s*\./.test(chefStatsAdapter),
+  false,
+  'Chef de chantier stats adapter must remain display-only and must not call Supabase directly'
+);
+assert.equal(
+  /\.(?:insert|update|upsert|delete)\s*\(/.test(chefStatsAdapter),
+  false,
+  'Chef de chantier stats adapter must never contain persistence mutations'
+);
+
 assert.equal(
   preview.includes('20260821_v150b2b_strict_rls.sql'),
   false,
