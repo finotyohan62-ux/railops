@@ -17,6 +17,7 @@ Le runner échoue immédiatement si l’un de ces tests n’est plus découvert 
 - `v150b2b-agent-material-save-regression.test.js` — non-régression de sauvegarde matériel Agent.
 - `v150b2b-ci-branch-safety.test.js` — périmètre et innocuité de la CI de branche.
 - `v150b2b-ci-isolation-contract.test.js` — isolation du runner diagnostique.
+- `v150b2b-ci-job-permissions.test.js` — absence de permissions CI redéfinies au niveau job.
 - `v150b2b-ci-nonmutation.test.js` — absence de mutation dans les contrôles CI.
 - `v150b2b-static-invariants.test.js` — invariants statiques de la prévisualisation v150B-2B.
 
