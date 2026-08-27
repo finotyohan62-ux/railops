@@ -189,3 +189,21 @@
 - Vérification fraîche : `v150B-2B checks` run `33081230796` est `success` sur ce commit. Avant journalisation, la branche était bien sur ce head, `main` toujours à `37b216936a6692d54f82cbc004b30c936d13785a` et Supabase toujours `ACTIVE_HEALTHY`.
 - Garde-fous respectés : aucune permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué.
 - Point en attente : aucun choix produit ni test utilisateur requis ; les alertes sécurité Supabase restent volontairement hors scope sans validation explicite.
+
+## 2026-08-27 — provenance des actions CI verrouillée 17:14 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head initial `406c5d993e8f3c0747580ecd2fa277cf4f25d834`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`, divergence contrôlée `ahead=479`, `behind=2`. Supabase `railops` est `ACTIVE_HEALTHY`; contrôle SQL strictement en lecture seule confirmant RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users` (policies 4/4/4/2).
+- Amélioration réversible : ajout de `tests/v150b2b-ci-action-provenance.test.js`, auto-découvert par le runner, qui limite les dépendances `uses:` du workflow diagnostique aux actions GitHub déjà revues `actions/checkout@v4` et `actions/setup-node@v4` et bloque l’introduction silencieuse d’actions tierces. Aucun workflow ni code runtime n’a été modifié.
+- Commit principal : `3f5d36470da23fe3518b24ecbf805411dd1880c4` (`test: guard diagnostic action provenance`).
+- Vérification fraîche : `v150B-2B checks` run `33086719917` est `success` sur ce commit.
+- Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
+- Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les sujets sécurité/data et toute intégration de la dérive de `main` restent volontairement hors scope sans validation explicite.
+
+## 2026-08-27 — contrat documentaire de sécurité CI 18:14 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head initial `39a598daf311caf199ef98b4bffa176ffc23d219`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` est `ACTIVE_HEALTHY`; contrôle SQL strictement en lecture seule confirmant RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users` avec respectivement 4/4/4/2 policies.
+- Amélioration réversible : ajout de `docs/v150b2b-ci-safety-contract.md`, qui documente le périmètre événementiel, les permissions lecture seule, l'absence de secrets/déploiement, le diagnostic de dérive et la commande de vérification existante. Aucun workflow ni code runtime n'a été modifié.
+- Commit principal : `0ecf415713a965aeda90d794e6a0cfb858ac781f` (`docs: document v150B-2B CI safety contract`).
+- Vérification fraîche : `v150B-2B checks` run push `33092407193` et run PR `33092410507` sont `success`; les workflows `RailOps lifecycle regression`, `RailOps modules regression` et `Final RLS hotfix check` sont également `success` sur le même head. Le commit de journalisation `1f9ba79ea831b0322e64fd2b80dd98d080fe796f` a ensuite passé `v150B-2B checks` run `33092632911` en `success`.
+- Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n'a pas été modifié.
+- Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les sujets sécurité/data et toute intégration de la dérive de `main` restent volontairement hors scope sans validation explicite.
