@@ -64,3 +64,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33026272760` est `success` sur ce commit.
 - Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué.
 - Point en attente : aucun nouveau point nécessitant une décision ou un test utilisateur ; les alertes Supabase de sécurité observées restent volontairement hors scope sans validation explicite.
+
+## 2026-08-27 — permissions CI strictement lecture seule 03:18 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head `1bc092cfb4b5165f533763bb88a6474c7ff03c3f`; le workflow réel `.github/workflows/v150b2b-checks.yml` déclare uniquement `permissions: contents: read`. La tentative de relecture Supabase strictement en lecture seule a été refusée par le connecteur (`You do not have permission to perform this action`), donc aucune donnée, policy ou configuration Supabase n'a été touchée.
+- Amélioration réversible : `tests/v150b2b-ci-branch-safety.test.js` vérifie désormais que le bloc `permissions` du workflow contient exactement `contents: read` et aucune permission additionnelle explicite, afin d'éviter une élévation de privilèges accidentelle lors d'une future édition CI. Aucun workflow ni code runtime n'a été modifié.
+- Commit principal : `6a547e37ef1f0747292138ea1ba35195cc9cdc1a` (`test: lock workflow to read-only permissions`).
+- Vérification fraîche : `v150B-2B checks` run `33029678448`, job `checks` `98379047912`, est `success`; `Run v150B-2B verification suite` est passé avec succès.
+- Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n'a pas été modifié.
+- Point en attente : aucun choix produit ou test utilisateur requis. La lecture Supabase devra simplement être retentée lors d'un prochain passage si l'accès du connecteur redevient disponible.
