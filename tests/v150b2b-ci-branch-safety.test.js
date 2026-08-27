@@ -98,6 +98,16 @@ assert.match(
 );
 assert.match(
   workflow,
+  /git fetch --no-tags origin main:refs\/remotes\/origin\/main\b/,
+  'branch drift diagnostics must fetch only main into the explicit origin/main tracking ref'
+);
+assert.doesNotMatch(
+  workflow,
+  /git fetch[^\n]*(?:--all|--mirror|\+refs\/heads\/\*:refs\/remotes\/origin\/\*)/,
+  'branch drift diagnostics must not broaden fetch scope beyond main'
+);
+assert.match(
+  workflow,
   /- name: Setup Node\.js\s*\n\s+uses:\s*actions\/setup-node@v4\s*\n\s+with:\s*\n\s+node-version:\s*['"]22['"]\s*(?:\n|$)/,
   'v150B-2B checks must keep the explicit Node 22 runtime'
 );
