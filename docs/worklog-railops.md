@@ -225,3 +225,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33102678514`, job `checks` `98624233750`, est `success`; les régressions lifecycle/modules observées sur le même head sont également `success`.
 - Garde-fous respectés : aucune permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
 - Point en attente : aucun choix produit ni test utilisateur requis ; toute intégration de la dérive de `main` et les changements sécurité/data restent volontairement hors scope sans validation explicite.
+
+## 2026-08-27 — inventaire documentaire de la suite v150B-2B 21:16 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head initial `1d49318aaf7fa0a6891834f703171d4dcac4fc86`; workflow et runner réels relus avant modification. Supabase `railops` contrôlé strictement en lecture seule : projet `ACTIVE_HEALTHY`, avec `chantiers=22`, `materiels=1689`, `scans=124`, `users=34`.
+- Diagnostic : une première idée de garde-fou sur les artefacts a été reconnue comme redondante avec `tests/v150b2b-ci-output-surface.test.js`; le fichier temporaire a donc été retiré immédiatement (`e5f24eb6f4994023ae907d3f587acfe23bf9f281`, puis `56f344ebbec4125d0d5e22e7e853fa7da5965aed`) au lieu de conserver une couverture doublonnée.
+- Amélioration réversible retenue : ajout de `docs/v150b2b-test-inventory.md`, qui documente la commande de vérification locale, l’auto-découverte des tests, les cinq gardes critiques explicitement attendues, les diagnostics produits par le runner et les limites volontaires de la suite. Commit principal : `a34571d4df638ff9c5f55ce13a50495809a93c2c` (`docs: map v150B-2B verification suite`).
+- Vérification fraîche : `v150B-2B checks` run push `33107628337` est `success` sur `a34571d4df638ff9c5f55ce13a50495809a93c2c` ; l’étape `Run v150B-2B verification suite` a terminé en `success`.
+- Garde-fous respectés : aucun code runtime, workflow, règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
+- Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les sujets sécurité/data et toute intégration de la dérive de `main` restent volontairement hors scope sans validation explicite.
