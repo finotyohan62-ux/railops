@@ -82,3 +82,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33032648810`, job `checks` `98388439641`, est `success`; la suite `Run v150B-2B verification suite` est passée avec succès.
 - Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
 - Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les avertissements du Security Advisor restent documentés et volontairement hors scope sans validation explicite.
+
+## 2026-08-27 — garde-fou CI sans installation de dépendances 05:17 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head `4872ca1d9da44620b32cc1f7ec1a1071bbbd559a`; `main` est resté intact à `37b216936a6692d54f82cbc004b30c936d13785a`, avec divergence contrôlée (`ahead=450`, `behind=2`, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`). Supabase `railops` a été relu strictement en lecture seule : projet `ACTIVE_HEALTHY`, RLS activé mais non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- Amélioration réversible : `tests/v150b2b-ci-branch-safety.test.js` protège désormais l’exécution directe de la suite avec Node 22 et interdit l’ajout futur d’étapes `npm`/`npx`/`pnpm`/`yarn`/`bun` d’installation ou d’exécution de paquets dans ce workflow diagnostique. Aucun workflow ni code runtime n’a été modifié.
+- Commits : `a0655ac5ba9e8d0b91aa4ade73fb8027c3c2cee0` a révélé un matcher trop strict ; correction purement test dans `934c96f616e9c53838f55978016cf9d0401a41ee` (`test: fix Node runtime guard matcher`).
+- Vérification fraîche : `v150B-2B checks` run `33036061425` est `success` sur `934c96f616e9c53838f55978016cf9d0401a41ee`; les 30 tests et 8 cibles de syntaxe sont couverts par le runner agrégé.
+- Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
+- Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; la dérive de `main` reste informative et toute intégration demeure hors scope sans validation explicite.
