@@ -46,6 +46,16 @@ assert.match(
   /permissions:\s*\n\s+contents:\s*read\b/,
   'v150B-2B workflow must keep repository contents read-only'
 );
+const permissionsBlock = workflow.match(/^permissions:\s*\n((?:^[ \t]+[^\n]+\n?)*)/m)?.[1] || '';
+const explicitPermissions = permissionsBlock
+  .split(/\r?\n/)
+  .map(line => line.trim())
+  .filter(Boolean);
+assert.deepEqual(
+  explicitPermissions,
+  ['contents: read'],
+  'v150B-2B workflow must not gain permissions beyond contents: read'
+);
 assert.match(
   workflow,
   /persist-credentials:\s*false\b/,
