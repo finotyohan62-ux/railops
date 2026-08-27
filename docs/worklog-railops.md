@@ -55,3 +55,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33022784789`, job `checks` `98356927714`, a exécuté `Run v150B-2B verification suite` avec conclusion `success`.
 - Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué.
 - Point en attente : aucun nouveau point nécessitant une décision ou un test utilisateur ; les alertes Supabase de sécurité déjà observées restent volontairement hors scope sans validation explicite.
+
+## 2026-08-27 — historique complet préservé pour le diagnostic CI 02:16 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` uniquement, head initial `830fae32bb2e0416cb51ff4440925bebc6f9cd6a`; `main` est resté intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` est `ACTIVE_HEALTHY`; le Security Advisor a été relu strictement en lecture seule, sans appliquer aucune remédiation.
+- Amélioration réversible : `tests/v150b2b-ci-branch-safety.test.js` protège désormais `fetch-depth: 0`, nécessaire au calcul fiable de la dérive `main`/branche et de la merge-base. Aucun workflow, code runtime ou comportement applicatif n’a été modifié.
+- Commit principal : `e349c50ed4e2a9bb6b49052363d63707097f0e11` (`test: preserve full-history drift diagnostics`).
+- Vérification fraîche : `v150B-2B checks` run `33026272760` est `success` sur ce commit.
+- Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué.
+- Point en attente : aucun nouveau point nécessitant une décision ou un test utilisateur ; les alertes Supabase de sécurité observées restent volontairement hors scope sans validation explicite.
