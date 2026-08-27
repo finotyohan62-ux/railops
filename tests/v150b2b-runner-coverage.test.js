@@ -37,6 +37,10 @@ assert(
   'aggregate runner should not require a manually maintained preview module manifest'
 );
 assert(
+  runner.includes("'tests/v150b2b-ci-job-permissions.test.js'"),
+  'aggregate runner must treat the job-level permission guard as a critical regression test'
+);
+assert(
   runner.includes('PASS: ${label}'),
   'aggregate runner must identify each successful check in CI output'
 );
