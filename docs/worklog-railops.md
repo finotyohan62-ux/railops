@@ -73,3 +73,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33029678448`, job `checks` `98379047912`, est `success`; `Run v150B-2B verification suite` est passé avec succès.
 - Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n'a pas été modifié.
 - Point en attente : aucun choix produit ou test utilisateur requis. La lecture Supabase devra simplement être retentée lors d'un prochain passage si l'accès du connecteur redevient disponible.
+
+## 2026-08-27 — garde-fou CI sans secrets 04:14 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head initial `d3825513295dd9bfb2705725ad5c04aa0d54990a`; `main` est resté intact à `37b216936a6692d54f82cbc004b30c936d13785a` et la branche est actuellement en divergence contrôlée (`ahead=448`, `behind=2`, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`). Supabase `railops` est `ACTIVE_HEALTHY`; le Security Advisor a été relu strictement en lecture seule, sans appliquer aucune remédiation.
+- Amélioration réversible : `tests/v150b2b-ci-branch-safety.test.js` vérifie désormais que le workflow de branche ne consomme aucune référence `secrets.*`, afin de conserver une CI purement diagnostique et sans accès implicite à des secrets de dépôt ou d’environnement. Aucun workflow ni code runtime n’a été modifié.
+- Commit principal : `6828356b60bc4da08ca2fd1e37cba922a76a6bb8` (`test: keep branch CI free of secrets`).
+- Vérification fraîche : `v150B-2B checks` run `33032648810`, job `checks` `98388439641`, est `success`; la suite `Run v150B-2B verification suite` est passée avec succès.
+- Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
+- Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les avertissements du Security Advisor restent documentés et volontairement hors scope sans validation explicite.
