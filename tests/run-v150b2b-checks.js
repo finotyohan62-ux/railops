@@ -22,6 +22,8 @@ const tests = fs.readdirSync(__dirname)
 const criticalTests = [
   'tests/v150b2b-agent-material-save-regression.test.js',
   'tests/v150b2b-ci-branch-safety.test.js',
+  'tests/v150b2b-ci-isolation-contract.test.js',
+  'tests/v150b2b-ci-nonmutation.test.js',
   'tests/v150b2b-static-invariants.test.js',
 ];
 
