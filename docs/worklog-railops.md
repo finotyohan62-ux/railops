@@ -216,3 +216,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33097724373`, job `checks` `98606927475`, étape `Run v150B-2B verification suite` terminée en `success`.
 - Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
 - Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les sujets sécurité/data et toute intégration de la dérive de `main` restent volontairement hors scope sans validation explicite.
+
+## 2026-08-27 — bornes de ressources CI dédiées 20:15 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head initial `d72bc6dfeb3d93f638f15bfd3ec2c6030da0301e`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`, divergence contrôlée `ahead=486`, `behind=2`. Supabase `railops` relu strictement en lecture seule : projet `ACTIVE_HEALTHY`.
+- Amélioration réversible : ajout de `tests/v150b2b-ci-resource-bounds.test.js`, auto-découvert par le runner, qui vérifie indépendamment la présence d’une politique `concurrency`, `cancel-in-progress: true`, une limite `timeout-minutes` bornée entre 1 et 10 minutes et le groupement par workflow + PR/ref. Aucun workflow, code runtime, règle métier ou comportement applicatif n’a été modifié.
+- Commit principal : `7668c883c8259bba5060855e8fb0aead64b93c48` (`test: guard diagnostic CI resource bounds`).
+- Vérification fraîche : `v150B-2B checks` run `33102678514`, job `checks` `98624233750`, est `success`; les régressions lifecycle/modules observées sur le même head sont également `success`.
+- Garde-fous respectés : aucune permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
+- Point en attente : aucun choix produit ni test utilisateur requis ; toute intégration de la dérive de `main` et les changements sécurité/data restent volontairement hors scope sans validation explicite.
