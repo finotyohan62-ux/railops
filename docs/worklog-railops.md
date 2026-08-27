@@ -153,3 +153,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33062528335` est `success` sur ce commit.
 - Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
 - Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les sujets sécurité/data et toute intégration de la dérive de `main` restent volontairement hors scope sans validation explicite.
+
+## 2026-08-27 — checklist documentaire de changement sûr 13:15 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head initial `35d59a62fcbd9ac226ee09d4f5ccf45725faf22b`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` est `ACTIVE_HEALTHY`; contrôle SQL strictement en lecture seule confirmant RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- Amélioration réversible : ajout de `docs/v150b2b-safe-change-checklist.md`, qui formalise les vérifications préalables, le périmètre des changements sûrs, les interdictions de mutation/production et la journalisation attendue pour cette branche. Aucun workflow, code runtime, règle métier ou comportement applicatif n’a été modifié.
+- Commit principal : `aebe1b465ea82041dec3e42bdca4042a3c091407` (`docs: add safe branch change checklist`).
+- Vérification fraîche : `v150B-2B checks` run `33066512978` est `success` sur ce commit.
+- Garde-fous respectés : aucune permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
+- Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les sujets sécurité/data restent volontairement hors scope sans validation explicite.
