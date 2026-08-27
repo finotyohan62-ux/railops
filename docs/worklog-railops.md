@@ -207,3 +207,12 @@
 - Vérification fraîche : `v150B-2B checks` run push `33092407193` et run PR `33092410507` sont `success`; les workflows `RailOps lifecycle regression`, `RailOps modules regression` et `Final RLS hotfix check` sont également `success` sur le même head. Le commit de journalisation `1f9ba79ea831b0322e64fd2b80dd98d080fe796f` a ensuite passé `v150B-2B checks` run `33092632911` en `success`.
 - Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n'a pas été modifié.
 - Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les sujets sécurité/data et toute intégration de la dérive de `main` restent volontairement hors scope sans validation explicite.
+
+## 2026-08-27 — surface de sortie CI verrouillée 19:18 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head initial `64aa0c9a8927958e89d49b26595c6757a2abdf6d`; `main` est resté intact. Supabase `railops` relu strictement en lecture seule : projet `ACTIVE_HEALTHY`; RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- Amélioration réversible : ajout de `tests/v150b2b-ci-output-surface.test.js`, auto-découvert par le runner, qui empêche la CI diagnostique de publier/télécharger des artefacts GitHub Actions ou de créer des caches. Aucun workflow ni code runtime n’a été modifié.
+- Commit principal : `672e0d8199083a15ad0d952e525624dcd954e828` (`test: keep diagnostic CI free of artifacts and caches`).
+- Vérification fraîche : `v150B-2B checks` run `33097724373`, job `checks` `98606927475`, étape `Run v150B-2B verification suite` terminée en `success`.
+- Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
+- Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les sujets sécurité/data et toute intégration de la dérive de `main` restent volontairement hors scope sans validation explicite.
