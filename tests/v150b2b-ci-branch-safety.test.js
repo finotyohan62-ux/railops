@@ -93,6 +93,11 @@ assert.match(
 );
 assert.match(
   workflow,
+  /- name: Report branch drift \(non-blocking\)[\s\S]*?shell:\s*bash\s*\n\s+run:\s*\|\s*\n\s+set -euo pipefail\b/,
+  'branch drift diagnostics must use strict Bash mode so command failures are not silently ignored'
+);
+assert.match(
+  workflow,
   /- name: Setup Node\.js\s*\n\s+uses:\s*actions\/setup-node@v4\s*\n\s+with:\s*\n\s+node-version:\s*['"]22['"]\s*(?:\n|$)/,
   'v150B-2B checks must keep the explicit Node 22 runtime'
 );
