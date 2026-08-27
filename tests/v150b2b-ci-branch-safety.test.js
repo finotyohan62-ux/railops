@@ -71,6 +71,17 @@ assert.match(
   /persist-credentials:\s*false\b/,
   'checkout credentials must not persist in the v150B-2B workflow'
 );
+const checkoutStep = workflow.match(/- name: Checkout\s*\n([\s\S]*?)(?=\n\s*- name:|\n\s*$)/)?.[1] || '';
+assert.match(
+  checkoutStep,
+  /uses:\s*actions\/checkout@v4\b/,
+  'v150B-2B checks must keep the expected checkout action'
+);
+assert.doesNotMatch(
+  checkoutStep,
+  /^\s*ref\s*:/m,
+  'checkout must not override the event ref; checks must run against the exact pushed or reviewed commit'
+);
 assert.match(
   workflow,
   /fetch-depth:\s*0\b/,
