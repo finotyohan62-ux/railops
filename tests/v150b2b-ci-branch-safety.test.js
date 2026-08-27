@@ -56,6 +56,11 @@ assert.deepEqual(
   ['contents: read'],
   'v150B-2B workflow must not gain permissions beyond contents: read'
 );
+assert.doesNotMatch(
+  workflow,
+  /\bsecrets\.[A-Za-z0-9_]+\b/,
+  'v150B-2B workflow must not consume repository or environment secrets'
+);
 assert.match(
   workflow,
   /persist-credentials:\s*false\b/,
