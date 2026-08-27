@@ -253,3 +253,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33117369470`, job `checks` `98675353660`, est `success`; l'étape `Run v150B-2B verification suite` est passée.
 - Garde-fous respectés : aucun code runtime, workflow, règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n'a pas été modifié.
 - Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; toute intégration de la dérive de `main` reste volontairement hors scope sans validation explicite.
+
+## 2026-08-28 — garde-fou contre les permissions CI au niveau job 00:18 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head initial `85313a7fdf4f7fcd4bbf7cb6e3554303c0006af1`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` relu strictement en lecture seule : projet `ACTIVE_HEALTHY`; Security Advisor observé sans appliquer aucune remédiation ni mutation.
+- Amélioration réversible : ajout de `tests/v150b2b-ci-job-permissions.test.js`, auto-découvert par le runner, qui interdit qu’un futur job du workflow diagnostique définisse son propre bloc `permissions:` et contourne ainsi le contrat global `contents: read`. Aucun workflow ni code runtime n’a été modifié.
+- Commit principal : `aa1485442b0a8a23dc3ffea823bbd03195b204b5` (`test: prevent job-level CI permission overrides`).
+- Vérification fraîche : `v150B-2B checks` run `33121860734`, job `checks` `98690410000`, a terminé toutes ses étapes, dont `Run v150B-2B verification suite`, en `success`.
+- Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
+- Point en attente : aucun choix produit ni test utilisateur requis ; les avertissements du Security Advisor restent volontairement hors scope sans validation explicite.
