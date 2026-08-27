@@ -180,3 +180,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33076211136` est `success` sur ce commit.
 - Garde-fous respectés : aucun code runtime, workflow, règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
 - Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les sujets sécurité/data et toute intégration de la dérive de `main` restent volontairement hors scope sans validation explicite.
+
+## 2026-08-27 — garde-fous CI contre mutations indirectes 16:16 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head `6e00fb4a4ba5b7c0f84e3bf8d5fed327e615a0c4`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` relu strictement en lecture seule : projet `ACTIVE_HEALTHY`; Security Advisor observé sans aucune remédiation ni mutation.
+- Amélioration réversible : `tests/v150b2b-ci-branch-safety.test.js` interdit désormais aussi les surfaces de mutation indirectes via GitHub CLI (`gh pr`, `gh issue`, `gh api` avec méthode d’écriture) et `curl` avec méthodes `POST`/`PUT`/`PATCH`/`DELETE`. Aucun workflow, code runtime, règle métier ou comportement applicatif n’a été modifié.
+- Commit principal : `aa1050a373ab61bd193262e3e3d7bf97ea209667` (`test: guard indirect CI mutation commands`).
+- Vérification fraîche : `v150B-2B checks` run `33081230796` est `success` sur ce commit. Avant journalisation, la branche était bien sur ce head, `main` toujours à `37b216936a6692d54f82cbc004b30c936d13785a` et Supabase toujours `ACTIVE_HEALTHY`.
+- Garde-fous respectés : aucune permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué.
+- Point en attente : aucun choix produit ni test utilisateur requis ; les alertes sécurité Supabase restent volontairement hors scope sans validation explicite.
