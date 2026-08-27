@@ -171,3 +171,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33071313991` est `success` sur ce commit.
 - Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
 - Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les changements sécurité/data restent volontairement hors scope sans validation explicite.
+
+## 2026-08-27 — garde-fous CI critiques protégés 15:19 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head `e8f6b1fa1eada78dc18796aeffad9a40a2244135`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`, divergence contrôlée `ahead=475`, `behind=2`. Supabase `railops` a été relu strictement en lecture seule : RLS reste activé mais non forcé sur les huit tables cœur suivies, avec les mêmes comptages de policies que le snapshot du matin.
+- Amélioration réversible : le runner agrégé `tests/run-v150b2b-checks.js` considère désormais `v150b2b-ci-isolation-contract.test.js` et `v150b2b-ci-nonmutation.test.js` comme gardes critiques, en plus des gardes existants. Une suppression ou un renommage accidentel de ces tests de sûreté fera désormais échouer immédiatement la suite au lieu de réduire silencieusement la couverture.
+- Commit principal : `6191af75ffe7f1739cc51624223c45cdb0724432` (`test: protect CI safety guards from silent removal`).
+- Vérification fraîche : `v150B-2B checks` run `33076211136` est `success` sur ce commit.
+- Garde-fous respectés : aucun code runtime, workflow, règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
+- Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les sujets sécurité/data et toute intégration de la dérive de `main` restent volontairement hors scope sans validation explicite.
