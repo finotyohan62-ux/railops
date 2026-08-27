@@ -243,3 +243,13 @@
 - Vérification fraîche : `v150B-2B checks` run push `33112330985` est `success` sur `c74cbaf41a8383a09936be2e2a839b2fc879399e`.
 - Garde-fous respectés : aucun code runtime, workflow, règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n'a pas été modifié.
 - Point en attente : aucun choix produit ni test utilisateur requis ; toute intégration de la dérive de `main` reste volontairement hors scope et nécessitera une validation explicite si elle est envisagée.
+
+## 2026-08-27 — préflight de dérive renforcé 23:16 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head initial `b57284dd20d8121ec1f098da818b4958d03e1891`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`, divergence `ahead=494`, `behind=2`, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`.
+- Contrôle Supabase strictement en lecture seule : projet `railops` `ACTIVE_HEALTHY`; RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`, avec respectivement 4/4/4/2 policies.
+- Amélioration réversible : `docs/v150b2b-safe-change-checklist.md` exige désormais de relever merge-base et compteurs `behind/ahead`, puis de classer les fichiers propres à `main` par impact avant toute maintenance automatisée ; aucune intégration automatique de la dérive n'est autorisée.
+- Commit principal : `2b179b7b7cee5ae9ca5b6928d3787d323ae3cf46` (`docs: strengthen branch drift preflight checklist`).
+- Vérification fraîche : `v150B-2B checks` run `33117369470`, job `checks` `98675353660`, est `success`; l'étape `Run v150B-2B verification suite` est passée.
+- Garde-fous respectés : aucun code runtime, workflow, règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n'a pas été modifié.
+- Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; toute intégration de la dérive de `main` reste volontairement hors scope sans validation explicite.
