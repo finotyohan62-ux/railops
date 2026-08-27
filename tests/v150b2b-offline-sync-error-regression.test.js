@@ -17,10 +17,11 @@ assert.equal(
   0,
   `offline sync error-handling regression failed\n${result.stdout || ''}${result.stderr || ''}`
 );
-assert.match(
-  result.stdout || '',
-  /sync error handling checks passed \(6 cases\)/,
-  'canonical offline sync regression must confirm all six retry/queue cases'
+const canonicalSummary = (result.stdout || '').match(/sync error handling checks passed \((\d+) cases\)/);
+assert.ok(canonicalSummary, 'canonical offline sync regression must report its retry/queue case count');
+assert.ok(
+  Number(canonicalSummary[1]) >= 6,
+  `canonical offline sync regression must keep at least six retry/queue cases (reported ${canonicalSummary[1]})`
 );
 
 console.log('PASS: v150B-2B suite includes canonical offline sync error-handling regression');
