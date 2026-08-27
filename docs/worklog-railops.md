@@ -100,3 +100,12 @@
 - Vérification fraîche : le premier run PR `33038832413` a correctement révélé une incompatibilité de test avec `main`, qui expose maintenant 7 cas offline au lieu de 6 ; après correction du wrapper uniquement, `v150B-2B checks` run push `33038900973` est `success` sur `5498ada86430d53da5ae1cfccf37b20d04ad1003`.
 - Garde-fous respectés : aucun code runtime, workflow métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié par cette passe.
 - Point en attente : aucun choix produit ni test utilisateur requis ; les sujets de sécurité Supabase nécessitant une décision restent volontairement hors scope.
+
+## 2026-08-27 — contrat CI limité aux actions GitHub officielles 07:17 Europe/Paris
+
+- État réel contrôlé : branche `security/v150b2b-rls-ready` au head initial `63ebebb0f0bb42a8f26086d182dc29020f8f4e81`; workflow `.github/workflows/v150b2b-checks.yml` relu avant changement. Supabase `railops` a ensuite été contrôlé strictement en lecture seule : projet `ACTIVE_HEALTHY`; Security Advisor relu sans aucune remédiation ni mutation.
+- Amélioration réversible : ajout de `tests/v150b2b-ci-actions-contract.test.js`, qui verrouille la surface d’actions du workflow diagnostique aux deux actions GitHub officielles actuellement prévues (`actions/checkout@v4` et `actions/setup-node@v4`) et détecte aussi les doublons inutiles. Aucun workflow ni code runtime n’a été modifié.
+- Commit principal : `d487f678110bf53eb6aa49be7c76f1f22fc3ae9e` (`test: constrain CI to official GitHub actions`).
+- Vérification fraîche : `v150B-2B checks` run push `33042030168` est `success` sur ce commit.
+- Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
+- Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les avertissements du Security Advisor restent volontairement hors scope sans validation explicite.
