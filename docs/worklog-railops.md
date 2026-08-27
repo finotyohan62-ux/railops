@@ -118,3 +118,11 @@
 - Vérification fraîche : `v150B-2B checks` run `33045378671`, job `checks` `98428035516`, est `success`; les régressions lifecycle et le contrôle ciblé RLS ont également terminé en `success` sur le même head.
 - Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
 - Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les changements sécurité/data restent volontairement hors scope sans validation explicite.
+
+## 2026-08-27 — mode Bash strict pour le diagnostic de dérive 09:12 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head `1c658783deb03f871c625944b752389b6b934c69`; `main` est resté intact à `37b216936a6692d54f82cbc004b30c936d13785a`, avec divergence contrôlée (`ahead=460`, `behind=2`). Supabase `railops` a été relu strictement en lecture seule : projet `ACTIVE_HEALTHY`, avec `chantiers=22`, `materiels=1689`, `scans=121`, `users=34`.
+- Amélioration réversible : le bloc `Report branch drift (non-blocking)` utilise désormais `set -euo pipefail`, afin qu’une erreur de commande ou de pipeline ne soit plus silencieusement masquée ; le garde-fou associé est couvert dans `tests/v150b2b-ci-branch-safety.test.js`. Aucun code runtime, règle métier ou comportement applicatif n’a été modifié.
+- Cycle TDD vérifié : commit test-only `0507ec3e12faba2a90ba027cddd9f66c8bc0266f` a fait échouer `v150B-2B checks` (runs push `33048925206` et PR `33048927855`) comme attendu ; commit correctif `bf3593f32ea92b84b98cf7caf175e3ec2ce99b97` (`ci: enable strict bash for drift diagnostics`) a ensuite passé le run push `33048989871` en `success`.
+- Garde-fous respectés : aucune donnée, migration, schéma, permission applicative, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
+- Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les sujets sécurité/data restent volontairement hors scope sans validation explicite.
