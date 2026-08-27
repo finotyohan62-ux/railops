@@ -144,3 +144,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33057844742`, job `checks` `98468985384`, est `success`; le diagnostic de dérive et `Run v150B-2B verification suite` sont tous deux passés.
 - Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
 - Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les changements sécurité/data restent volontairement hors scope sans validation explicite.
+
+## 2026-08-27 — checkout CI lié au commit de l’événement 12:20 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` uniquement ; `main` est resté intact à `37b216936a6692d54f82cbc004b30c936d13785a`, divergence contrôlée `ahead=469`, `behind=2` avant le commit de test. Supabase `railops` a été relu strictement en lecture seule : RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- Amélioration réversible : `tests/v150b2b-ci-branch-safety.test.js` vérifie désormais explicitement que l’étape `Checkout` reste sur `actions/checkout@v4` et n’ajoute pas de `ref:` personnalisé, afin que la suite CI teste toujours exactement le commit poussé ou revu au lieu d’un autre ref. Aucun workflow ni code runtime n’a été modifié.
+- Commit principal : `769fd19d76b321aecbc53e7b9ef88fa12a218927` (`test: keep CI checkout on event commit`).
+- Vérification fraîche : `v150B-2B checks` run `33062528335` est `success` sur ce commit.
+- Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
+- Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les sujets sécurité/data et toute intégration de la dérive de `main` restent volontairement hors scope sans validation explicite.
