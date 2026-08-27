@@ -135,3 +135,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33053845755` est `success` sur `80df046d3b60fce267c41463a55ddcd34f2f3fa0`. Les deux échecs précédents étaient limités au contrat textuel du nouveau snapshot et ont servi à diagnostiquer puis corriger le document, sans toucher au runtime.
 - Garde-fous respectés : aucun code runtime, règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
 - Point en attente : aucun choix produit ni test utilisateur requis ; les avertissements sécurité/performance Supabase restent volontairement hors scope sans validation explicite.
+
+## 2026-08-27 — portée du fetch de dérive verrouillée 11:18 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head initial `fd7dead7c4b9d517d2376fd7d4fa1e1b5a5e0977`; workflow `.github/workflows/v150b2b-checks.yml` relu avant changement. `main` est resté intact à `37b216936a6692d54f82cbc004b30c936d13785a`.
+- Amélioration réversible : `tests/v150b2b-ci-branch-safety.test.js` exige désormais que le diagnostic de dérive récupère uniquement `main` via `git fetch --no-tags origin main:refs/remotes/origin/main` et rejette les fetchs élargis (`--all`, `--mirror` ou refspec global). Aucun workflow ni code runtime n’a été modifié.
+- Commit principal : `1a76dc2a54b16a3cf1ea2dd5839a87664585ee74` (`test: constrain branch drift fetch scope`).
+- Vérification fraîche : `v150B-2B checks` run `33057844742`, job `checks` `98468985384`, est `success`; le diagnostic de dérive et `Run v150B-2B verification suite` sont tous deux passés.
+- Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
+- Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les changements sécurité/data restent volontairement hors scope sans validation explicite.
