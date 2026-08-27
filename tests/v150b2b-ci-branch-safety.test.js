@@ -53,6 +53,11 @@ assert.match(
 );
 assert.match(
   workflow,
+  /fetch-depth:\s*0\b/,
+  'checkout must keep full history so branch-drift diagnostics remain accurate'
+);
+assert.match(
+  workflow,
   /concurrency:[\s\S]*?cancel-in-progress:\s*true\b/,
   'v150B-2B workflow must cancel superseded duplicate runs'
 );
