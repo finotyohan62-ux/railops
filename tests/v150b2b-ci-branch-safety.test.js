@@ -61,6 +61,11 @@ assert.doesNotMatch(
   /\bsecrets\.[A-Za-z0-9_]+\b/,
   'v150B-2B workflow must not consume repository or environment secrets'
 );
+assert.doesNotMatch(
+  workflow,
+  /^\s+environment\s*:/m,
+  'v150B-2B diagnostic checks must not attach to a GitHub deployment environment'
+);
 assert.match(
   workflow,
   /persist-credentials:\s*false\b/,
