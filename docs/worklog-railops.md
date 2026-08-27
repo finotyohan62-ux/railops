@@ -109,3 +109,12 @@
 - Vérification fraîche : `v150B-2B checks` run push `33042030168` est `success` sur ce commit.
 - Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
 - Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les avertissements du Security Advisor restent volontairement hors scope sans validation explicite.
+
+## 2026-08-27 — garde-fou CI contre les mutations Git locales 08:18 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head `a7288617dd8055c3370782357cd074e76725b647`; `main` est resté intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` a été relu strictement en lecture seule : projet `ACTIVE_HEALTHY`, avec `chantiers=22`, `materiels=1689`, `scans=121`, `users=34`.
+- Amélioration réversible : `tests/v150b2b-ci-branch-safety.test.js` interdit désormais aussi les commandes Git locales susceptibles de modifier l’historique, les refs ou le worktree (`commit`, `checkout`, `switch`, `branch`, `tag`, `update-ref`, `clean`) dans le workflow diagnostique. Aucun workflow ni code runtime n’a été modifié.
+- Commit principal : `b6799c1bd482f0ee25ccafdd230c688621a5c873` (`test: guard drift diagnostics from local git mutations`).
+- Vérification fraîche : `v150B-2B checks` run `33045378671`, job `checks` `98428035516`, est `success`; les régressions lifecycle et le contrôle ciblé RLS ont également terminé en `success` sur le même head.
+- Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
+- Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les changements sécurité/data restent volontairement hors scope sans validation explicite.
