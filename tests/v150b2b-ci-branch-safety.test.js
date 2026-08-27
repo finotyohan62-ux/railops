@@ -88,7 +88,7 @@ assert.match(
 );
 assert.match(
   workflow,
-  /- name: Setup Node\.js\s*\n\s+uses:\s*actions\/setup-node@v4\s*\n\s+with:\s*\n\s+node-version:\s*['"]22['"]\b/,
+  /- name: Setup Node\.js\s*\n\s+uses:\s*actions\/setup-node@v4\s*\n\s+with:\s*\n\s+node-version:\s*['"]22['"]\s*(?:\n|$)/,
   'v150B-2B checks must keep the explicit Node 22 runtime'
 );
 assert.match(
