@@ -91,3 +91,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33036061425` est `success` sur `934c96f616e9c53838f55978016cf9d0401a41ee`; les 30 tests et 8 cibles de syntaxe sont couverts par le runner agrégé.
 - Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
 - Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; la dérive de `main` reste informative et toute intégration demeure hors scope sans validation explicite.
+
+## 2026-08-27 — garde-fou environnement CI et compatibilité de couverture 06:17 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` uniquement ; head final avant journal `5498ada86430d53da5ae1cfccf37b20d04ad1003`. Supabase `railops` a été relu strictement en lecture seule et reste `ACTIVE_HEALTHY`; les alertes du Security Advisor ont été observées sans aucune remédiation.
+- Améliorations réversibles : `tests/v150b2b-ci-branch-safety.test.js` interdit désormais qu’une CI diagnostique soit rattachée à un `environment` GitHub de déploiement/protection. Le wrapper `tests/v150b2b-offline-sync-error-regression.test.js` accepte désormais l’ajout de nouveaux cas canoniques tout en exigeant au minimum les 6 scénarios de retry/file déjà couverts.
+- Commits : `8d0c5135f0d2a1f20e421b3d37c7694ff7ce4361` (`test: keep diagnostic CI outside deployment environments`) et `5498ada86430d53da5ae1cfccf37b20d04ad1003` (`test: tolerate additive offline sync regression coverage`).
+- Vérification fraîche : le premier run PR `33038832413` a correctement révélé une incompatibilité de test avec `main`, qui expose maintenant 7 cas offline au lieu de 6 ; après correction du wrapper uniquement, `v150B-2B checks` run push `33038900973` est `success` sur `5498ada86430d53da5ae1cfccf37b20d04ad1003`.
+- Garde-fous respectés : aucun code runtime, workflow métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié par cette passe.
+- Point en attente : aucun choix produit ni test utilisateur requis ; les sujets de sécurité Supabase nécessitant une décision restent volontairement hors scope.
