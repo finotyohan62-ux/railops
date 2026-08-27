@@ -162,3 +162,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33066512978` est `success` sur ce commit.
 - Garde-fous respectés : aucune permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
 - Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les sujets sécurité/data restent volontairement hors scope sans validation explicite.
+
+## 2026-08-27 — isolation du runner CI diagnostique 14:19 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head `a67ba0bf0c873079d4b764aa23e08428893b6843`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` relu strictement en lecture seule : projet `ACTIVE_HEALTHY`, `chantiers=22`, `materiels=1689`, `scans=121`, `users=34`, RLS toujours activé sur les tables listées.
+- Amélioration réversible : ajout de `tests/v150b2b-ci-isolation-contract.test.js`, auto-découvert par le runner existant, qui exige le runner GitHub hébergé `ubuntu-latest` et interdit l’introduction de job containers, service containers ou actions `docker://` dans la CI diagnostique. Aucun workflow ni code runtime n’a été modifié.
+- Commit principal : `275a2589076c822766086f09407990b6d35a94dc` (`test: preserve isolated diagnostic CI runner`).
+- Vérification fraîche : `v150B-2B checks` run `33071313991` est `success` sur ce commit.
+- Garde-fous respectés : aucune règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
+- Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les changements sécurité/data restent volontairement hors scope sans validation explicite.
