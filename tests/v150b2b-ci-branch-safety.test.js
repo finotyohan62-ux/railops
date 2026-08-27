@@ -86,6 +86,21 @@ assert.match(
   /- name: Report branch drift \(non-blocking\)[\s\S]*?if:\s*github\.event_name\s*==\s*'push'[\s\S]*?continue-on-error:\s*true\b/,
   'branch drift reporting must remain push-only and non-blocking'
 );
+assert.match(
+  workflow,
+  /- name: Setup Node\.js\s*\n\s+uses:\s*actions\/setup-node@v4\s*\n\s+with:\s*\n\s+node-version:\s*['"]22['"]\b/,
+  'v150B-2B checks must keep the explicit Node 22 runtime'
+);
+assert.match(
+  workflow,
+  /- name: Run v150B-2B verification suite\s*\n\s+run:\s*node tests\/run-v150b2b-checks\.js\s*$/m,
+  'v150B-2B verification must continue to run directly with Node'
+);
+assert.doesNotMatch(
+  workflow,
+  /^\s*(?:run:\s*)?(?:npm|npx|pnpm|yarn|bun|bunx)\s+(?:install|ci|add|exec|dlx)\b/im,
+  'v150B-2B workflow must not add package-install or package-exec steps'
+);
 
 const forbiddenMutations = [
   { label: 'contents write permission', pattern: /contents:\s*write\b/i },
