@@ -6,6 +6,8 @@ Cette checklist s'applique uniquement à la branche `security/v150b2b-rls-ready`
 
 - Confirmer que la branche active est `security/v150b2b-rls-ready` et relever son SHA.
 - Relever le SHA actuel de `main` sans le modifier.
+- Relever le merge-base ainsi que les compteurs `behind/ahead` entre `main` et la branche afin de rendre toute dérive explicite avant la passe.
+- Si `main` contient des commits absents de la branche, classer leurs fichiers par impact (`app/runtime`, `tests/CI`, `backend`, `docs`, `autre`) et ne jamais les intégrer automatiquement ; toute dérive runtime/backend reste un sujet de revue séparé.
 - Relire l'état Supabase en lecture seule lorsque le sujet touche au backend, aux permissions ou aux diagnostics.
 - Vérifier que le changement envisagé ne modifie ni règle métier, ni permission applicative, ni import, ni Multi-chantier, ni purge de vérification hebdomadaire.
 - Refuser tout merge, rebase, cherry-pick, déploiement production, migration, activation de RLS forcée ou mutation de données dans ce flux.
