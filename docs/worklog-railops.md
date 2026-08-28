@@ -63,7 +63,7 @@
 - Amélioration réversible et sans runtime : ajout de `tests/v150b2b-diagnostics-warning-order.test.js`, auto-découvert par le runner, pour verrouiller un ordre déterministe des alertes lorsque plusieurs invariants diagnostics échouent simultanément et garantir l’absence de doublons. Cela stabilise les logs/support sans modifier la logique applicative.
 - Commit fonctionnel : `dda00a06994f56ea45076b2ec095970581a0913f` (`test: lock diagnostics warning order`).
 - Vérification fraîche : `v150B-2B checks` run `33158516812` terminé en `success` sur ce commit.
-- Garde-fous respectés : aucun runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
+- Garde-fous respectés : aucun code runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent hors scope sans validation explicite.
 
 ## 2026-08-28 — garde anti-faux-positifs diagnostics 12:18 Europe/Paris
@@ -92,4 +92,14 @@
 - Commits fonctionnels : `97ae49d8ce40356bd3b80475ca4aaf6d2ad21de1` (`docs: add diagnostics warning reference`) puis `f5cd4b324f2ff4ee42de6401849395a956f21e90` (`test: keep diagnostics warning reference in sync`).
 - Vérification fraîche : `v150B-2B checks` run `33170223210` terminé en `success` sur `f5cd4b324f2ff4ee42de6401849395a956f21e90`; le garde ciblé `focused` est également `success`.
 - Garde-fous respectés : aucun code runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
+- Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent volontairement hors scope sans validation explicite.
+
+## 2026-08-28 — inventaire diagnostics synchronisé 15:17 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` observée au head `8b9a6201d1218a4c40b037619ecfbfaecad5c46d`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`, divergence initiale `2 commits behind / 534 ahead`, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`.
+- Contrôle Supabase strictement en lecture seule : projet `railops` `ACTIVE_HEALTHY`; RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- Amélioration réversible et documentaire uniquement : `docs/v150b2b-test-inventory.md` référence désormais aussi les gardes diagnostics `normal-roles`, `warning-order`, `warning-reference` et `connectivity-guide`, déjà auto-découverts par le runner mais absents de l’index humain.
+- Commit fonctionnel : `808990d2d7ec83aeba5486891549bc8fddf9e16b` (`docs: refresh diagnostics test inventory`).
+- Vérification fraîche : `v150B-2B checks` run `33174717504` terminé en `success` sur ce commit.
+- Garde-fous respectés : aucun runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent volontairement hors scope sans validation explicite.
