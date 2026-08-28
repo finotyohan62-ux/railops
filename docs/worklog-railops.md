@@ -153,3 +153,13 @@
 - Vérification fraîche : `v150B-2B checks` run `33198339400` terminé en `success`; le fichier modifié sur le commit fonctionnel est uniquement `docs/v150b2b-test-inventory.md`.
 - Garde-fous respectés : aucun runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick, déploiement production ni écriture Supabase ; `main` est resté intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent volontairement hors scope sans validation explicite.
+
+## 2026-08-28 — triage sûr de l’inventaire Supabase 21:15 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` observée au head `2d30f285cf59b1c22fc4aba9c63b7af7e68bac82`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`, divergence `2 commits behind / 546 ahead`, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`.
+- Contrôle Supabase strictement en lecture seule : projet `railops` `ACTIVE_HEALTHY`; inventaire public observé avec RLS activé sur toutes les tables listées, dont les tables cœur et plusieurs structures historiques/techniques. Aucun changement Supabase effectué.
+- Amélioration réversible et documentaire uniquement : `docs/v150b2b-diagnostics-guide.md` précise désormais qu’un inventaire de tables est un constat, jamais une instruction de nettoyage ; les noms proches, tables vides ou compteurs instantanés ne justifient ni suppression, renommage, fusion, migration ni changement de policy sans analyse dédiée et validation explicite.
+- Commit fonctionnel : `536e5c5681a36b9109807bbad1947fea61024795` (`docs: clarify safe Supabase table inventory triage`).
+- Vérification fraîche : les checks GitHub Actions du commit fonctionnel sont terminés en `success`, notamment `checks` et `focused`; aucun runtime applicatif n’a été modifié.
+- Garde-fous respectés : aucune donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick, déploiement production ni écriture Supabase ; `main` est resté intact.
+- Point en attente : aucun choix produit ni test utilisateur requis ; toute intégration de la dérive de `main`, remédiation sécurité/performance ou modification de tables/policies reste volontairement hors scope sans validation explicite.
