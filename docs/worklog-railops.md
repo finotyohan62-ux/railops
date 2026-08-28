@@ -11,3 +11,12 @@
 - Maintenance du journal : l’ancien contenu de `docs/worklog-railops.md` est préservé bit pour bit dans `docs/worklog-railops-archive-through-2026-08-28-0417.md` avant poursuite du journal courant.
 - Garde-fous respectés : aucun code runtime, workflow métier, règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n’a pas été modifié.
 - Point en attente : aucun choix produit ni test utilisateur requis ; les remédiations sécurité/performance et toute intégration de la dérive de `main` restent volontairement hors scope sans validation explicite.
+
+## 2026-08-28 — durcissement des tests diagnostics 06:18 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` observée à `14ebe67959dd7b7d975a499dc4684ff3e4093ad9`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Projet Supabase `railops` relu en lecture seule, statut `ACTIVE_HEALTHY`; RLS des tables cœur contrôlées toujours activé et non forcé.
+- Amélioration réversible et sans runtime : `tests/v150b2b-diagnostics.test.js` vérifie désormais explicitement que la génération du snapshot diagnostics ne mute pas l’état applicatif et que seuls les marqueurs `_pending === true` sont comptés comme scans en attente.
+- Commit : `7c2bd8ea7fcf9c80683770389e250d7014b26c9c` (`test: harden diagnostics purity checks`).
+- Vérification fraîche : `v150B-2B checks` run `33141427795` est `success` sur ce commit ; le garde ciblé diagnostics passe avec la suite v150B-2B.
+- Garde-fous respectés : aucun code runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production ; `main` est resté intact.
+- Point en attente : aucun choix produit ni test utilisateur requis ; la dérive de `main` et toute remédiation sécurité/performance restent hors scope sans validation explicite.
