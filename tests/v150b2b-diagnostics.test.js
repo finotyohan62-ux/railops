@@ -208,4 +208,17 @@ assert.deepEqual(
   'offline Chef de chantier state must not report missing server statistics'
 );
 
+assert.deepEqual(
+  warningsFor({
+    role: 'chef_chantier',
+    page: 'dashboard',
+    chantiers: [{ id: 'C-SECRET' }],
+    mat: [],
+    scans: [],
+    chefChantierStats: [],
+  }, {}),
+  [],
+  'Chef de chantier state with unknown connectivity must not report missing server statistics'
+);
+
 console.log('PASS: v150B-2B diagnostics snapshot is metadata-only, pure and warning contracts are covered');
