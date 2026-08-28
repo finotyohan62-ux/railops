@@ -11,6 +11,7 @@ Cette checklist s'applique uniquement à la branche `security/v150b2b-rls-ready`
 - Relire l'état Supabase en lecture seule lorsque le sujet touche au backend, aux permissions ou aux diagnostics.
 - Vérifier que le changement envisagé ne modifie ni règle métier, ni permission applicative, ni import, ni Multi-chantier, ni purge de vérification hebdomadaire.
 - Refuser tout merge, rebase, cherry-pick, déploiement production, migration, activation de RLS forcée ou mutation de données dans ce flux.
+- Juste avant toute écriture GitHub, relire le head de la branche et vérifier qu'il correspond encore au SHA diagnostiqué ; si la branche a avancé entre-temps, interrompre l'écriture et refaire le diagnostic au lieu d'écraser un travail concurrent.
 
 ## Changements autorisés sans validation produit
 
@@ -23,6 +24,7 @@ Cette checklist s'applique uniquement à la branche `security/v150b2b-rls-ready`
 
 - Exécuter ou attendre la suite `v150B-2B checks` sur le commit créé.
 - Contrôler que les tests de régression concernés restent verts.
+- Vérifier que le commit ne contient que les fichiers prévus et qu'aucune modification étrangère à la passe n'a été embarquée.
 - Vérifier à nouveau que `main` n'a pas bougé du fait de la passe.
 - En cas de doute sur l'impact produit, sécurité, données ou permissions, ne pas appliquer le changement et le laisser en point d'attention.
 
