@@ -271,3 +271,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33129391039`, job `checks` `98715097047`, a terminé `Run v150B-2B verification suite` en `success`.
 - Garde-fous respectés : aucun code runtime, workflow, règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n'a pas été modifié.
 - Point en attente : aucun choix produit ni test utilisateur requis ; la dérive runtime de `main` reste volontairement hors scope et nécessitera une validation explicite uniquement si une intégration est envisagée.
+
+## 2026-08-28 — contrat de synchronisation inventaire/runner 03:17 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head initial `23e7f9f2868a8ee95c1a5a59f5527b9fd2d3bab9`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`, divergence `ahead=505`, `behind=2`, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`. Supabase `railops` relu strictement en lecture seule : `chantiers=22`, `materiels=1689`, `scans=124`, `users=34`; RLS activé et non forcé sur ces quatre tables.
+- Diagnostic : `docs/v150b2b-test-inventory.md` et la liste `criticalTests` du runner étaient cohérents, mais aucun test n'empêchait une future dérive silencieuse entre les deux.
+- Amélioration réversible : ajout de `tests/v150b2b-test-inventory-contract.test.js`, auto-découvert par le runner, qui vérifie que chaque garde critique du runner reste documentée et que la commande locale canonique `node tests/run-v150b2b-checks.js` reste présente. Commit principal : `9709872f9ff78c56d10bec9445dbd19d18f2a521` (`test: keep verification inventory aligned with runner`).
+- Vérification fraîche : `v150B-2B checks` run `33132448893` est `success` sur `9709872f9ff78c56d10bec9445dbd19d18f2a521`; les régressions lifecycle/modules observées sur le même head sont également `success`.
+- Garde-fous respectés : aucun code runtime, workflow, règle métier, permission applicative, donnée, migration, schéma, RLS stricte, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué ; `main` n'a pas été modifié.
+- Point en attente : aucun choix produit, test utilisateur ou changement risqué requis ; les changements sécurité/data et toute intégration de la dérive de `main` restent volontairement hors scope sans validation explicite.
