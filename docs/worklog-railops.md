@@ -72,7 +72,7 @@
 - Amélioration réversible et sans runtime : ajout de `tests/v150b2b-diagnostics-normal-roles.test.js` pour garantir qu’un état normal `agent`, `chef`, propriétaire en mode `admin` et session déconnectée n’émet aucun faux avertissement diagnostics.
 - Commit fonctionnel : `5e4fb36a8a756a4e0e6a3826fb082c06853e3b14` (`test: guard diagnostics normal role states`).
 - Vérification fraîche : `Final RLS hotfix check` run `33162794857` terminé en `success` sur le commit fonctionnel.
-- Garde-fous respectés : aucun runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
+- Garde-fous respectés : aucun code runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent volontairement hors scope sans validation explicite.
 
 ## 2026-08-28 — documentation de la connectivité diagnostics 13:21 Europe/Paris
@@ -111,5 +111,15 @@
 - Amélioration réversible et documentaire uniquement : `docs/v150b2b-safe-change-checklist.md` exige désormais de relire le head de branche juste avant toute écriture GitHub et de refaire le diagnostic si la branche a avancé ; la vérification minimale demande aussi de contrôler que le commit ne contient que les fichiers prévus.
 - Commit fonctionnel : `e6abd74bcfb22414bbbbef43edbbcb290398fe08` (`docs: add concurrent-write guard to safe checklist`).
 - Vérification fraîche : `v150B-2B checks` run `33179606327` terminé en `success` sur ce commit ; le commit fonctionnel ne modifie que `docs/v150b2b-safe-change-checklist.md` (+2 lignes).
+- Garde-fous respectés : aucun runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
+- Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent volontairement hors scope sans validation explicite.
+
+## 2026-08-28 — garde CI de la checklist anti-concurrence 17:15 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` observée au head `08ae60ef2a38d128fd1c1ad599cc98aa4a67c2b9`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`, divergence initiale `2 commits behind / 538 ahead`, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`.
+- Contrôle Supabase strictement en lecture seule : projet `railops` `ACTIVE_HEALTHY`; RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- Amélioration réversible et sans runtime : `tests/v150b2b-safe-change-checklist-contract.test.js` verrouille désormais explicitement les deux garde-fous anti-écriture concurrente de la checklist : relire le head juste avant toute écriture GitHub et interrompre/re-diagnostiquer si la branche a avancé.
+- Commit fonctionnel : `18a4068b4e92db0c0f8909b2a71bfb9497f944cc` (`test: guard concurrent-write checklist safety`) ; ce commit ne modifie que le test de contrat (+2 lignes).
+- Vérification fraîche : `v150B-2B checks` run `33184198315` terminé en `success` sur le commit fonctionnel ; comparaison après vérification `2 commits behind / 539 ahead`.
 - Garde-fous respectés : aucun runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent volontairement hors scope sans validation explicite.
