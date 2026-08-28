@@ -67,7 +67,7 @@ Codes actuellement possibles :
 - `SESSION_PAGE_WITHOUT_ROLE` : aucun rôle RailOps n’est actif mais l’état client pointe encore vers une page autre que `login` ; ce signal aide à repérer une transition de session incomplète sans provoquer lui-même de navigation ;
 - `SESSION_DATA_WITHOUT_ROLE` : aucun rôle RailOps n’est actif mais au moins un des tableaux internes contient encore des lignes ; ce signal permet de repérer un état mémoire résiduel après déconnexion sans exposer le contenu concerné.
 
-Ces codes sont des signaux de diagnostic uniquement. Ils ne modifient aucun droit, aucune donnée, aucun chargement et ne contiennent ni ID ni référence métier. L’alerte `CHEF_CHANTIER_STATS_MISSING` n’est pas produite en mode hors-ligne afin d’éviter un faux positif lorsque le serveur n’est pas joignable.
+Ces codes sont des signaux de diagnostic uniquement. Ils ne modifient aucun droit, aucune donnée, aucun chargement et ne contiennent ni ID ni référence métier. L’alerte `CHEF_CHANTIER_STATS_MISSING` n’est produite que lorsque la connectivité est explicitement confirmée avec `online === true`. Elle n’est donc produite ni en mode hors-ligne, ni lorsque la connectivité est inconnue (`online = null`), afin d’éviter un faux positif lorsque la disponibilité du serveur n’est pas établie.
 
 ## Lecture rapide
 
