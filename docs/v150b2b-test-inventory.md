@@ -49,6 +49,12 @@ Cette liste sert d’index humain. La source d’autorité pour l’exécution r
 - les causes d’échec regroupées lorsqu’il y en a ;
 - un résumé GitHub Actions quand `GITHUB_STEP_SUMMARY` est disponible.
 
+### Lecture prudente de la dérive par rapport à `main`
+
+Sur un `push` de la branche, la CI ajoute aussi un diagnostic de dérive strictement informatif. Les champs `behind` et `ahead` indiquent le nombre de commits propres à `main` et à la branche depuis leur base commune ; ils ne constituent jamais une instruction de fusion. Le résumé classe en plus les fichiers présents uniquement côté `main` et signale séparément ceux qui peuvent toucher le runtime (`index.html`, JavaScript/HTML racine, `css/`, `js/` ou `supabase/`).
+
+Si `Main-only runtime-impact files` est supérieur à zéro ou si `Compatibility review` vaut `recommended`, l’action sûre est uniquement d’ouvrir une revue de compatibilité : ne pas merger, rebaser, cherry-pick, déployer ni modifier Supabase automatiquement. Une dérive importante sans fichier runtime ne justifie pas davantage une intégration automatique ; elle reste un signal de contexte à examiner lors d’une décision explicite.
+
 ## Limites volontaires
 
 Cette suite est un garde-fou de diagnostic. Elle ne doit pas servir à déployer, modifier Supabase, fusionner/rebaser la branche, activer une RLS stricte ou changer les règles métier. Les imports, le Multi-chantier et la purge de vérification hebdomadaire restent hors du périmètre des améliorations automatisées sans validation explicite.
