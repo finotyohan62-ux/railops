@@ -83,3 +83,13 @@
 - Vérification fraîche : `v150B-2B checks` run `33166805998` terminé en `success` sur `d7a5dc98e050d6a4773bb4531c02c79d66caf2e7`.
 - Garde-fous respectés : aucun code runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent volontairement hors scope sans validation explicite.
+
+## 2026-08-28 — référence des alertes diagnostics 14:14 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` observée au head `9f23b6f625531176664c1e0758e0d50ad7cd9654`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`, divergence initiale `2 commits behind / 531 ahead`, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`.
+- Contrôle Supabase strictement en lecture seule : projet `railops` `ACTIVE_HEALTHY`; RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- Amélioration réversible et sans runtime : ajout de `docs/v150b2b-diagnostics-warning-reference.md`, qui décrit les neuf codes d’alerte diagnostics, leur interprétation et les précautions de support sans définir de règle métier ; ajout de `tests/v150b2b-diagnostics-warning-reference.test.js` pour garantir que la documentation reste exactement synchronisée avec les codes réellement émis par `v150b2b-diagnostics.js`.
+- Commits fonctionnels : `97ae49d8ce40356bd3b80475ca4aaf6d2ad21de1` (`docs: add diagnostics warning reference`) puis `f5cd4b324f2ff4ee42de6401849395a956f21e90` (`test: keep diagnostics warning reference in sync`).
+- Vérification fraîche : `v150B-2B checks` run `33170223210` terminé en `success` sur `f5cd4b324f2ff4ee42de6401849395a956f21e90`; le garde ciblé `focused` est également `success`.
+- Garde-fous respectés : aucun code runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
+- Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent volontairement hors scope sans validation explicite.
