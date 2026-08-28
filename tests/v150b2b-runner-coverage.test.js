@@ -56,6 +56,14 @@ for (const criticalTest of criticalTests) {
   );
 }
 assert(
+  runner.includes("if (!criticalTests.length) {") && runner.includes('FAIL: critical v150B-2B regression guard list is empty'),
+  'aggregate runner must fail with a direct diagnostic when the critical regression guard list is empty'
+);
+assert(
+  runner.includes('new Set(criticalTests).size !== criticalTests.length') && runner.includes('FAIL: duplicate critical v150B-2B regression guard entries detected'),
+  'aggregate runner must fail with a direct diagnostic when the critical regression guard list contains duplicates'
+);
+assert(
   runner.includes('PASS: ${label}'),
   'aggregate runner must identify each successful check in CI output'
 );
@@ -132,4 +140,4 @@ assert(
   'GitHub step summary must include the Node version so CI runtime context is preserved with the result'
 );
 
-console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with a unique on-disk critical guard manifest, per-check diagnostics, durations, timeout guards, CI context, complete failure collection, grouped failure reasons, slowest-check summary, total check time and Node-version summary context`);
+console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with a unique on-disk critical guard manifest, direct empty/duplicate-manifest diagnostics, per-check diagnostics, durations, timeout guards, CI context, complete failure collection, grouped failure reasons, slowest-check summary, total check time and Node-version summary context`);
