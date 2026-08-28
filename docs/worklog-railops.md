@@ -74,3 +74,12 @@
 - Vérification fraîche : `Final RLS hotfix check` run `33162794857` terminé en `success` sur le commit fonctionnel.
 - Garde-fous respectés : aucun runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent volontairement hors scope sans validation explicite.
+
+## 2026-08-28 — documentation de la connectivité diagnostics 13:21 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head `cb8bfa19cc3d84b8253ca583766643c61f20e917`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Projet Supabase `railops` confirmé `ACTIVE_HEALTHY`; contrôle SQL strictement en lecture seule : RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- Amélioration réversible et sans runtime : ajout du garde documentaire `tests/v150b2b-diagnostics-connectivity-guide.test.js`, puis clarification de `docs/v150b2b-diagnostics-guide.md` : `CHEF_CHANTIER_STATS_MISSING` exige désormais explicitement une connectivité confirmée (`online === true`) dans la documentation, et le cas connectivité inconnue (`online = null`) est documenté comme non-déclencheur afin d’éviter les faux positifs.
+- Cycle vérifié : commit test rouge `cc137b21596cc33bf2159b0f168632f8dc2bab6c` (`test: guard diagnostics connectivity guide`) a bien fait échouer le check `v150B-2B`; correction documentaire `d7a5dc98e050d6a4773bb4531c02c79d66caf2e7` (`docs: clarify diagnostics connectivity semantics`) a remis la suite au vert.
+- Vérification fraîche : `v150B-2B checks` run `33166805998` terminé en `success` sur `d7a5dc98e050d6a4773bb4531c02c79d66caf2e7`.
+- Garde-fous respectés : aucun code runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
+- Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent volontairement hors scope sans validation explicite.
