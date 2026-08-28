@@ -123,3 +123,13 @@
 - Vérification fraîche : `v150B-2B checks` run `33184198315` terminé en `success` sur le commit fonctionnel ; comparaison après vérification `2 commits behind / 539 ahead`.
 - Garde-fous respectés : aucun runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent volontairement hors scope sans validation explicite.
+
+## 2026-08-28 — lecture prudente de la dérive de branche 18:17 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` observée au head `cf6768605de0ae7cf6e17d1ffe7905d7aa3e71bb`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`.
+- Contrôle Supabase strictement en lecture seule : projet `railops` `ACTIVE_HEALTHY`; RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- Amélioration réversible et documentaire uniquement : `docs/v150b2b-test-inventory.md` explique désormais comment interpréter `behind`, `ahead`, `Main-only runtime-impact files` et `Compatibility review` sans transformer le diagnostic de dérive en action automatique.
+- Commit fonctionnel : `72582b429c85759d113ec4db66a92bd407d90c8f` (`docs: clarify safe branch-drift triage`).
+- Vérification fraîche : `v150B-2B checks` run `33189416257` terminé en `success` sur ce commit.
+- Garde-fous respectés : aucun runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni action Supabase ; `main` est resté intact.
+- Point en attente : aucun choix produit ni test utilisateur requis ; toute intégration de la dérive de `main`, remédiation sécurité/performance ou changement de permission reste volontairement hors scope sans validation explicite.
