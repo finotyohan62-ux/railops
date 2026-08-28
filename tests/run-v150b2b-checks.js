@@ -28,6 +28,15 @@ const criticalTests = [
   'tests/v150b2b-static-invariants.test.js',
 ];
 
+if (!criticalTests.length) {
+  console.error('FAIL: critical v150B-2B regression guard list is empty');
+  process.exit(1);
+}
+if (new Set(criticalTests).size !== criticalTests.length) {
+  console.error('FAIL: duplicate critical v150B-2B regression guard entries detected');
+  process.exit(1);
+}
+
 const syntaxTargets = extractPreviewModules(preview);
 
 if (!tests.length) {
