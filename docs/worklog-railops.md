@@ -103,3 +103,13 @@
 - Vérification fraîche : `v150B-2B checks` run `33174717504` terminé en `success` sur ce commit.
 - Garde-fous respectés : aucun runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent volontairement hors scope sans validation explicite.
+
+## 2026-08-28 — garde contre les écritures concurrentes 16:20 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` observée au head `b47044724510c66d669b5042b149777767c33988`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`, divergence initiale `2 commits behind / 536 ahead`, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`.
+- Contrôle Supabase strictement en lecture seule : projet `railops` `ACTIVE_HEALTHY`; RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- Amélioration réversible et documentaire uniquement : `docs/v150b2b-safe-change-checklist.md` exige désormais de relire le head de branche juste avant toute écriture GitHub et de refaire le diagnostic si la branche a avancé ; la vérification minimale demande aussi de contrôler que le commit ne contient que les fichiers prévus.
+- Commit fonctionnel : `e6abd74bcfb22414bbbbef43edbbcb290398fe08` (`docs: add concurrent-write guard to safe checklist`).
+- Vérification fraîche : `v150B-2B checks` run `33179606327` terminé en `success` sur ce commit ; le commit fonctionnel ne modifie que `docs/v150b2b-safe-change-checklist.md` (+2 lignes).
+- Garde-fous respectés : aucun runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
+- Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent volontairement hors scope sans validation explicite.
