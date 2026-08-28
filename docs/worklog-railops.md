@@ -20,3 +20,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33141427795` est `success` sur ce commit ; le garde ciblé diagnostics passe avec la suite v150B-2B.
 - Garde-fous respectés : aucun code runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production ; `main` est resté intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; la dérive de `main` et toute remédiation sécurité/performance restent hors scope sans validation explicite.
+
+## 2026-08-28 — robustesse diagnostics sur états malformés 07:16 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` observée au head `cb114b498d2f08d0a55e6acfc46358eefaffd811`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Projet Supabase `railops` confirmé `ACTIVE_HEALTHY`; contrôle SQL lecture seule : RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- Amélioration réversible et sans runtime : ajout d’un cas de régression dans `tests/v150b2b-diagnostics.test.js` pour vérifier que des collections malformées ou seulement « array-like » sont ignorées proprement, ne gonflent aucun compteur, ne créent aucun faux scan en attente et n’émettent aucun faux avertissement ; la version numérique est toujours sérialisée en texte et un indicateur `online` non booléen reste `null`.
+- Commit fonctionnel : `5a48d9552481f44ee5f8cad1f3d101c41ebcf30a` (`test: cover malformed diagnostics state`).
+- Vérification fraîche : `v150B-2B checks` run `33144243263` terminé en `success` sur ce commit.
+- Garde-fous respectés : aucun code runtime, donnée, schéma, migration, permission, règle métier, Import, logique Multi-chantier, purge hebdomadaire ni RLS stricte modifiés ; aucun merge ni déploiement production ; `main` est resté intact.
+- Point en attente : aucun choix produit ni test utilisateur requis ; toute intégration de la dérive de `main`, remédiation sécurité/performance ou changement de permissions reste volontairement hors scope sans validation explicite.
