@@ -89,6 +89,20 @@ Pour trier un signal sans modifier le backend :
 
 Les logs seuls ne suffisent jamais pour modifier une policy, une permission ou la RLS. Une évolution de sécurité doit rester bloquée jusqu’à une reproduction attribuable, une analyse du chemin client/serveur concerné et une validation explicite. Les erreurs PostgreSQL de routine (`checkpoint`, reconnexions de réplication, EOF de standby) doivent également être séparées des erreurs applicatives avant toute conclusion.
 
+## Inventaire des tables Supabase
+
+Un relevé `list_tables` est un **constat**, pas une instruction de nettoyage. Il peut faire apparaître côte à côte des noms proches, des tables historiques ou des tables actuellement vides. Leur présence, leur nom ou leur nombre de lignes ne suffit jamais à conclure qu’une table est inutilisée, en doublon ou supprimable.
+
+Pour un triage sûr :
+
+- noter uniquement le nom de table, l’état RLS et, si utile, un ordre de grandeur du nombre de lignes ;
+- considérer les compteurs de lignes comme instantanés et non comme une preuve d’activité ou d’inactivité ;
+- si deux noms proches existent (par exemple singulier/pluriel), vérifier d’abord les références dans le code, les fonctions/RPC, les policies et les migrations avant toute conclusion ;
+- ne jamais proposer `DROP`, renommage, migration de données, fusion de tables ou changement de policy à partir du seul inventaire ;
+- si l’usage réel d’une table reste ambigu, classer le point « à confirmer » et arrêter l’action jusqu’à une analyse dédiée et une validation explicite.
+
+Cette règle protège notamment les structures historiques encore nécessaires à l’authentification, à la compatibilité ou à un chemin de migration. Le diagnostic peut signaler une ambiguïté ; il ne doit pas la résoudre par une écriture.
+
 ## Garde-fous
 
 - Ne pas étendre ce helper avec des noms, IDs, références, QR ou payloads métier pour faciliter un debug ponctuel.
