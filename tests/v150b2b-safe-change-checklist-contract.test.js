@@ -20,6 +20,8 @@ const requiredSignals = [
   'Multi-chantier',
   'purge de vérification hebdomadaire',
   'Refuser tout merge, rebase, cherry-pick, déploiement production, migration, activation de RLS forcée ou mutation de données',
+  'Juste avant toute écriture GitHub, relire le head de la branche',
+  'si la branche a avancé entre-temps, interrompre l\'écriture et refaire le diagnostic',
   'v150B-2B checks',
   'Vérifier à nouveau que `main` n\'a pas bougé',
   'docs/worklog-railops.md',
