@@ -36,6 +36,10 @@ Les contrôles diagnostics restent auto-découverts par le runner et ne sont pas
 - `v150b2b-diagnostics-wiring.test.js` — branchement du helper diagnostics dans la preview ;
 - `v150b2b-diagnostics-log-guide.test.js` — contrat documentaire de triage prudent des logs Supabase.
 
+## Autres gardes documentaires auto-découvertes
+
+- `v150b2b-branch-drift-doc-contract.test.js` — garantit que la revue de dérive relève les SHA et le merge-base depuis l’état GitHub réel, vérifie Supabase uniquement en lecture, maintient `main` intact et interdit toute conclusion de compatibilité ou intégration automatique sans validation explicite.
+
 Cette liste sert d’index humain. La source d’autorité pour l’exécution reste la découverte automatique de `tests/v150b2b-*.test.js`; ajouter ou retirer un test nécessite donc de vérifier le résultat du runner plutôt que de se fier uniquement à ce document.
 
 ## Diagnostic produit par le runner
