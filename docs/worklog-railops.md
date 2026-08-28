@@ -42,3 +42,14 @@
 - Documentation mise à jour dans `docs/supabase-advisor-baseline.md`, commit `c92b3f97a317b370217186e8bf05d5d59272dd9c` (`docs: record approved inspections index migration`).
 - Garde-fous respectés : aucun code runtime, donnée métier, contrainte, policy, grant, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge et aucun changement de `main`.
 - Point en attente : surveiller simplement l’usage réel des deux index lors de prochains relevés Advisor ; aucune décision ou test utilisateur requis maintenant.
+
+## 2026-08-29 — réalignement contrôlé avec `main` 01:32 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` était `562 ahead / 2 behind` par rapport à `main`; les deux commits manquants étaient `e89c57c995fe0661cffcdbfcf88b9f30a408a093` (rafraîchissement de déploiement Agent, une ligne dans `js/core/sync.js`) et `37b216936a6692d54f82cbc004b30c936d13785a` (`Fix ghost scan integrity`, avec régression dédiée).
+- Cycle rouge/vert : ajout du cas de test manquant dans `tests/sync-error-handling.test.js`, commit `52a2f91eb1d5bfd8022238df0a7705a51304a2ed`; reproduction locale isolée confirmée en échec avec l’ancien `sync.js` (le scan orphelin était vidé de la file), puis validation en vert après reprise du correctif de `main`.
+- Correctif aligné : `js/core/sync.js` est désormais identique à `main` pour cette zone, commit `d88cba7e1915e4553b1c7b3f70c4fc22e3a5a948` (`fix: align ghost scan integrity with main`). Le scan reste en attente et aucun upload `scans` n’est tenté si le matériel associé est absent localement.
+- Réalignement d’historique : merge contrôlé `main -> security/v150b2b-rls-ready` matérialisé par `62a0c6a9f749c92a6f72ea5fd8c02f9a8486d563` (`merge: realign security branch with main`), sans modification de `main`. La comparaison après merge indique `behind_by=0` et merge-base `37b216936a6692d54f82cbc004b30c936d13785a`.
+- Vérification CI sur `62a0c6a9f749c92a6f72ea5fd8c02f9a8486d563` : `Final RLS hotfix check`, `RailOps modules regression`, `RailOps lifecycle regression` et `v150B-2B checks` sont tous terminés en `success`; Vercel preview est également `success`.
+- Nettoyage : un marqueur de staging temporaire a été créé puis supprimé immédiatement (`87cc723073349ebe41f6d85f2f40217009570c71` / `1552f55e8d1e57be8934ed1c3d6ee1666282c357`), sans fichier résiduel ni effet runtime.
+- Garde-fous respectés : aucune donnée Supabase, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiée ; PR #1 conservée en DRAFT et non fusionnée.
+- Point en attente : aucun choix produit requis pour ce réalignement ; la prochaine étape peut revenir aux améliorations fonctionnelles ou de robustesse à faible risque.
