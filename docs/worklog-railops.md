@@ -65,3 +65,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33158516812` terminé en `success` sur ce commit.
 - Garde-fous respectés : aucun runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent hors scope sans validation explicite.
+
+## 2026-08-28 — garde anti-faux-positifs diagnostics 12:18 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` observée au head `e726a3e547acc7ecd7da10fe0f7f7705f70e8c82`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Comparaison fraîche après le garde : `2 commits behind / 527 ahead`, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`. Contrôle Supabase strictement en lecture seule : RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- Amélioration réversible et sans runtime : ajout de `tests/v150b2b-diagnostics-normal-roles.test.js` pour garantir qu’un état normal `agent`, `chef`, propriétaire en mode `admin` et session déconnectée n’émet aucun faux avertissement diagnostics.
+- Commit fonctionnel : `5e4fb36a8a756a4e0e6a3826fb082c06853e3b14` (`test: guard diagnostics normal role states`).
+- Vérification fraîche : `Final RLS hotfix check` run `33162794857` terminé en `success` sur le commit fonctionnel.
+- Garde-fous respectés : aucun runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
+- Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent volontairement hors scope sans validation explicite.
