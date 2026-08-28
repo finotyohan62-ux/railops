@@ -7,7 +7,7 @@
 - État contrôlé avant changement : branche `security/v150b2b-rls-ready` uniquement ; `main` reste à `e89c57c995fe0661cffcdbfcf88b9f30a408a093`. Supabase `railops` et ses Advisors ont été relus strictement en lecture seule.
 - Améliorations réversibles : le garde-fou CI interdit désormais explicitement les commandes de déploiement production et de mutation Supabase ; le snapshot GitHub/Supabase du 26/08 a été complété avec le Performance Advisor réel (deux FK non indexées sur `public.inspections`) sans appliquer d'index ni de changement de schéma.
 - Robustesse documentaire : le contrat snapshot accepte désormais le singulier `1 commit` et la ponctuation normale des listes, sans relâcher les marqueurs de sécurité. Commits principaux : `62c92589bc772590e46f6baa851c35e8eaf90f76`, `ff5c315bc68e1358e1f1762220566a3c19b8f920`, `580025c6250c4333b64f2147ebae56c13dd9a291`, `716425c0cf638b01ed0db687a43e169ae781604f`, `fa96232cb5a8defc9cc3fe046e52958805b9a85b`.
-- Vérification fraîche : `v150B-2B checks` run `32999265839` est `success` sur `fa96232cb5a8defc9cc3fe046e52958805b9a291`; `RailOps modules regression` est également `success` sur ce head.
+- Vérification fraîche : `v150B-2B checks` run `32999265839` est `success` sur `fa96232cb5a8defc9cc3fe046e52958805b9a85b`; `RailOps modules regression` est également `success` sur ce head.
 - Garde-fous respectés : aucun code runtime, règle métier, permission, donnée, migration, RLS, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production effectué.
 - Point en attente : aucun nouveau point nécessitant une décision de Yohan ; les validations humaines et changements sécurité/performance historiques restent volontairement hors scope.
 
@@ -265,7 +265,7 @@
 
 ## 2026-08-28 — fraîcheur de la revue de dérive 02:20 Europe/Paris
 
-- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head `4cf16b4112b993e40bfabf60d803e4479503bd7e`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`, divergence `ahead=502`, `behind=2`, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`. Les fichiers propres à `main` à impact runtime/regrésion sont `js/core/sync.js` et `tests/sync-error-handling.test.js` ; aucune intégration n'a été effectuée.
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head `4cf16b4112b993e40bfabf60d803e4479503bd7e`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`, divergence `ahead=502`, `behind=2`, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`. Les fichiers propres à `main` à impact runtime/régression sont `js/core/sync.js` et `tests/sync-error-handling.test.js` ; aucune intégration n'a été effectuée.
 - Contrôle Supabase strictement en lecture seule : projet `railops` `ACTIVE_HEALTHY`; RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`, avec respectivement 4/4/4/2 policies.
 - Amélioration réversible : `docs/v150b2b-branch-drift-review.md` exige désormais de recalculer à chaque passage les SHA, merge-base, compteurs `ahead/behind`, fichiers runtime et état Supabase, et interdit de réutiliser un constat historique comme état courant. Commit principal : `5d4735a5c03b209763ed4ff67b6f5411d10dec7f` (`docs: make branch drift reviews explicitly fresh`).
 - Vérification fraîche : `v150B-2B checks` run `33129391039`, job `checks` `98715097047`, a terminé `Run v150B-2B verification suite` en `success`.
