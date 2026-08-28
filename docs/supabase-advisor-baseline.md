@@ -1,8 +1,8 @@
 # RailOps — baseline Supabase Advisor
 
-Dernier relevé : **2026-08-29 00:15 Europe/Paris**.
+Dernier relevé : **2026-08-29 01:15 Europe/Paris**.
 
-Ce document est un **instantané de diagnostic en lecture seule**. Il ne constitue pas une demande de migration et ne doit pas être utilisé pour appliquer automatiquement des changements de schéma, de permissions ou de RLS.
+Ce document est un **instantané de diagnostic en lecture seule**. Il ne constitue pas une demande de migration et ne doit pas être utilisé pour appliquer automatiquement des changements de schéma, de permissions, d’index ou de RLS.
 
 ## État du projet
 
@@ -34,6 +34,17 @@ Le linter recommande potentiellement de révoquer `EXECUTE`, passer en `SECURITY
 
 Supabase signale `auth_leaked_password_protection` désactivé. L’activation change la politique d’authentification et doit rester une décision explicite.
 
+## Alertes de performance observées
+
+### Clés étrangères non couvertes par un index
+
+Supabase signale deux avis `unindexed_foreign_keys` de niveau `INFO` sur `public.inspections` :
+
+- `inspections_agent_id_fkey` n’a pas d’index couvrant ;
+- `inspections_materiel_id_fkey` n’a pas d’index couvrant.
+
+Ces avis indiquent un **risque potentiel de performance**, pas une panne fonctionnelle observée. Ajouter des index modifierait le schéma de base de données ; cette action reste donc hors du périmètre des maintenances automatiques et nécessite une validation explicite avant migration.
+
 ## Règle pour les passages automatisés
 
 Les passages de maintenance sur `security/v150b2b-rls-ready` peuvent :
@@ -50,6 +61,7 @@ Ils ne doivent pas, sans validation explicite :
 - modifier les grants ou `EXECUTE` ;
 - changer `SECURITY DEFINER` / `SECURITY INVOKER` ;
 - modifier la politique de mot de passe ;
+- créer/supprimer des index ou contraintes ;
 - déployer une migration corrective issue de ces advisors.
 
 ## Références Supabase
@@ -57,3 +69,4 @@ Ils ne doivent pas, sans validation explicite :
 - RLS activée sans policy : https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy
 - Fonction `SECURITY DEFINER` exécutable : https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable
 - Protection contre les mots de passe compromis : https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
+- Clés étrangères non indexées : https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys
