@@ -1,8 +1,8 @@
 # RailOps — baseline Supabase Advisor
 
-Dernier relevé : **2026-08-29 01:15 Europe/Paris**.
+Dernier relevé : **2026-08-29 01:18 Europe/Paris**.
 
-Ce document est un **instantané de diagnostic en lecture seule**. Il ne constitue pas une demande de migration et ne doit pas être utilisé pour appliquer automatiquement des changements de schéma, de permissions, d’index ou de RLS.
+Ce document est un **instantané de diagnostic**. Les changements de schéma, permissions, index ou RLS restent interdits pendant les maintenances automatiques sauf validation explicite de Yohan.
 
 ## État du projet
 
@@ -36,14 +36,19 @@ Supabase signale `auth_leaked_password_protection` désactivé. L’activation c
 
 ## Alertes de performance observées
 
-### Clés étrangères non couvertes par un index
+### Clés étrangères de `public.inspections`
 
-Supabase signale deux avis `unindexed_foreign_keys` de niveau `INFO` sur `public.inspections` :
+Le relevé de 01:15 signalait deux avis `unindexed_foreign_keys` de niveau `INFO` :
 
-- `inspections_agent_id_fkey` n’a pas d’index couvrant ;
-- `inspections_materiel_id_fkey` n’a pas d’index couvrant.
+- `inspections_agent_id_fkey` sans index couvrant sur `agent_id` ;
+- `inspections_materiel_id_fkey` sans index couvrant sur `materiel_id`.
 
-Ces avis indiquent un **risque potentiel de performance**, pas une panne fonctionnelle observée. Ajouter des index modifierait le schéma de base de données ; cette action reste donc hors du périmètre des maintenances automatiques et nécessite une validation explicite avant migration.
+Yohan a explicitement validé cette optimisation le 2026-08-29. La migration `inspections_fk_indexes` a ensuite créé, sans modification de données, contraintes, permissions ou RLS :
+
+- `inspections_agent_id_idx` sur `public.inspections(agent_id)` ;
+- `inspections_materiel_id_idx` sur `public.inspections(materiel_id)`.
+
+Vérification post-migration : les deux index sont présents dans `pg_indexes` et les avis `unindexed_foreign_keys` ont disparu. L’Advisor performance signale immédiatement les deux nouveaux index comme `unused_index`, ce qui est attendu juste après leur création et **ne justifie pas leur suppression automatique** ; leur utilité doit être évaluée sur une période d’usage réelle.
 
 ## Règle pour les passages automatisés
 
@@ -64,9 +69,12 @@ Ils ne doivent pas, sans validation explicite :
 - créer/supprimer des index ou contraintes ;
 - déployer une migration corrective issue de ces advisors.
 
+L’accord du 2026-08-29 ne vaut que pour les deux index `public.inspections` ci-dessus et ne constitue pas une autorisation générale de modifier le schéma.
+
 ## Références Supabase
 
 - RLS activée sans policy : https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy
 - Fonction `SECURITY DEFINER` exécutable : https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable
 - Protection contre les mots de passe compromis : https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
 - Clés étrangères non indexées : https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys
+- Index inutilisé : https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index
