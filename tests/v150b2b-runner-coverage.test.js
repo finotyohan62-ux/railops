@@ -40,6 +40,21 @@ assert(
   runner.includes("'tests/v150b2b-ci-job-permissions.test.js'"),
   'aggregate runner must treat the job-level permission guard as a critical regression test'
 );
+const criticalBlock = runner.match(/const criticalTests = \[([\s\S]*?)\];/);
+assert(criticalBlock, 'aggregate runner must expose its critical regression guard list');
+const criticalTests = [...criticalBlock[1].matchAll(/'([^']+)'/g)].map(match => match[1]);
+assert(criticalTests.length > 0, 'critical regression guard list must not be empty');
+assert.equal(
+  criticalTests.length,
+  new Set(criticalTests).size,
+  'critical regression guard list must not contain duplicate entries that would make CI coverage summaries misleading'
+);
+for (const criticalTest of criticalTests) {
+  assert(
+    fs.existsSync(path.join(root, criticalTest)),
+    `critical regression guard must exist on disk: ${criticalTest}`
+  );
+}
 assert(
   runner.includes('PASS: ${label}'),
   'aggregate runner must identify each successful check in CI output'
@@ -117,4 +132,4 @@ assert(
   'GitHub step summary must include the Node version so CI runtime context is preserved with the result'
 );
 
-console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with per-check diagnostics, durations, timeout guards, CI context, complete failure collection, grouped failure reasons, slowest-check summary, total check time and Node-version summary context`);
+console.log(`PASS: aggregate runner auto-discovers ${testFiles.length} tests and ${uniquePreviewScripts.length} preview JavaScript modules with a unique on-disk critical guard manifest, per-check diagnostics, durations, timeout guards, CI context, complete failure collection, grouped failure reasons, slowest-check summary, total check time and Node-version summary context`);
