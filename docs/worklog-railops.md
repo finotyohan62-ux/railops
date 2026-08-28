@@ -64,7 +64,7 @@
 - Commit fonctionnel : `dda00a06994f56ea45076b2ec095970581a0913f` (`test: lock diagnostics warning order`).
 - Vérification fraîche : `v150B-2B checks` run `33158516812` terminé en `success` sur ce commit.
 - Garde-fous respectés : aucun code runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
-- Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent hors scope sans validation explicite.
+- Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent volontairement hors scope sans validation explicite.
 
 ## 2026-08-28 — garde anti-faux-positifs diagnostics 12:18 Europe/Paris
 
@@ -163,3 +163,13 @@
 - Vérification fraîche : les checks GitHub Actions du commit fonctionnel sont terminés en `success`, notamment `checks` et `focused`; aucun runtime applicatif n’a été modifié.
 - Garde-fous respectés : aucune donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick, déploiement production ni écriture Supabase ; `main` est resté intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; toute intégration de la dérive de `main`, remédiation sécurité/performance ou modification de tables/policies reste volontairement hors scope sans validation explicite.
+
+## 2026-08-28 — intégrité du manifeste CI critique 22:15 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` observée au head `648cf545e9bd31dafbeb5f9f9f1778d49c0bc7f7`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`, divergence `2 commits behind / 548 ahead`, merge-base `20f7e028ac5e3d0ac401d41ec3561af09e252694`.
+- Contrôle Supabase strictement en lecture seule : projet `railops` `ACTIVE_HEALTHY`; RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`. Aucune écriture Supabase effectuée.
+- Amélioration réversible et sans runtime : `tests/v150b2b-runner-coverage.test.js` vérifie désormais que la liste des gardes de régression critiques du runner CI n’est ni vide ni dupliquée et que chaque fichier déclaré existe réellement sur disque, afin d’éviter un résumé de couverture CI trompeur.
+- Commit fonctionnel : `8de677b669e225fa85fdf2fa5a1f13c47fd43e0d` (`test: guard critical CI manifest integrity`).
+- Vérification fraîche : `v150B-2B checks` run `33207604490` terminé en `success` sur ce commit.
+- Garde-fous respectés : aucun code runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
+- Point en attente : aucun choix produit ni test utilisateur requis ; les deux commits `main` absents de la branche touchent `js/core/sync.js` et ses tests, donc toute intégration reste volontairement hors scope sans validation explicite.
