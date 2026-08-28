@@ -107,6 +107,27 @@ assert.equal(
   'pending diagnostics count must only include strict boolean pending markers'
 );
 
+assert.deepEqual(
+  createDiagnosticsSnapshot({
+    chantiers: { length: 99 },
+    mat: 'not-an-array',
+    scans: { 0: { _pending: true }, length: 1 },
+    users: 7,
+    chefChantierStats: {},
+    prixCatalogue: 'not-an-array',
+  }, { version: 150, online: 'yes' }),
+  {
+    version: '150',
+    role: null,
+    adminOwner: false,
+    adminMode: false,
+    page: null,
+    online: null,
+    counts: { chantiers: 0, materials: 0, scans: 0, pendingScans: 0, users: 0, chefChantierStats: 0 },
+  },
+  'diagnostics must ignore array-like or malformed collection values without false warnings'
+);
+
 function warningsFor(testState, runtime = { online: true }) {
   return createDiagnosticsSnapshot(testState, runtime).warnings || [];
 }
