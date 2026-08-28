@@ -18,6 +18,7 @@ const state = {
   users: [{ id: 'U-SECRET', badge: 'USER-BADGE-SECRET', mdp: 'USER-PASSWORD-SECRET' }],
   chefChantierStats: [{ chantier_id: 'C-SECRET' }],
 };
+const stateBeforeDiagnostics = JSON.stringify(state);
 
 const snapshot = createDiagnosticsSnapshot(state, {
   version: '150B2B-client-2',
@@ -26,6 +27,12 @@ const snapshot = createDiagnosticsSnapshot(state, {
   refreshToken: 'RUNTIME-REFRESH-TOKEN-SECRET',
   apiKey: 'RUNTIME-API-KEY-SECRET',
 });
+
+assert.equal(
+  JSON.stringify(state),
+  stateBeforeDiagnostics,
+  'diagnostics must not mutate application state'
+);
 
 assert.deepEqual(snapshot, {
   version: '150B2B-client-2',
@@ -86,6 +93,18 @@ assert.deepEqual(
     counts: { chantiers: 0, materials: 0, scans: 0, pendingScans: 0, users: 0, chefChantierStats: 0 },
   },
   'diagnostics must be safe on an empty state'
+);
+
+assert.equal(
+  createDiagnosticsSnapshot({ scans: [
+    { _pending: true },
+    { _pending: 1 },
+    { _pending: 'true' },
+    { _pending: false },
+    null,
+  ] }, {}).counts.pendingScans,
+  1,
+  'pending diagnostics count must only include strict boolean pending markers'
 );
 
 function warningsFor(testState, runtime = { online: true }) {
@@ -168,4 +187,4 @@ assert.deepEqual(
   'offline Chef de chantier state must not report missing server statistics'
 );
 
-console.log('PASS: v150B-2B diagnostics snapshot is metadata-only and warning contracts are covered');
+console.log('PASS: v150B-2B diagnostics snapshot is metadata-only, pure and warning contracts are covered');
