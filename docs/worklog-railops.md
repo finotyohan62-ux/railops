@@ -29,3 +29,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33144243263` terminé en `success` sur ce commit.
 - Garde-fous respectés : aucun code runtime, donnée, schéma, migration, permission, règle métier, Import, logique Multi-chantier, purge hebdomadaire ni RLS stricte modifiés ; aucun merge ni déploiement production ; `main` est resté intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; toute intégration de la dérive de `main`, remédiation sécurité/performance ou changement de permissions reste volontairement hors scope sans validation explicite.
+
+## 2026-08-28 — diagnostic réseau indéterminé 08:18 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` observée au head `fe9b3329e07172554e78d6cfc22a182af2f15faf`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`, divergence `2 commits behind / 518 ahead` avant ce passage. Contrôle Supabase strictement en lecture seule : RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- Amélioration réversible et sans runtime : ajout d’un cas de régression dans `tests/v150b2b-diagnostics.test.js` pour garantir qu’un état Chef de chantier avec connectivité inconnue (`online=null`) n’émet pas à tort `CHEF_CHANTIER_STATS_MISSING`.
+- Commit fonctionnel : `0752b355656dbdf02ddf94778c8c9cd3d9129bed` (`test: cover unknown connectivity diagnostics`).
+- Vérification fraîche : `v150B-2B checks` run `33147476680` terminé en `success` sur ce commit.
+- Garde-fous respectés : aucun code runtime, donnée, schéma, migration, permission, règle métier, Import, logique Multi-chantier, purge hebdomadaire ni RLS stricte modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
+- Point en attente : aucun choix produit ni test utilisateur requis ; la dérive de `main`, les remédiations sécurité/performance et tout changement de permissions restent volontairement hors scope sans validation explicite.
