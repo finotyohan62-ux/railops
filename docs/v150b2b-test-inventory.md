@@ -29,6 +29,10 @@ Les contrôles diagnostics restent auto-découverts par le runner et ne sont pas
 - `v150b2b-diagnostics-privacy.test.js` — absence de données et secrets sensibles dans le diagnostic ;
 - `v150b2b-diagnostics-warnings.test.js` — émission des codes d’alerte sur états incohérents ;
 - `v150b2b-diagnostics-offline-warning.test.js` — conservation des alertes de scope/session hors ligne tout en évitant le faux positif de statistiques serveur manquantes ;
+- `v150b2b-diagnostics-normal-roles.test.js` — absence de faux avertissements pour les états normaux Agent, Chef, propriétaire en mode Admin et session déconnectée ;
+- `v150b2b-diagnostics-warning-order.test.js` — ordre déterministe des alertes et absence de doublons ;
+- `v150b2b-diagnostics-warning-reference.test.js` — synchronisation exacte entre les codes réellement émis et leur référence documentaire ;
+- `v150b2b-diagnostics-connectivity-guide.test.js` — cohérence de la documentation sur les états réseau confirmé, hors ligne et indéterminé ;
 - `v150b2b-diagnostics-wiring.test.js` — branchement du helper diagnostics dans la preview ;
 - `v150b2b-diagnostics-log-guide.test.js` — contrat documentaire de triage prudent des logs Supabase.
 
