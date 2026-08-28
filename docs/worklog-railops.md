@@ -22,3 +22,13 @@
 - Commit documentaire initial : `68d56fcd74be1595edd7146458eb9da81fa34684` (`docs: capture Supabase advisor baseline`).
 - Garde-fous respectés : aucun code runtime, donnée, schéma, migration, policy, grant, RLS stricte, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production ; `main` est resté intact.
 - Point en attente : les alertes Advisor impliquant permissions/RLS/authentification restent volontairement non traitées jusqu’à validation explicite ; aucun test utilisateur requis pour cette passe documentaire.
+
+## 2026-08-29 — baseline Advisor performance 01:15 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head initial `08e216331e30e29a9f5b85c60d2d3223b51df0ba`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`.
+- Contrôle Supabase strictement en lecture seule : Advisor performance relu sur le projet `railops` (`tbmzmmamaiftbbbuelgd`). Deux avis `unindexed_foreign_keys` de niveau `INFO` sont présents sur `public.inspections` : `inspections_agent_id_fkey` et `inspections_materiel_id_fkey` ne disposent pas d’un index couvrant. Aucun changement de base de données effectué.
+- Amélioration réversible et sans runtime : `docs/supabase-advisor-baseline.md` inclut désormais cette baseline performance, distingue explicitement l’avis de performance d’une panne fonctionnelle et interdit toute création automatique d’index/contrainte dans les passages sans validation.
+- Commit : `9b09c4587718f8f88706042e412a1827043b07ed` (`docs: capture Supabase performance advisor baseline`).
+- Vérification : `v150B-2B checks` run `33219767864` terminé en `success` sur `9b09c4587718f8f88706042e412a1827043b07ed`; un second relevé Advisor confirme les deux mêmes avis sans dérive entre les contrôles.
+- Garde-fous respectés : aucun code runtime, donnée, schéma, migration, index, contrainte, policy, grant, RLS stricte, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production ; `main` est resté intact.
+- Point en attente : créer des index couvrants pour ces deux clés étrangères serait une migration de schéma et reste volontairement bloqué jusqu’à validation explicite de Yohan ; aucun test utilisateur requis pour la documentation actuelle.
