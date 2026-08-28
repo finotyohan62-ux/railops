@@ -38,3 +38,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33147476680` terminé en `success` sur ce commit.
 - Garde-fous respectés : aucun code runtime, donnée, schéma, migration, permission, règle métier, Import, logique Multi-chantier, purge hebdomadaire ni RLS stricte modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; la dérive de `main`, les remédiations sécurité/performance et tout changement de permissions restent volontairement hors scope sans validation explicite.
+
+## 2026-08-28 — maintien des alertes diagnostics hors ligne 09:14 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` observée au head `b26caa299eca6d3ec2d5b6557323683be38ee142`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Projet Supabase `railops` confirmé `ACTIVE_HEALTHY`; contrôle SQL strictement en lecture seule : RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- Amélioration réversible et sans runtime : ajout de `tests/v150b2b-diagnostics-offline-warning.test.js`, auto-découvert par le runner v150B-2B, pour garantir que le mode hors ligne ne masque que l’alerte dépendante de la disponibilité serveur (`CHEF_CHANTIER_STATS_MISSING`) et conserve les alertes de fuite de scope et d’invariants de session.
+- Commit fonctionnel : `85dd3c26995a243492eb41f72264a2b11e30e5a2` (`test: preserve offline diagnostic warnings`).
+- Vérification fraîche : `v150B-2B checks` run `33150724207` terminé en `success` sur ce commit.
+- Garde-fous respectés : aucun code runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
+- Point en attente : aucun choix produit ni test utilisateur requis ; toute intégration de la dérive de `main`, remédiation sécurité/performance ou changement de permissions reste volontairement hors scope sans validation explicite.
