@@ -56,3 +56,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33154738797` terminé en `success` sur ce commit.
 - Garde-fous respectés : aucun runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent hors scope sans validation explicite.
+
+## 2026-08-28 — stabilité de l’ordre des alertes diagnostics 11:14 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` observée au head `2707fbae55f85bdb277a8a538161b456c0c0a9d7`, puis `dda00a06994f56ea45076b2ec095970581a0913f` après le garde ajouté ; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Projet Supabase `railops` confirmé `ACTIVE_HEALTHY`; contrôle SQL strictement en lecture seule : RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- Amélioration réversible et sans runtime : ajout de `tests/v150b2b-diagnostics-warning-order.test.js`, auto-découvert par le runner, pour verrouiller un ordre déterministe des alertes lorsque plusieurs invariants diagnostics échouent simultanément et garantir l’absence de doublons. Cela stabilise les logs/support sans modifier la logique applicative.
+- Commit fonctionnel : `dda00a06994f56ea45076b2ec095970581a0913f` (`test: lock diagnostics warning order`).
+- Vérification fraîche : `v150B-2B checks` run `33158516812` terminé en `success` sur ce commit.
+- Garde-fous respectés : aucun runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
+- Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent hors scope sans validation explicite.
