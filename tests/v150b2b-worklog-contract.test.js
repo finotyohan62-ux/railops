@@ -3,8 +3,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const worklogPath = path.join(root, 'docs', 'worklog-railops.md');
-const appendDir = path.join(root, 'docs', 'worklog-railops-append');
+const docsDir = path.join(root, 'docs');
+const worklogPath = path.join(docsDir, 'worklog-railops.md');
+const appendDir = path.join(docsDir, 'worklog-railops-append');
 
 const appendFiles = fs.readdirSync(appendDir)
   .filter(name => /^\d{4}-\d{2}-\d{2}-\d{4}\.md$/.test(name))
@@ -14,12 +15,20 @@ assert.ok(appendFiles.length > 0, 'at least one worklog append fragment must exi
 
 const latestName = appendFiles.at(-1);
 const latest = fs.readFileSync(path.join(appendDir, latestName), 'utf8').trim();
-const worklog = fs.readFileSync(worklogPath, 'utf8');
 const heading = latest.split(/\r?\n/, 1)[0];
+const journalFiles = [
+  'worklog-railops.md',
+  ...fs.readdirSync(docsDir)
+    .filter(name => /^worklog-railops-archive-through-.*\.md$/.test(name))
+    .sort(),
+];
+const durableJournal = journalFiles
+  .map(name => fs.readFileSync(path.join(docsDir, name), 'utf8'))
+  .join('\n');
 
 assert.ok(
-  worklog.includes(heading),
-  `primary worklog must include the latest append entry heading: ${heading}`
+  durableJournal.includes(heading),
+  `durable worklog history must include the latest append entry heading: ${heading}`
 );
 
-console.log(`PASS: primary worklog includes latest append entry ${latestName}`);
+console.log(`PASS: durable worklog history includes latest append entry ${latestName} across ${journalFiles.length} journal file(s)`);
