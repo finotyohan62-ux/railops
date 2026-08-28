@@ -143,3 +143,13 @@
 - Vérification fraîche : `v150B-2B checks` push run `33193837584` terminé en `success`; `Final RLS hotfix check`, `RailOps lifecycle regression` et `RailOps modules regression` sont également `success` sur ce commit.
 - Garde-fous respectés : aucun runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent volontairement hors scope sans validation explicite.
+
+## 2026-08-28 — index du garde de dérive 20:14 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` observée au head `4ac04f0331f78d0d8b9c0e698dac71bec41f1377`, puis `9c78e0807946e57fbedd8ad74c4c59ccbe9c47a5` après l’amélioration ; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`.
+- Contrôle Supabase strictement en lecture seule : projet `railops` `ACTIVE_HEALTHY`; RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- Amélioration réversible et documentaire uniquement : `docs/v150b2b-test-inventory.md` référence désormais explicitement `v150b2b-branch-drift-doc-contract.test.js` dans un bloc dédié aux gardes documentaires auto-découvertes, afin que l’index humain reflète le contrat de sécurité déjà appliqué par la CI.
+- Commit fonctionnel : `9c78e0807946e57fbedd8ad74c4c59ccbe9c47a5` (`docs: index branch-drift safety guard`).
+- Vérification fraîche : `v150B-2B checks` run `33198339400` terminé en `success`; le fichier modifié sur le commit fonctionnel est uniquement `docs/v150b2b-test-inventory.md`.
+- Garde-fous respectés : aucun runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick, déploiement production ni écriture Supabase ; `main` est resté intact.
+- Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent volontairement hors scope sans validation explicite.
