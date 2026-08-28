@@ -47,3 +47,12 @@
 - Vérification fraîche : `v150B-2B checks` run `33150724207` terminé en `success` sur ce commit.
 - Garde-fous respectés : aucun code runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; toute intégration de la dérive de `main`, remédiation sécurité/performance ou changement de permissions reste volontairement hors scope sans validation explicite.
+
+## 2026-08-28 — index de couverture diagnostics 10:17 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head `3f3bd85874c225080c212de2d64e5c49928e037b`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Projet Supabase `railops` confirmé `ACTIVE_HEALTHY`; contrôle lecture seule : RLS activé et non forcé sur `chantiers`, `materiels`, `scans` et `users`.
+- Amélioration réversible et documentaire uniquement : `docs/v150b2b-test-inventory.md` référence désormais explicitement les six gardes diagnostics auto-découverts (forme/pureté, confidentialité, warnings, comportement hors ligne, wiring preview et guide logs) et rappelle que le runner reste la source d’autorité d’exécution.
+- Commit fonctionnel : `17e14155588f9026cedfb17161843a848d677c41` (`docs: index diagnostics test coverage`).
+- Vérification fraîche : `v150B-2B checks` run `33154738797` terminé en `success` sur ce commit.
+- Garde-fous respectés : aucun runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, rebase, cherry-pick ni déploiement production ; `main` est resté intact.
+- Point en attente : aucun choix produit ni test utilisateur requis ; intégration de la dérive de `main`, remédiation sécurité/performance et tout changement de permission restent hors scope sans validation explicite.
