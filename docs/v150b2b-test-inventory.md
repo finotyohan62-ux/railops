@@ -21,6 +21,19 @@ Le runner échoue immédiatement si l’un de ces tests n’est plus découvert 
 - `v150b2b-ci-nonmutation.test.js` — absence de mutation dans les contrôles CI.
 - `v150b2b-static-invariants.test.js` — invariants statiques de la prévisualisation v150B-2B.
 
+## Couverture diagnostics auto-découverte
+
+Les contrôles diagnostics restent auto-découverts par le runner et ne sont pas transformés en dépendances runtime. Les principaux gardes actuellement présents couvrent :
+
+- `v150b2b-diagnostics.test.js` — forme du snapshot, pureté, compteurs, états malformés et invariants de session ;
+- `v150b2b-diagnostics-privacy.test.js` — absence de données et secrets sensibles dans le diagnostic ;
+- `v150b2b-diagnostics-warnings.test.js` — émission des codes d’alerte sur états incohérents ;
+- `v150b2b-diagnostics-offline-warning.test.js` — conservation des alertes de scope/session hors ligne tout en évitant le faux positif de statistiques serveur manquantes ;
+- `v150b2b-diagnostics-wiring.test.js` — branchement du helper diagnostics dans la preview ;
+- `v150b2b-diagnostics-log-guide.test.js` — contrat documentaire de triage prudent des logs Supabase.
+
+Cette liste sert d’index humain. La source d’autorité pour l’exécution reste la découverte automatique de `tests/v150b2b-*.test.js`; ajouter ou retirer un test nécessite donc de vérifier le résultat du runner plutôt que de se fier uniquement à ce document.
+
 ## Diagnostic produit par le runner
 
 À chaque exécution, le runner affiche :
