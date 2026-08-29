@@ -24,12 +24,30 @@ function makeContext() {
     lat: 50.95,
     lng: 1.85,
   };
+  const inspectionEdge = {
+    id: 'inspection-2',
+    materielId: 'mat-2',
+    chantierId: 'chantier-1',
+    agentNom: 'Agent Test',
+    date: '2026-08-29T06:05:00.000Z',
+    etatGeneral: 'bon',
+    proprete: 'acceptable',
+    fonctionnement: false,
+    dommages: false,
+    dommagesDesc: null,
+    observations: '',
+    actions: null,
+    photo: null,
+    lat: 0,
+    lng: 0,
+  };
 
+  const inspections = [inspection, inspectionEdge];
   const rpcData = {
     railops_session_context: { ok: true, nom: 'Chef Test', role: 'chef', is_admin_owner: false },
     railops_chantiers_scope: [{ id: 'chantier-1', nom: 'Chantier Test' }],
     railops_materials_scope: [{ id: 'mat-1', chantierId: 'chantier-1' }],
-    railops_scans_scope: [inspection],
+    railops_scans_scope: inspections,
     railops_user_directory: [{ id: 'user-1', nom: 'Chef Test', badge: 'C1', role: 'chef', is_admin: false }],
     railops_catalogue_scope: [],
   };
@@ -75,7 +93,7 @@ function makeContext() {
 
   vm.createContext(ctx);
   vm.runInContext(source, ctx, { filename: 'lifecycle.js' });
-  return { ctx, calls, storage, inspection };
+  return { ctx, calls, storage, inspection, inspectionEdge, inspections };
 }
 
 (async () => {
@@ -88,20 +106,27 @@ function makeContext() {
 
   assert.equal(
     JSON.stringify(h.ctx.S.scans),
-    JSON.stringify([h.inspection]),
+    JSON.stringify(h.inspections),
     'secure load must preserve every inspection field needed by the Chef view'
   );
   assert.equal(typeof h.ctx.S.scans[0].fonctionnement, 'boolean', 'fonctionnement must stay boolean from the scoped RPC');
   assert.equal(typeof h.ctx.S.scans[0].dommages, 'boolean', 'dommages must stay boolean from the scoped RPC');
   assert.equal(typeof h.ctx.S.scans[0].lat, 'number', 'inspection latitude must stay numeric');
   assert.equal(typeof h.ctx.S.scans[0].lng, 'number', 'inspection longitude must stay numeric');
+  assert.equal(h.ctx.S.scans[1].fonctionnement, false, 'false fonctionnement must not be dropped or coerced');
+  assert.equal(h.ctx.S.scans[1].dommages, false, 'false dommages must not be dropped or coerced');
+  assert.equal(h.ctx.S.scans[1].lat, 0, 'zero latitude must be preserved');
+  assert.equal(h.ctx.S.scans[1].lng, 0, 'zero longitude must be preserved');
+  assert.equal(h.ctx.S.scans[1].dommagesDesc, null, 'nullable damage description must stay null');
+  assert.equal(h.ctx.S.scans[1].actions, null, 'nullable actions must stay null');
+  assert.equal(h.ctx.S.scans[1].photo, null, 'nullable photo must stay null');
   assert.equal(
     h.storage.get('ro3_s'),
-    JSON.stringify([h.inspection]),
-    'secure cache must mirror the complete scoped inspection payload'
+    JSON.stringify(h.inspections),
+    'secure cache must mirror the complete scoped inspection payload including false, zero and null values'
   );
 
-  console.log('PASS: Chef inspection secure-read contract preserves scoped records, display fields and backend types');
+  console.log('PASS: Chef inspection secure-read contract preserves scoped records, display fields, backend types and falsy values');
 })().catch(error => {
   console.error(error);
   process.exit(1);
