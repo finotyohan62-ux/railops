@@ -98,6 +98,12 @@ assert.match(
 
 assert.match(
   styles,
+  /\.tab\{[^}]*min-height:44px/i,
+  'interactive tabs must keep a 44px minimum touch target on mobile'
+);
+
+assert.match(
+  styles,
   /\.screen\{[^}]*overflow-y:auto[^}]*-webkit-overflow-scrolling:touch/i,
   'scrollable screens must preserve momentum scrolling on iOS'
 );
