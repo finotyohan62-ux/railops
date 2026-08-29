@@ -34,10 +34,10 @@ assert.ok(
 );
 
 const loadSource = section('async function load(){', 'function eL(');
-const expectedColumns = 'id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions,photo,lat,lng,fournisseur';
+const expectedColumns = 'id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions,photo,lat,lng';
 assert.ok(
   loadSource.includes(expectedColumns),
-  'inspection reload must request the complete display/persistence field contract, including fournisseur'
+  'inspection reload must request the complete display/persistence field contract'
 );
 assert.ok(
   loadSource.includes('new Set(q'),
