@@ -62,3 +62,12 @@
 - Vérification : les 5 workflows du commit de correction sont terminés sans échec ; `v150B-2B checks` runs `33252139046` et `33252141293`, `RailOps lifecycle regression` run `33252141267`, `RailOps modules regression` run `33252141295` et `Final RLS hotfix check` run `33252141292` sont en `success`.
 - Garde-fous respectés : CSS, test et documentation uniquement ; aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
 - Point en attente : aucun choix produit ni test utilisateur requis.
+
+## 2026-08-29 — cible tactile bouton retour iPhone 15:16 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head initial `71ad6f75c7f8ed4f68540ba4fdd700189107e67e`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) contrôlé en lecture seule et `ACTIVE_HEALTHY`; Advisor performance ne signale toujours que les deux index `inspections_*_idx` inutilisés, laissés intacts.
+- Diagnostic UX mobile : le bouton retour `.tbk` de la topbar n’avait qu’un `padding:2px`, sans taille tactile minimale, alors que la navigation basse était déjà protégée à 44 px.
+- Cycle rouge/vert : commit test `3eab0b7d1456d59bab9d8ba9d13a9082e3f95932` (`test: guard iPhone back button touch target`) avec `v150B-2B checks` run `33254503593` en échec attendu, puis correction CSS minimale au commit `261643cdeb3a9bf2c44b65c9113423efa6c67b83` (`fix: enlarge iPhone back button touch target`) ajoutant `min-width:44px`, `min-height:44px` et un centrage explicite du contenu.
+- Vérification : `v150B-2B checks` runs `33254545068` et `33254546811`, `RailOps lifecycle regression` run `33254546792`, `RailOps modules regression` run `33254546790` et `Final RLS hotfix check` run `33254546745` sont tous terminés en `success` sur le commit de correction.
+- Garde-fous respectés : CSS, test et documentation uniquement ; aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
+- Point en attente : aucun choix produit ni test utilisateur requis.
