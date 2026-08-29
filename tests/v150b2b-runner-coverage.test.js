@@ -44,6 +44,10 @@ const criticalBlock = runner.match(/const criticalTests = \[([\s\S]*?)\];/);
 assert(criticalBlock, 'aggregate runner must expose its critical regression guard list');
 const criticalTests = [...criticalBlock[1].matchAll(/'([^']+)'/g)].map(match => match[1]);
 assert(criticalTests.length > 0, 'critical regression guard list must not be empty');
+assert(
+  criticalTests.includes('tests/v150b2b-inspection-persistence-contract.test.js'),
+  'aggregate runner must treat the inspection persistence contract as a critical regression test'
+);
 assert.equal(
   criticalTests.length,
   new Set(criticalTests).size,

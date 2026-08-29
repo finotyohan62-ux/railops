@@ -25,6 +25,7 @@ const criticalTests = [
   'tests/v150b2b-ci-isolation-contract.test.js',
   'tests/v150b2b-ci-job-permissions.test.js',
   'tests/v150b2b-ci-nonmutation.test.js',
+  'tests/v150b2b-inspection-persistence-contract.test.js',
   'tests/v150b2b-static-invariants.test.js',
 ];
 
