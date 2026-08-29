@@ -89,3 +89,12 @@
 - Vérification : le diff du commit de correction ne contient qu’une ligne CSS ajoutée. `v150B-2B checks` run `33259939816`, `RailOps lifecycle regression` run `33259939857`, `RailOps modules regression` run `33259939795` et `Final RLS hotfix check` run `33259939807` sont tous terminés en `success`.
 - Garde-fous respectés : CSS, test et documentation uniquement ; aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
 - Point en attente : aucun choix produit ni test utilisateur requis.
+
+## 2026-08-29 — cibles tactiles onglets mobile 18:18 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` observée au head initial `6caddba14a0ec3906f5fe90e59c64dab98621205`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) contrôlé en lecture seule et `ACTIVE_HEALTHY`; Advisor performance ne signale que les deux index `inspections_*_idx` inutilisés déjà connus, laissés intacts.
+- Diagnostic UX mobile : les onglets interactifs `.tab` n’avaient pas de hauteur tactile minimale explicite, contrairement à la navigation basse, au bouton retour et aux boutons d’action déjà protégés à 44 px.
+- Cycle rouge/vert : commit test `0787ac46c13a253955cf22bb609101472f7fc4f5` (`test: guard mobile tab touch targets`) avec `v150B-2B checks` run `33262515701` en échec attendu, puis correction CSS minimale au commit `5ec7cf14799d898de8121d77af75c178b00ff94d` (`fix: enlarge mobile tab touch targets`) ajoutant uniquement `min-height:44px` à `.tab`.
+- Vérification : `v150B-2B checks` runs `33262556876` et `33262558393`, `RailOps lifecycle regression` run `33262558391`, `RailOps modules regression` run `33262558389` et `Final RLS hotfix check` run `33262558413` sont tous terminés en `success`.
+- Garde-fous respectés : CSS, test et documentation uniquement ; aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
+- Point en attente : aucun choix produit ni test utilisateur requis.
