@@ -19,6 +19,11 @@ function localStyleSources(documentHtml) {
   return sources.join('\n');
 }
 
+function metaCount(name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return [...html.matchAll(new RegExp(`<meta\\s+name=["']${escaped}["']\\s+content=["'][^"']*["']\\s*>`, 'gi'))].length;
+}
+
 const styles = localStyleSources(html);
 
 assert.match(
@@ -43,6 +48,18 @@ assert.match(
   html,
   /<meta\s+name="apple-mobile-web-app-title"\s+content="RailOps"\s*>/i,
   'iOS standalone mode must keep the RailOps app title'
+);
+
+assert.equal(
+  metaCount('apple-mobile-web-app-capable'),
+  1,
+  'iOS standalone capability metadata must be declared exactly once'
+);
+
+assert.equal(
+  metaCount('apple-mobile-web-app-status-bar-style'),
+  1,
+  'iOS status-bar metadata must be declared exactly once'
 );
 
 assert.match(
