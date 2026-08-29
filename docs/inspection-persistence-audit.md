@@ -14,25 +14,27 @@ Le flux historique d'inspection s'appuie sur `S.scans` dans `js/legacy-core.js` 
 
 Ce contrat est couvert par `tests/v150b2b-inspection-persistence-contract.test.js`.
 
-## Écart de champ diagnostiqué
+## Contrat de colonnes vérifié côté Supabase
 
-Les objets d'inspection peuvent contenir le champ `fournisseur`, mais la requête de rechargement `scans` actuellement présente dans `load()` sélectionne :
+Une lecture non destructive de `information_schema.columns` sur le projet Supabase RailOps actif confirme que la table `public.scans` expose actuellement les colonnes suivantes :
 
 `id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions,photo,lat,lng`
 
-Le champ `fournisseur` n'est donc pas relu par cette requête. En conséquence, une inspection déjà persistée peut perdre cette information dans l'état local après un rechargement, même si la valeur existe côté stockage.
+Cette liste correspond à la requête de rechargement `scans` actuellement présente dans `load()`.
 
-## Reproduction automatisée
+Le champ `fournisseur`, évoqué dans une première version de cet audit, **n'existe pas dans le schéma actuel de `public.scans`**. L'ajouter uniquement à la requête `select` serait donc incorrect et pourrait provoquer une erreur de lecture Supabase. Aucune correction runtime n'est recommandée sur ce point.
 
-Un test de caractérisation temporaire a ajouté `fournisseur` au contrat attendu. Sur le commit `d7f1d6a678e8cfd85ba4b3d42be5ecba5364b367`, la suite `v150B-2B checks` a échoué uniquement sur cette attente, tandis que 52 contrôles sur 53 passaient. Le test a ensuite été remis à son contrat historique dans `cfdd2270eb535c4ba2d027978ce64d121c002c50` afin de ne pas laisser la branche rouge.
+Un contrôle complémentaire de `public.materiels` ne montre pas non plus de colonne `fournisseur` dans le schéma actuel. Toute réintroduction éventuelle de cette donnée relèverait donc d'un choix de modèle de données et nécessite une décision explicite avant modification.
 
-## Correction minimale recommandée
+## Reproduction automatisée historique
 
-La correction fonctionnelle minimale consiste à ajouter uniquement `fournisseur` à la liste de colonnes sélectionnées lors du rechargement de `scans`, puis à remettre le test de persistance en exigence stricte sur ce champ.
+Un test de caractérisation temporaire avait ajouté `fournisseur` au contrat attendu. Sur le commit `d7f1d6a678e8cfd85ba4b3d42be5ecba5364b367`, la suite `v150B-2B checks` avait échoué uniquement sur cette attente, tandis que 52 contrôles sur 53 passaient. Le test avait ensuite été remis à son contrat historique dans `cfdd2270eb535c4ba2d027978ce64d121c002c50`.
 
-Cette correction ne nécessite ni modification de schéma, ni migration, ni changement de RLS, permission ou règle métier. Elle doit toutefois être réalisée par une édition fiable de `js/legacy-core.js` : ce fichier est actuellement minifié sur une très grande ligne, et une réécriture complète via l'éditeur de contenu GitHub disponible pendant cet audit serait disproportionnée par rapport au changement d'un seul champ.
+La vérification directe du schéma Supabase explique désormais cet échec : l'attente temporaire ne correspondait pas au contrat serveur réel.
 
-Aucun monkey-patch du client Supabase n'est recommandé : ce serait plus indirect et plus risqué qu'une modification locale de la requête elle-même.
+## Conclusion
+
+Le chemin de rechargement des inspections est actuellement aligné avec les colonnes présentes dans `public.scans`. Le prochain travail utile sur ce flux peut donc rester centré sur les tests de non-régression de création, persistance et restitution des inspections, sans modification de schéma ni ajout de champ.
 
 ## Garde-fous
 
