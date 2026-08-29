@@ -97,3 +97,12 @@
 - Documentation synchronisée : `docs/v150b2b-test-inventory.md` classe maintenant le garde de persistance inspections dans la section des gardes critiques. Commit `de43522cbb6feab098f567182dd5fc9a61d5d42c` (`docs: mark inspection persistence as critical CI guard`).
 - Garde-fous respectés : aucun code applicatif runtime, donnée, schéma, migration, RLS stricte, policy, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
 - Point en attente : aucun choix produit ni test utilisateur requis ; poursuivre l’audit des inspections par des gardes statiques/rendus uniquement quand le comportement actuel peut être caractérisé sans ambiguïté.
+
+## 2026-08-29 — garde de lecture sécurisée des inspections Chef 08:25 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head `defe1d1e3cfb2f4e7cf65e53caeb87e6c4036b03`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Le chargement sécurisé de `js/core/lifecycle.js` lit les inspections via `railops_scans_scope`, les place dans `S.scans` puis met en cache `ro3_s`.
+- Amélioration réversible et sans runtime : ajout de `tests/v150b2b-inspection-secure-read-contract.test.js`, qui simule un profil Chef et vérifie que la lecture utilise le scope Chef, n’utilise pas le scope admin, préserve tous les champs d’inspection disponibles et conserve le même payload dans le cache sécurisé.
+- Commit test : `dd853f18b4e34cfd75a892d904b4fc76a37df362` (`test: guard Chef inspection secure read path`).
+- Vérification : `v150B-2B checks` run `33238349887` terminé en `success` sur `dd853f18b4e34cfd75a892d904b4fc76a37df362`; Vercel preview signalé en `success` sur ce commit.
+- Garde-fous respectés : aucun code runtime, donnée, schéma, migration, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production ; `main` reste intact.
+- Point en attente : aucun choix produit ni test utilisateur requis ; poursuivre l’audit du rendu Chef uniquement par des changements caractérisables et réversibles.
