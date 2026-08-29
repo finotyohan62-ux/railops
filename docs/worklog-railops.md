@@ -70,3 +70,12 @@
 - Vérification : le contrôle attendu était absent de l’inventaire avant changement ; commit `924dedda3af9219ce3365451d8f2dc52326cd4f6` (`docs: index inspection persistence guard`) ; `v150B-2B checks` run `33226115047` terminé en `success` sur ce commit.
 - Garde-fous respectés : aucun code runtime, donnée, schéma, migration, policy, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, aucune RLS stricte, aucun déploiement production et aucun changement de `main`.
 - Point en attente : aucun choix produit ni test utilisateur requis ; la prochaine passe peut poursuivre l’audit du rendu Chef ou une autre amélioration documentaire/diagnostique à faible risque.
+
+## 2026-08-29 — audit du champ fournisseur des inspections 05:25 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head initial `9d1ceaf31cbbb9e164b3cae6454fc22dfc72fe80`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Le runtime persiste `fournisseur` dans les objets d’inspection mais la sélection de rechargement `scans` ne relit pas ce champ.
+- Diagnostic automatisé : commit rouge `d7f1d6a678e8cfd85ba4b3d42be5ecba5364b367` a exigé `fournisseur` dans le contrat de rechargement ; `v150B-2B checks` a confirmé le défaut avec 52 contrôles sur 53 au vert et uniquement cette attente en échec. La branche a été remise au vert par `cfdd2270eb535c4ba2d027978ce64d121c002c50` sans modifier le runtime.
+- Amélioration réversible et sans runtime : ajout de `docs/inspection-persistence-audit.md`, commit `d29269a7c668c48a2f1530bd7f7202ebd658e6dd`, qui documente le flux réel, l’écart de champ, la reproduction et la correction minimale recommandée.
+- Choix de sécurité : aucun monkey-patch du client Supabase n’a été introduit. La correction directe d’un seul champ dans `js/legacy-core.js` est différée jusqu’à disposer d’une édition fiable de ce fichier minifié, afin d’éviter une réécriture disproportionnée d’environ 500 Ko pour un changement local.
+- Garde-fous respectés : aucun changement Supabase, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire ; aucun merge ni changement de `main`.
+- Point en attente : correction locale de la sélection `scans` (`+ fournisseur`) dès qu’un mode d’édition sûr de `js/legacy-core.js` est disponible ; aucun choix produit ni test utilisateur requis.
