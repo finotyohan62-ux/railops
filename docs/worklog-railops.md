@@ -44,3 +44,12 @@
 - Vérification : `v150B-2B checks` run `33249660556`, `RailOps lifecycle regression` run `33249660548`, `RailOps modules regression` run `33249660537` et `Final RLS hotfix check` run `33249660659` sont tous terminés en `success`.
 - Garde-fous respectés : aucun runtime, donnée, schéma, migration, index, policy, permission, RLS stricte, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
 - Point en attente : aucun choix produit ni test utilisateur requis ; le nettoyage physique des deux balises dupliquées peut rester différé tant qu’une édition ciblée sûre de `index.html` n’est pas disponible.
+
+## 2026-08-29 — safe areas iPhone des modales et bouton flottant 13:35 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head `611b005236510b27417542e8e66aa5b935e8e5e7`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`.
+- Diagnostic mobile : `.msheet` conservait un padding bas fixe de `32px` et `.fab` une position basse fixe de `76px`, sans ajouter `safe-area-inset-bottom`; sur les iPhone à indicateur d’accueil, ces éléments pouvaient donc être trop proches de la zone système.
+- Cycle rouge/vert : commit test `ca420cc73f935871ef010c78a9933f224b2534dc` (`test: guard iPhone modal and fab safe areas`) avec `v150B-2B checks` run `33250352097` en échec attendu, puis correction CSS minimale dans `css/railops.css` au commit `bff7fb908dc7aee40ee168c4b53aa44f2ec8d510` (`fix: respect iPhone bottom safe areas`). Les feuilles modales ajoutent désormais l’inset bas iOS à leur padding et le FAB se décale d’autant au-dessus de la zone système.
+- Vérification : les 5 workflows observés sur le commit de correction sont terminés sans échec ; `v150B-2B checks`, `RailOps lifecycle regression`, `RailOps modules regression` et `Final RLS hotfix check` sont au vert.
+- Garde-fous respectés : changement de présentation CSS uniquement ; aucune donnée Supabase, schéma, migration, sécurité, RLS, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
+- Point en attente : aucun choix produit ni test utilisateur requis pour cette correction ciblée ; poursuivre la passe ergonomie mobile sur des écarts visuels caractérisables et à faible risque.
