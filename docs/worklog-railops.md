@@ -125,3 +125,12 @@
 - Vérification : `v150B-2B checks` runs `33242971071` et `33242972753`, `RailOps lifecycle regression` `33242972795`, `RailOps modules regression` `33242972802` et `Final RLS hotfix check` `33242972790` sont terminés en `success`; Vercel preview est également `success`.
 - Garde-fous respectés : aucun code runtime, donnée, schéma, migration, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni changement de `main`.
 - Point en attente : aucun choix produit ni test utilisateur requis ; poursuivre les inspections uniquement par des contrôles caractérisables et réversibles.
+
+## 2026-08-29 — valeurs falsy préservées dans la lecture Chef 11:19 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head `a67e81c4d81718b289e37e9fde53286b29d3bb98`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) est `ACTIVE_HEALTHY`; Advisor performance inchangé avec uniquement les deux index `inspections_*_idx` encore signalés comme inutilisés.
+- Amélioration test uniquement : `tests/v150b2b-inspection-secure-read-contract.test.js` couvre désormais un second enregistrement avec `fonctionnement=false`, `dommages=false`, coordonnées `0` et champs optionnels `null`, afin d’empêcher qu’une future normalisation par vérité/falsité ne perde ces valeurs valides côté Chef ou dans le cache `ro3_s`.
+- Commit test : `dba3163fced4dd0bf6b300b067acb35e190de2ba` (`test: preserve falsy inspection values in Chef reads`).
+- Vérification : `v150B-2B checks` run `33245202678`, `RailOps modules regression` run `33245202667`, `RailOps lifecycle regression` run `33245202675` et `Final RLS hotfix check` run `33245202670` sont terminés en `success`; Vercel preview est également `success`.
+- Garde-fous respectés : aucun code runtime, donnée, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni changement de `main`.
+- Point en attente : aucun choix produit ni test utilisateur requis ; poursuivre uniquement par des contrôles d’intégrité ou de rendu caractérisables et réversibles.
