@@ -27,6 +27,12 @@
   }
 
   function buildInspectionReportModel({ chantier = {}, period = {}, scans = [], agents = [], materiels = [] } = {}) {
+    chantier = chantier || {};
+    period = period || {};
+    scans = Array.isArray(scans) ? scans : [];
+    agents = Array.isArray(agents) ? agents : [];
+    materiels = Array.isArray(materiels) ? materiels : [];
+
     const agentById = new Map(agents.map(agent => [String(agent.id), agent]));
     const materialById = new Map(materiels.map(material => [String(material.id), material]));
 
