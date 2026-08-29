@@ -78,4 +78,16 @@ assert.match(
   'scrollable screens must preserve momentum scrolling on iOS'
 );
 
+assert.match(
+  styles,
+  /\.msheet\{[^}]*padding:[^;}]*calc\(32px\s*\+\s*env\(safe-area-inset-bottom,0px\)\)/i,
+  'bottom sheets must keep their actions above the iPhone home indicator'
+);
+
+assert.match(
+  styles,
+  /\.fab\{[^}]*bottom:calc\(76px\s*\+\s*env\(safe-area-inset-bottom,0px\)\)/i,
+  'floating action buttons must stay above the iPhone home-indicator safe area'
+);
+
 console.log('PASS: iPhone/mobile layout safety contract is preserved');
