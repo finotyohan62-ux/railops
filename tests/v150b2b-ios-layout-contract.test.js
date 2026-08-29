@@ -104,6 +104,12 @@ assert.match(
 
 assert.match(
   styles,
+  /\.chip\{[^}]*min-height:44px/i,
+  'interactive filter chips must keep a 44px minimum touch target on mobile'
+);
+
+assert.match(
+  styles,
   /\.ro\{[^}]*min-height:44px/i,
   'interactive response options must keep a 44px minimum touch target on mobile'
 );
