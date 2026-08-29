@@ -74,6 +74,12 @@ assert.match(
 
 assert.match(
   styles,
+  /\.ni\{[^}]*min-height:44px/i,
+  'bottom navigation items must keep a 44px minimum touch target on iPhone'
+);
+
+assert.match(
+  styles,
   /\.screen\{[^}]*overflow-y:auto[^}]*-webkit-overflow-scrolling:touch/i,
   'scrollable screens must preserve momentum scrolling on iOS'
 );
