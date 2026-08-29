@@ -52,6 +52,12 @@ assert.match(
 );
 
 assert.match(
+  styles,
+  /@media\s*\(max-width\s*:\s*600px\)\s*\{[\s\S]*?\.fi\{[^}]*font-size\s*:\s*16px/i,
+  'mobile form controls must use at least 16px text to avoid Safari focus auto-zoom'
+);
+
+assert.match(
   html,
   /<meta\s+name="apple-mobile-web-app-title"\s+content="RailOps"\s*>/i,
   'iOS standalone mode must keep the RailOps app title'
