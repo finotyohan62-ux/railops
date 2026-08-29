@@ -48,6 +48,10 @@ assert(
   criticalTests.includes('tests/v150b2b-inspection-persistence-contract.test.js'),
   'aggregate runner must treat the inspection persistence contract as a critical regression test'
 );
+assert(
+  criticalTests.includes('tests/v150b2b-inspection-secure-read-contract.test.js'),
+  'aggregate runner must treat the Chef inspection secure-read contract as a critical regression test'
+);
 assert.equal(
   criticalTests.length,
   new Set(criticalTests).size,
