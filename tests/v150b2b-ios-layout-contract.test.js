@@ -86,6 +86,12 @@ assert.match(
 
 assert.match(
   styles,
+  /\.btn\{[^}]*min-height:44px/i,
+  'primary action buttons must keep a 44px minimum touch target on mobile'
+);
+
+assert.match(
+  styles,
   /\.screen\{[^}]*overflow-y:auto[^}]*-webkit-overflow-scrolling:touch/i,
   'scrollable screens must preserve momentum scrolling on iOS'
 );
