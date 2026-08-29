@@ -124,3 +124,12 @@
 - Amélioration documentaire : ajout du snapshot `docs/supabase-state/2026-08-29-2112.md` au commit `17c369193293d17df2e17ffad9b80dbac76ad0b8`, afin de disposer d’un point de comparaison factuel pour les prochains passages sans toucher au runtime ni à Supabase.
 - Garde-fous respectés : documentation uniquement ; aucune écriture Supabase, donnée, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
 - Point en attente : aucun choix produit ni test utilisateur requis ; les alertes de sécurité existantes restent volontairement hors périmètre sans validation explicite.
+
+## 2026-08-29 — snapshot santé lecture seule 22:18 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head `0c6701d62df09f7d5835ba88af05608fa62e283c`, `629 ahead / 0 behind` par rapport à `main`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`.
+- Diagnostic : Supabase `railops` (`tbmzmmamaiftbbbuelgd`) est `ACTIVE_HEALTHY`; les volumes cœur restent stables (`scans=124`, `materiels=1689`, `users=34`). Security Advisor et Performance Advisor ne montrent aucun changement matériel par rapport au relevé de 21:12 ; les alertes sécurité connues et les deux index `inspections_*_idx` restent volontairement inchangés.
+- Amélioration documentaire : ajout du snapshot `docs/supabase-state/2026-08-29-2218.md` au commit `1e527335a54fff824ab5857f5783c58d940fc941`.
+- Vérification : comparaison Git/Supabase fraîche effectuée en lecture seule ; aucune écriture de données ni changement de sécurité n'a été effectué.
+- Garde-fous respectés : documentation uniquement ; aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
+- Point en attente : aucun choix produit ni test utilisateur requis.
