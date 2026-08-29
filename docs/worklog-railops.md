@@ -106,3 +106,13 @@
 - Vérification : `v150B-2B checks` run `33238349887` terminé en `success` sur `dd853f18b4e34cfd75a892d904b4fc76a37df362`; Vercel preview signalé en `success` sur ce commit.
 - Garde-fous respectés : aucun code runtime, donnée, schéma, migration, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production ; `main` reste intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; poursuivre l’audit du rendu Chef uniquement par des changements caractérisables et réversibles.
+
+## 2026-08-29 — lecture Chef promue en garde CI critique 09:21 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head `580aef05049437c0273cf778f3089ad5f27e1b44`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. L’Advisor Supabase performance, relu sans écriture, ne signale plus les anciennes clés étrangères non indexées et indique uniquement les deux index `inspections_agent_id_idx` et `inspections_materiel_id_idx` comme encore inutilisés.
+- Cycle rouge/vert : commit `b4e83ea0787ae2b4f96dfd11273322fdcee44611` a ajouté l’exigence que `v150b2b-inspection-secure-read-contract.test.js` soit un garde critique ; `v150B-2B checks` run `33240526632` a échoué comme attendu avant promotion. Le commit `571f51b4f85bdf5af94ae4e102426892445fd11f` (`test: promote inspection secure-read guard to critical CI`) a ajouté le garde au runner.
+- Diagnostic intermédiaire : sur `571f51b4f85bdf5af94ae4e102426892445fd11f`, le test de lecture sécurisée Chef et le contrat du runner sont passés ; l’unique échec restant était documentaire, `v150b2b-test-inventory-contract.test.js`, car l’inventaire humain n’avait pas encore la nouvelle garde critique.
+- Documentation synchronisée : commit `28473be568b37abe95153e2723c72250c00a471f` (`docs: record inspection secure-read critical guard`) ajoute cette garde à `docs/v150b2b-test-inventory.md`.
+- Vérification finale avant journal : sur `28473be568b37abe95153e2723c72250c00a471f`, `v150B-2B checks` run `33240590031`, `RailOps lifecycle regression` run `33240590025`, `RailOps modules regression` run `33240590004` et `Final RLS hotfix check` run `33240590101` sont tous terminés en `success`.
+- Garde-fous respectés : aucun code runtime, donnée, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production ; `main` est resté intact.
+- Point en attente : aucun choix produit ni test utilisateur requis ; poursuivre l’audit des inspections uniquement par des gardes caractérisables, réversibles et sans changement métier.
