@@ -15,7 +15,7 @@ function makeContext() {
     date: '2026-08-29T06:00:00.000Z',
     etatGeneral: 'acceptable',
     proprete: 'bon',
-    fonctionnement: 'bon',
+    fonctionnement: true,
     dommages: true,
     dommagesDesc: 'Rayure capot',
     observations: 'Contrôle complet',
@@ -91,13 +91,17 @@ function makeContext() {
     JSON.stringify([h.inspection]),
     'secure load must preserve every inspection field needed by the Chef view'
   );
+  assert.equal(typeof h.ctx.S.scans[0].fonctionnement, 'boolean', 'fonctionnement must stay boolean from the scoped RPC');
+  assert.equal(typeof h.ctx.S.scans[0].dommages, 'boolean', 'dommages must stay boolean from the scoped RPC');
+  assert.equal(typeof h.ctx.S.scans[0].lat, 'number', 'inspection latitude must stay numeric');
+  assert.equal(typeof h.ctx.S.scans[0].lng, 'number', 'inspection longitude must stay numeric');
   assert.equal(
     h.storage.get('ro3_s'),
     JSON.stringify([h.inspection]),
     'secure cache must mirror the complete scoped inspection payload'
   );
 
-  console.log('PASS: Chef inspection secure-read contract preserves scoped records and display fields');
+  console.log('PASS: Chef inspection secure-read contract preserves scoped records, display fields and backend types');
 })().catch(error => {
   console.error(error);
   process.exit(1);
