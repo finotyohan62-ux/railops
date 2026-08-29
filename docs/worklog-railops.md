@@ -116,3 +116,11 @@
 - Vérification : `v150B-2B checks` runs `33267813171` et `33267814761`, `RailOps lifecycle regression` run `33267814751`, `RailOps modules regression` run `33267814756` et `Final RLS hotfix check` run `33267814784` sont tous terminés en `success`.
 - Garde-fous respectés : CSS, test et documentation uniquement ; aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
 - Point en attente : aucun choix produit ni test utilisateur requis.
+
+## 2026-08-29 — snapshot santé lecture seule 21:12 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head `92f571b11813e9a94e6b9e90f26d24bf8ff3b746`, `626 ahead / 0 behind` par rapport à `main`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`.
+- Diagnostic : Supabase `railops` (`tbmzmmamaiftbbbuelgd`) est `ACTIVE_HEALTHY`. Advisor performance confirme uniquement les deux index `inspections_agent_id_idx` et `inspections_materiel_id_idx` inutilisés déjà connus. Le Security Advisor confirme le baseline existant (RLS sans policy sur plusieurs tables, fonctions `SECURITY DEFINER` exécutables par `authenticated`, protection mots de passe compromis désactivée), laissé intégralement inchangé.
+- Amélioration documentaire : ajout du snapshot `docs/supabase-state/2026-08-29-2112.md` au commit `17c369193293d17df2e17ffad9b80dbac76ad0b8`, afin de disposer d’un point de comparaison factuel pour les prochains passages sans toucher au runtime ni à Supabase.
+- Garde-fous respectés : documentation uniquement ; aucune écriture Supabase, donnée, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
+- Point en attente : aucun choix produit ni test utilisateur requis ; les alertes de sécurité existantes restent volontairement hors périmètre sans validation explicite.
