@@ -128,8 +128,26 @@ async function testOfflineDoesNotAttemptSync() {
   assert.strictEqual(harness.calls.length, 0, 'no database write may be attempted while offline');
 }
 
+async function testOfflineReconnectFlushesSameScan() {
+  const item = { type: 'scan', data: { id: 'scan-reconnect', materielId: 'mat-1' }, ts: 7 };
+  const harness = createHarness({ queue: [item], online: false });
+
+  await harness.context.flushOfflineQueue();
+  assert.deepStrictEqual(harness.getQueue(), [item], 'scan must remain queued before connectivity returns');
+  assert.strictEqual(harness.calls.length, 0, 'offline phase must not attempt a database write');
+
+  harness.setOnline(true);
+  await harness.context.flushOfflineQueue();
+
+  assert.deepStrictEqual(harness.getQueue(), [], 'reconnect must drain the queued scan after confirmed writes');
+  const scanCalls = harness.calls.filter(call => call.table === 'scans');
+  assert.strictEqual(scanCalls.length, 1, 'reconnect must upload the queued scan once in this scenario');
+  assert.strictEqual(scanCalls[0].args[0][0].id, 'scan-reconnect', 'reconnect must preserve the original stable scan id');
+  assert.strictEqual(scanCalls[0].args[1].onConflict, 'id', 'reconnect upload must stay idempotent by scan id');
+}
+
 async function testRetryUsesSameStableScanId() {
-  const item = { type: 'scan', data: { id: 'scan-stable', materielId: 'mat-1' }, ts: 7 };
+  const item = { type: 'scan', data: { id: 'scan-stable', materielId: 'mat-1' }, ts: 8 };
   const harness = createHarness({
     queue: [item],
     scanResults: [
@@ -155,8 +173,9 @@ async function testRetryUsesSameStableScanId() {
   await testMaterielSupabaseErrorStaysQueued();
   await testSuccessfulSyncDrainsQueue();
   await testOfflineDoesNotAttemptSync();
+  await testOfflineReconnectFlushesSameScan();
   await testRetryUsesSameStableScanId();
-  console.log('sync error handling checks passed (7 cases)');
+  console.log('sync error handling checks passed (8 cases)');
 })().catch(err => {
   console.error(err.stack || err);
   process.exit(1);
