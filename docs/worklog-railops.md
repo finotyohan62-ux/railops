@@ -88,3 +88,12 @@
 - Commit de correction : `48e6f54f751d347cb6a80e682e4fef67146a480f` (`docs: corriger l'audit persistance inspections`).
 - Garde-fous respectés : aucune écriture Supabase, donnée, schéma, migration, RLS, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
 - Point en attente : aucun choix produit ni test utilisateur requis pour cette correction ; poursuivre les gardes de non-régression du flux d'inspection sans ajouter de champ serveur.
+
+## 2026-08-29 — persistance inspections promue en garde CI critique 07:13 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` au head initial `424a4a811eba14ef74cf83a78151549946fe57f0`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`; comparaison `behind_by=0`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) contrôlé uniquement en lecture : tables opérationnelles avec RLS activée et non forcée, aucune écriture effectuée.
+- Amélioration réversible et sans runtime : `tests/run-v150b2b-checks.js` classe désormais `v150b2b-inspection-persistence-contract.test.js` parmi les gardes critiques ; `tests/v150b2b-runner-coverage.test.js` verrouille explicitement cette présence pour éviter une rétrogradation silencieuse du contrôle d’intégrité des inspections.
+- Commit test/CI : `e1b2108040179571c38a71186f605c6e20e70dee` (`test: promote inspection persistence guard to critical CI`). Les quatre workflows observés sur ce commit sont terminés en `success`, dont `v150B-2B checks` run `33235973095`, `RailOps modules regression`, `RailOps lifecycle regression` et `Final RLS hotfix check`.
+- Documentation synchronisée : `docs/v150b2b-test-inventory.md` classe maintenant le garde de persistance inspections dans la section des gardes critiques. Commit `de43522cbb6feab098f567182dd5fc9a61d5d42c` (`docs: mark inspection persistence as critical CI guard`).
+- Garde-fous respectés : aucun code applicatif runtime, donnée, schéma, migration, RLS stricte, policy, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
+- Point en attente : aucun choix produit ni test utilisateur requis ; poursuivre l’audit des inspections par des gardes statiques/rendus uniquement quand le comportement actuel peut être caractérisé sans ambiguïté.
