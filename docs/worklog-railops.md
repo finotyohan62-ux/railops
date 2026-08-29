@@ -80,3 +80,12 @@
 - Vérification : les 5 workflows du commit de correction sont terminés en `success`, notamment `v150B-2B checks` runs `33257154784` et `33257157264`, `RailOps lifecycle regression` run `33257157235`, `RailOps modules regression` run `33257157240` et `Final RLS hotfix check` run `33257157203`.
 - Garde-fous respectés : CSS, test et documentation uniquement ; aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
 - Point en attente : aucun choix produit ni test utilisateur requis ; poursuivre seulement les améliorations UX/mobile caractérisables et réversibles.
+
+## 2026-08-29 — focus formulaires iPhone sans zoom automatique 17:20 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` observée au head initial `aea532e444043bf6f917f9d177885296441db568`; `main` laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) contrôlé en lecture seule et `ACTIVE_HEALTHY` avant et après la correction.
+- Diagnostic UX iPhone : les champs communs `.fi` utilisaient `font-size:14px`; Safari iOS peut agrandir automatiquement la page lors du focus sur un contrôle de formulaire inférieur à 16 px, ce qui gêne la saisie et oblige ensuite à réajuster l’affichage.
+- Cycle rouge/vert : commit test `b608e39cc26caa664e41b6dff3b27bea85710aca` (`test: guard iPhone form focus zoom`) avec `v150B-2B checks` run `33259882542` en échec attendu, puis correction CSS minimale au commit `cf2705ac10a85465117bba905d78a5c4a2a6a80d` (`fix: prevent iPhone form focus zoom`) ajoutant uniquement `@media (max-width:600px){.fi{font-size:16px}}`.
+- Vérification : le diff du commit de correction ne contient qu’une ligne CSS ajoutée. `v150B-2B checks` run `33259939816`, `RailOps lifecycle regression` run `33259939857`, `RailOps modules regression` run `33259939795` et `Final RLS hotfix check` run `33259939807` sont tous terminés en `success`.
+- Garde-fous respectés : CSS, test et documentation uniquement ; aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
+- Point en attente : aucun choix produit ni test utilisateur requis.
