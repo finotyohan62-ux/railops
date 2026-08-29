@@ -151,3 +151,12 @@
 - Vérification : les 5 workflows observés sur le commit du snapshot sont terminés, sans échec ni exécution encore en cours ; `Final RLS hotfix check` run `33278257352` est en `success`.
 - Garde-fous respectés : documentation uniquement ; aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
 - Point en attente : aucun choix produit ni test utilisateur requis ; les alertes sécurité connues restent volontairement hors périmètre sans validation explicite.
+
+## 2026-08-30 — rapport robuste aux collections absentes 01:20 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` observée au head initial `4578a794383e1290298b8a2afa34dcc7ebd906eb`, `638 ahead / 0 behind` par rapport à `main`; `main` laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) contrôlé en lecture seule et `ACTIVE_HEALTHY`; les alertes Security Advisor existantes ont été laissées intactes.
+- Diagnostic : le nouveau moteur `js/reports/inspection-report.js` acceptait les listes omises grâce aux valeurs par défaut, mais levait une erreur si `scans`, `agents`, `materiels`, `chantier` ou `period` étaient explicitement `null`.
+- Cycle rouge/vert : commit test `4be6800a10cd121672e80d3d7104633cb44fff9e` (`test: guard report null collections`) avec `v150B-2B checks` run `33280700003` en échec attendu, puis correction minimale au commit `d33d496c17143b1ce05b2ed601a71c6dbd14d7ca` (`fix: tolerate missing report collections`) normalisant uniquement ces entrées avant construction du modèle.
+- Vérification : `v150B-2B checks` run `33280728158`, `RailOps lifecycle regression` run `33280728155`, `RailOps modules regression` run `33280728161` et `Final RLS hotfix check` run `33280728162` sont tous terminés en `success`.
+- Garde-fous respectés : aucun raccordement UI du rapport, aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
+- Point en attente : le raccordement du rapport à l’interface reste volontairement hors périmètre tant que son emplacement n’est pas validé ; aucun autre choix produit ni test utilisateur requis pour ce durcissement interne.
