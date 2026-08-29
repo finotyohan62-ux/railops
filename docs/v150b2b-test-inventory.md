@@ -19,6 +19,7 @@ Le runner échoue immédiatement si l’un de ces tests n’est plus découvert 
 - `v150b2b-ci-isolation-contract.test.js` — isolation du runner diagnostique.
 - `v150b2b-ci-job-permissions.test.js` — absence de permissions CI redéfinies au niveau job.
 - `v150b2b-ci-nonmutation.test.js` — absence de mutation dans les contrôles CI.
+- `v150b2b-inspection-persistence-contract.test.js` — persistance des inspections : collection `S.scans`, cache local stable, upsert idempotent, rechargement des champs attendus et fusion par identifiant.
 - `v150b2b-static-invariants.test.js` — invariants statiques de la prévisualisation v150B-2B.
 
 ## Couverture diagnostics auto-découverte
@@ -39,7 +40,6 @@ Les contrôles diagnostics restent auto-découverts par le runner et ne sont pas
 ## Autres gardes documentaires auto-découvertes
 
 - `v150b2b-branch-drift-doc-contract.test.js` — garantit que la revue de dérive relève les SHA et le merge-base depuis l’état GitHub réel, vérifie Supabase uniquement en lecture, maintient `main` intact et interdit toute conclusion de compatibilité ou intégration automatique sans validation explicite.
-- `v150b2b-inspection-persistence-contract.test.js` — caractérise le contrat de persistance existant des inspections : collection `S.scans`, cache local stable, upsert idempotent par `id`, rechargement des champs attendus et fusion sans doublon par identifiant.
 
 Cette liste sert d’index humain. La source d’autorité pour l’exécution reste la découverte automatique de `tests/v150b2b-*.test.js`; ajouter ou retirer un test nécessite donc de vérifier le résultat du runner plutôt que de se fier uniquement à ce document.
 
