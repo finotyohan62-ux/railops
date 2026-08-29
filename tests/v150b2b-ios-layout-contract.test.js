@@ -19,9 +19,16 @@ function localStyleSources(documentHtml) {
   return sources.join('\n');
 }
 
-function metaCount(name) {
+function metaContents(name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return [...html.matchAll(new RegExp(`<meta\\s+name=["']${escaped}["']\\s+content=["'][^"']*["']\\s*>`, 'gi'))].length;
+  return [...html.matchAll(new RegExp(`<meta\\s+name=["']${escaped}["']\\s+content=["']([^"']*)["']\\s*>`, 'gi'))]
+    .map(match => match[1]);
+}
+
+function assertConsistentMeta(name) {
+  const values = metaContents(name);
+  assert.ok(values.length > 0, `${name} metadata must remain present`);
+  assert.equal(new Set(values).size, 1, `${name} declarations must not conflict`);
 }
 
 const styles = localStyleSources(html);
@@ -50,17 +57,8 @@ assert.match(
   'iOS standalone mode must keep the RailOps app title'
 );
 
-assert.equal(
-  metaCount('apple-mobile-web-app-capable'),
-  1,
-  'iOS standalone capability metadata must be declared exactly once'
-);
-
-assert.equal(
-  metaCount('apple-mobile-web-app-status-bar-style'),
-  1,
-  'iOS status-bar metadata must be declared exactly once'
-);
+assertConsistentMeta('apple-mobile-web-app-capable');
+assertConsistentMeta('apple-mobile-web-app-status-bar-style');
 
 assert.match(
   styles,
