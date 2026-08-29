@@ -29,7 +29,7 @@ html,body{height:100%;width:100%;background:var(--bg);overflow:hidden;font-famil
 .sb .t{font-size:13px;font-weight:500;color:var(--text)}
 .sb .r{font-size:11px;color:var(--text2)}
 .topbar{padding:12px 16px 10px;background:var(--bg);border-bottom:.5px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:10px}
-.tbk{background:none;border:none;color:var(--text2);cursor:pointer;padding:2px;display:flex;flex-shrink:0}
+.tbk{background:none;border:none;color:var(--text2);cursor:pointer;padding:2px;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .tbi{flex:1;min-width:0}
 .tbt{font-size:19px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tbs{font-size:12px;color:var(--text2);margin-top:2px}
