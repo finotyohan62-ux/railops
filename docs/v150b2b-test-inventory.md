@@ -20,6 +20,7 @@ Le runner échoue immédiatement si l’un de ces tests n’est plus découvert 
 - `v150b2b-ci-job-permissions.test.js` — absence de permissions CI redéfinies au niveau job.
 - `v150b2b-ci-nonmutation.test.js` — absence de mutation dans les contrôles CI.
 - `v150b2b-inspection-persistence-contract.test.js` — persistance des inspections : collection `S.scans`, cache local stable, upsert idempotent, rechargement des champs attendus et fusion par identifiant.
+- `v150b2b-inspection-secure-read-contract.test.js` — lecture Chef sécurisée des inspections via le scope dédié, sans bascule vers le scope admin, avec conservation des champs utiles et du cache sécurisé.
 - `v150b2b-static-invariants.test.js` — invariants statiques de la prévisualisation v150B-2B.
 
 ## Couverture diagnostics auto-découverte
