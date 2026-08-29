@@ -98,3 +98,12 @@
 - Vérification : `v150B-2B checks` runs `33262556876` et `33262558393`, `RailOps lifecycle regression` run `33262558391`, `RailOps modules regression` run `33262558389` et `Final RLS hotfix check` run `33262558413` sont tous terminés en `success`.
 - Garde-fous respectés : CSS, test et documentation uniquement ; aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
 - Point en attente : aucun choix produit ni test utilisateur requis.
+
+## 2026-08-29 — cibles tactiles options de réponse mobile 19:17 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head `61867c9ea156258a786133c732b89492429b66b5`, `621 ahead / 0 behind` par rapport à `main`; `main` laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) contrôlé en lecture seule et `ACTIVE_HEALTHY`; Advisor performance ne signale que les deux index `inspections_*_idx` déjà connus. Les avertissements Security Advisor (`SECURITY DEFINER` exécutables par `authenticated` et protection mots de passe compromis désactivée) correspondent au baseline documenté et ont été laissés intacts.
+- Diagnostic UX mobile : les options interactives `.ro` utilisaient `padding:10px 12px` et `font-size:13px` sans hauteur tactile minimale explicite, contrairement aux autres contrôles mobiles déjà protégés à 44 px.
+- Cycle rouge/vert : commit test `2c11d9687c4f14e94d3358bc6f816ba796aab6ff` (`test: guard mobile response-option touch targets`) avec `v150B-2B checks` run `33265150957` en échec attendu, puis correction CSS minimale au commit `8c10be725d4cd15f07a4ff0a4870829a6421c7cf` (`fix: enlarge mobile response-option touch targets`) ajoutant uniquement `min-height:44px` à `.ro`.
+- Vérification : `v150B-2B checks` run `33265196458`, `RailOps lifecycle regression` run `33265196473`, `RailOps modules regression` run `33265196468` et `Final RLS hotfix check` run `33265196433` sont tous terminés en `success`.
+- Garde-fous respectés : CSS, test et documentation uniquement ; aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
+- Point en attente : aucun choix produit ni test utilisateur requis ; les alertes de sécurité existantes restent volontairement hors périmètre sans validation explicite.
