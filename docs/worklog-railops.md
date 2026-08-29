@@ -53,3 +53,12 @@
 - Nettoyage : un marqueur de staging temporaire a été créé puis supprimé immédiatement (`87cc723073349ebe41f6d85f2f40217009570c71` / `1552f55e8d1e57be8934ed1c3d6ee1666282c357`), sans fichier résiduel ni effet runtime.
 - Garde-fous respectés : aucune donnée Supabase, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiée ; PR #1 conservée en DRAFT et non fusionnée.
 - Point en attente : aucun choix produit requis pour ce réalignement ; la prochaine étape peut revenir aux améliorations fonctionnelles ou de robustesse à faible risque.
+
+## 2026-08-29 — contrat de persistance des inspections 02:18 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head `23f984fe6482eef518acec42c041a520ebfaaf0b`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. La lecture du runtime confirme que le flux historique d’inspection utilise `S.scans`, la clé locale `ro3_s`, un upsert idempotent par `id`, puis un rechargement des champs métier et une fusion par identifiant.
+- Amélioration réversible et sans runtime : ajout de `tests/v150b2b-inspection-persistence-contract.test.js`, qui caractérise ce contrat existant (initialisation de l’état, sauvegarde locale, chemin d’upsert, liste des champs relus et dédoublonnage par `id`) sans modifier `js/legacy-core.js` ni Supabase.
+- Commit test : `0eb06308a010c3b76a973b34bfa7db19339bdb66` (`test: guard inspection persistence contract`).
+- Vérification : `v150B-2B checks` run `33223138377` terminé en `success` sur le commit test.
+- Garde-fous respectés : aucun code runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production ; `main` est resté intact.
+- Point en attente : aucune décision ni test utilisateur requis ; ce garde-fou permet de poursuivre ultérieurement l’audit du rendu Chef sans toucher au comportement actuel.
