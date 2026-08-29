@@ -79,3 +79,12 @@
 - Choix de sécurité : aucun monkey-patch du client Supabase n’a été introduit. La correction directe d’un seul champ dans `js/legacy-core.js` est différée jusqu’à disposer d’une édition fiable de ce fichier minifié, afin d’éviter une réécriture disproportionnée d’environ 500 Ko pour un changement local.
 - Garde-fous respectés : aucun changement Supabase, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire ; aucun merge ni changement de `main`.
 - Point en attente : correction locale de la sélection `scans` (`+ fournisseur`) dès qu’un mode d’édition sûr de `js/legacy-core.js` est disponible ; aucun choix produit ni test utilisateur requis.
+
+## 2026-08-29 — correction du diagnostic `fournisseur` 06:18 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` vérifiée avant édition ; `main` laissé intact. Projet Supabase `railops` (`tbmzmmamaiftbbbuelgd`) contrôlé en lecture seule et `ACTIVE_HEALTHY`.
+- Diagnostic serveur : `information_schema.columns` confirme que `public.scans` contient exactement `id,materielId,chantierId,agentNom,date,etatGeneral,proprete,fonctionnement,dommages,dommagesDesc,observations,actions,photo,lat,lng`. `fournisseur` n'existe pas dans cette table ; un contrôle complémentaire confirme qu'il n'existe pas non plus dans `public.materiels`.
+- Correction documentaire uniquement : `docs/inspection-persistence-audit.md` ne recommande plus d'ajouter `fournisseur` à la requête `scans`. Le document précise désormais que cette modification provoquerait une sélection d'une colonne inexistante et que toute réintroduction éventuelle de cette donnée relève d'un choix de modèle de données.
+- Commit de correction : `48e6f54f751d347cb6a80e682e4fef67146a480f` (`docs: corriger l'audit persistance inspections`).
+- Garde-fous respectés : aucune écriture Supabase, donnée, schéma, migration, RLS, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
+- Point en attente : aucun choix produit ni test utilisateur requis pour cette correction ; poursuivre les gardes de non-régression du flux d'inspection sans ajouter de champ serveur.
