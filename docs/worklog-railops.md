@@ -34,3 +34,13 @@
 - Vérification : `v150B-2B checks` run `33247665558`, `RailOps lifecycle regression` run `33247665596`, `RailOps modules regression` run `33247665561` et `Final RLS hotfix check` run `33247665629` sont tous terminés en `success`.
 - Garde-fous respectés : documentation uniquement ; `main` inchangé, aucune écriture Supabase, aucun changement runtime, sécurité, permission ou règle métier.
 - Point en attente : aucun choix produit ni test utilisateur requis.
+
+## 2026-08-29 — cohérence des métadonnées iOS verrouillée 13:15 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head initial `75dd4ae9e08ffc1cfff86ff4fdd494f27785a801`, `599 ahead / 0 behind` par rapport à `main`; `main` laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) était `ACTIVE_HEALTHY`; Advisor performance inchangé avec uniquement les deux index `inspections_*_idx` encore signalés `unused_index`.
+- Diagnostic iPhone : `index.html` contient des déclarations dupliquées de `apple-mobile-web-app-capable` et `apple-mobile-web-app-status-bar-style`. Le cycle rouge a confirmé le diagnostic avec le commit `717e863357f48435a31b56db2dba09b474be81f2` (`test: guard unique iOS web-app metadata`) et le run `v150B-2B checks` `33249629905` en échec attendu.
+- Choix de sécurité : la suppression directe des doublons dans le volumineux `index.html` n’a pas été forcée, afin d’éviter une réécriture disproportionnée du fichier pour deux lignes inoffensives.
+- Amélioration test uniquement : `tests/v150b2b-ios-layout-contract.test.js` vérifie désormais que toutes les déclarations iOS existantes restent présentes et surtout cohérentes entre elles, empêchant l’introduction future de valeurs contradictoires. Commit `8cdf8896991879f3a588a41e686c98a4971cca8a` (`test: guard consistent iOS web-app metadata`).
+- Vérification : `v150B-2B checks` run `33249660556`, `RailOps lifecycle regression` run `33249660548`, `RailOps modules regression` run `33249660537` et `Final RLS hotfix check` run `33249660659` sont tous terminés en `success`.
+- Garde-fous respectés : aucun runtime, donnée, schéma, migration, index, policy, permission, RLS stricte, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
+- Point en attente : aucun choix produit ni test utilisateur requis ; le nettoyage physique des deux balises dupliquées peut rester différé tant qu’une édition ciblée sûre de `index.html` n’est pas disponible.
