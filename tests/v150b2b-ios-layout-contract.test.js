@@ -80,6 +80,12 @@ assert.match(
 
 assert.match(
   styles,
+  /\.tbk\{[^}]*min-width:44px[^}]*min-height:44px/i,
+  'top-bar back buttons must keep a 44px minimum touch target on iPhone'
+);
+
+assert.match(
+  styles,
   /\.screen\{[^}]*overflow-y:auto[^}]*-webkit-overflow-scrolling:touch/i,
   'scrollable screens must preserve momentum scrolling on iOS'
 );
