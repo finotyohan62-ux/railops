@@ -62,3 +62,11 @@
 - Vérification : `v150B-2B checks` run `33223138377` terminé en `success` sur le commit test.
 - Garde-fous respectés : aucun code runtime, donnée, schéma, migration, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production ; `main` est resté intact.
 - Point en attente : aucune décision ni test utilisateur requis ; ce garde-fou permet de poursuivre ultérieurement l’audit du rendu Chef sans toucher au comportement actuel.
+
+## 2026-08-29 — inventaire du garde de persistance inspections 03:20 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head initial `3e93913ef5f24359360f21d2217f061f8ea40d76`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`; Supabase `railops` (`tbmzmmamaiftbbbuelgd`) contrôlé en lecture seule et `ACTIVE_HEALTHY`.
+- Amélioration réversible et sans runtime : `docs/v150b2b-test-inventory.md` référence désormais `v150b2b-inspection-persistence-contract.test.js` et son rôle ; `tests/v150b2b-test-inventory-contract.test.js` exige que ce garde reste présent dans l’inventaire humain.
+- Vérification : le contrôle attendu était absent de l’inventaire avant changement ; commit `924dedda3af9219ce3365451d8f2dc52326cd4f6` (`docs: index inspection persistence guard`) ; `v150B-2B checks` run `33226115047` terminé en `success` sur ce commit.
+- Garde-fous respectés : aucun code runtime, donnée, schéma, migration, policy, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, aucune RLS stricte, aucun déploiement production et aucun changement de `main`.
+- Point en attente : aucun choix produit ni test utilisateur requis ; la prochaine passe peut poursuivre l’audit du rendu Chef ou une autre amélioration documentaire/diagnostique à faible risque.
