@@ -68,4 +68,19 @@ const escaped = renderInspectionReportHtml(buildInspectionReportModel({
 }));
 assert.ok(!escaped.includes('<script>alert(1)</script>'), 'Le HTML du rapport doit échapper les données affichées');
 
+const nullSafeModel = buildInspectionReportModel({
+  chantier: null,
+  period: null,
+  scans: null,
+  agents: null,
+  materiels: null,
+});
+assert.equal(nullSafeModel.chantierName, 'Chantier');
+assert.deepEqual(nullSafeModel.period, { from: '', to: '' });
+assert.equal(nullSafeModel.summary.totalControls, 0);
+assert.equal(nullSafeModel.summary.anomalies, 0);
+assert.deepEqual(nullSafeModel.controls, []);
+assert.deepEqual(nullSafeModel.byAgent, []);
+assert.ok(renderInspectionReportHtml(nullSafeModel).includes('Aucun contrôle sur la période.'));
+
 console.log('PASS: inspection report model and renderer contract');
