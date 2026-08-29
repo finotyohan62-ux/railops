@@ -71,3 +71,12 @@
 - Vérification : `v150B-2B checks` runs `33254545068` et `33254546811`, `RailOps lifecycle regression` run `33254546792`, `RailOps modules regression` run `33254546790` et `Final RLS hotfix check` run `33254546745` sont tous terminés en `success` sur le commit de correction.
 - Garde-fous respectés : CSS, test et documentation uniquement ; aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
 - Point en attente : aucun choix produit ni test utilisateur requis.
+
+## 2026-08-29 — cibles tactiles boutons d’action mobile 16:17 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` observée au head `779c4f300e4230bb6104cf82d0e3a12a5a8adbd2`, `main` laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`; Supabase `railops` (`tbmzmmamaiftbbbuelgd`) contrôlé en lecture seule et `ACTIVE_HEALTHY`.
+- Diagnostic UX mobile : la classe commune `.btn` reposait uniquement sur `padding:12px 20px` et `font-size:14px`, sans hauteur tactile minimale explicite, contrairement à la navigation basse et au bouton retour déjà protégés à 44 px.
+- Cycle rouge/vert : commit test `7c8ceaab4f62dd4b0edcb99c86c4d6d9607a0de8` (`test: guard mobile button touch targets`) avec `v150B-2B checks` run `33257114548` en échec attendu, puis correction CSS minimale au commit `ff3aeb7aeea6c3a3b9b007f6002d41213f1728a2` (`fix: enlarge mobile action button targets`) ajoutant `min-height:44px` à `.btn`.
+- Vérification : les 5 workflows du commit de correction sont terminés en `success`, notamment `v150B-2B checks` runs `33257154784` et `33257157264`, `RailOps lifecycle regression` run `33257157235`, `RailOps modules regression` run `33257157240` et `Final RLS hotfix check` run `33257157203`.
+- Garde-fous respectés : CSS, test et documentation uniquement ; aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
+- Point en attente : aucun choix produit ni test utilisateur requis ; poursuivre seulement les améliorations UX/mobile caractérisables et réversibles.
