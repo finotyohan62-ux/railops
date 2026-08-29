@@ -53,3 +53,12 @@
 - Vérification : les 5 workflows observés sur le commit de correction sont terminés sans échec ; `v150B-2B checks`, `RailOps lifecycle regression`, `RailOps modules regression` et `Final RLS hotfix check` sont au vert.
 - Garde-fous respectés : changement de présentation CSS uniquement ; aucune donnée Supabase, schéma, migration, sécurité, RLS, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
 - Point en attente : aucun choix produit ni test utilisateur requis pour cette correction ciblée ; poursuivre la passe ergonomie mobile sur des écarts visuels caractérisables et à faible risque.
+
+## 2026-08-29 — cibles tactiles navigation mobile 14:18 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head `628598e09078aea505b8f30f96ac8ec9e6082e05`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) contrôlé en lecture seule et `ACTIVE_HEALTHY`; Advisor performance ne signale toujours que les deux index `inspections_*_idx` inutilisés, laissés intacts.
+- Diagnostic UX mobile : les boutons `.ni` de la barre de navigation basse n’avaient aucune hauteur tactile minimale et leur contenu/padding pouvait produire une cible inférieure à 44 px.
+- Cycle rouge/vert : commit test `7f7a3044d24484e10412aebc5038d9a4f5597c0f` (`test: guard iPhone nav touch targets`) avec `v150B-2B checks` run `33252083161` en échec attendu, puis correction CSS minimale au commit `75657f68b690f9e203a86b7473db0f104d4c7d69` (`fix: enlarge bottom nav touch targets`) ajoutant `min-height:44px` aux éléments `.ni`.
+- Vérification : les 5 workflows du commit de correction sont terminés sans échec ; `v150B-2B checks` runs `33252139046` et `33252141293`, `RailOps lifecycle regression` run `33252141267`, `RailOps modules regression` run `33252141295` et `Final RLS hotfix check` run `33252141292` sont en `success`.
+- Garde-fous respectés : CSS, test et documentation uniquement ; aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
+- Point en attente : aucun choix produit ni test utilisateur requis.
