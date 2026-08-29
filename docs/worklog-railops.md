@@ -107,3 +107,12 @@
 - Vérification : `v150B-2B checks` run `33265196458`, `RailOps lifecycle regression` run `33265196473`, `RailOps modules regression` run `33265196468` et `Final RLS hotfix check` run `33265196433` sont tous terminés en `success`.
 - Garde-fous respectés : CSS, test et documentation uniquement ; aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
 - Point en attente : aucun choix produit ni test utilisateur requis ; les alertes de sécurité existantes restent volontairement hors périmètre sans validation explicite.
+
+## 2026-08-29 — cibles tactiles filtres mobiles 20:17 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` uniquement ; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) contrôlé en lecture seule et `ACTIVE_HEALTHY`; Advisor performance ne signale toujours que les deux index `inspections_*_idx` inutilisés déjà connus, laissés intacts.
+- Diagnostic UX mobile : les filtres interactifs `.chip` utilisaient `font-size:11px` et `padding:5px 12px` sans hauteur tactile minimale, contrairement aux principaux contrôles mobiles déjà protégés à 44 px.
+- Cycle rouge/vert : commit test `5c8d2bb038a595c97ef4fe2be6b2d3723036cd65` (`test: guard mobile filter chip touch targets`) avec `v150B-2B checks` run `33267750877` en échec attendu, puis correction CSS minimale au commit `65d044fcc59f05ca0def6aeb7d383b7328d8955c` (`fix: enlarge mobile filter chip touch targets`) ajoutant `min-height:44px` et un centrage vertical à `.chip`.
+- Vérification : `v150B-2B checks` runs `33267813171` et `33267814761`, `RailOps lifecycle regression` run `33267814751`, `RailOps modules regression` run `33267814756` et `Final RLS hotfix check` run `33267814784` sont tous terminés en `success`.
+- Garde-fous respectés : CSS, test et documentation uniquement ; aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
+- Point en attente : aucun choix produit ni test utilisateur requis.
