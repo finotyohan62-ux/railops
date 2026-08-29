@@ -26,3 +26,11 @@
 - Correction documentaire uniquement : l’ancien `docs/worklog-railops.md` est archivé sans perte dans `docs/worklog-railops-archive-through-2026-08-29-1119.md`, puis le journal courant repart de façon compacte avec les entrées postérieures.
 - Commits concernés : `de009ae123c255962c3e3897604eb78a813bd6f3` (fragment 12:15) et `69b1337f724b269f9d17873f3fae71b5a187ed52` (archive du journal).
 - Garde-fous respectés : documentation uniquement ; aucun runtime, donnée Supabase, schéma, sécurité, permission, règle métier, Import, Multi-chantier, purge hebdomadaire, merge ou changement de `main`.
+
+## 2026-08-29 — structure du journal normalisée 12:23 Europe/Paris
+
+- Diagnostic : le CI a isolé un unique défaut documentaire, le nom `2026-08-29-1218-offline-reconnect.md` ne respectant pas le format contractuel des fragments.
+- Correction réversible : renommage atomique en `2026-08-29-1218.md`, sans modifier son contenu. Commit `d6e44eb599f3000f662e80ba38cfaf937c849cd5` (`docs: normalize worklog append filename`).
+- Vérification : `v150B-2B checks` run `33247665558`, `RailOps lifecycle regression` run `33247665596`, `RailOps modules regression` run `33247665561` et `Final RLS hotfix check` run `33247665629` sont tous terminés en `success`.
+- Garde-fous respectés : documentation uniquement ; `main` inchangé, aucune écriture Supabase, aucun changement runtime, sécurité, permission ou règle métier.
+- Point en attente : aucun choix produit ni test utilisateur requis.
