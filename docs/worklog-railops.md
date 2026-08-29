@@ -116,3 +116,12 @@
 - Vérification finale avant journal : sur `28473be568b37abe95153e2723c72250c00a471f`, `v150B-2B checks` run `33240590031`, `RailOps lifecycle regression` run `33240590025`, `RailOps modules regression` run `33240590004` et `Final RLS hotfix check` run `33240590101` sont tous terminés en `success`.
 - Garde-fous respectés : aucun code runtime, donnée, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production ; `main` est resté intact.
 - Point en attente : aucun choix produit ni test utilisateur requis ; poursuivre l’audit des inspections uniquement par des gardes caractérisables, réversibles et sans changement métier.
+
+## 2026-08-29 — types backend verrouillés dans le garde inspections Chef 10:22 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` était synchronisée avec `main` (`behind_by=0`, merge-base `37b216936a6692d54f82cbc004b30c936d13785a`). Supabase `railops` (`tbmzmmamaiftbbbuelgd`) a été relu sans écriture : `public.scans.fonctionnement` et `dommages` sont des booléens, `lat`/`lng` des `double precision`, et `railops_scans_scope()` retourne ces mêmes types.
+- Amélioration test uniquement : `tests/v150b2b-inspection-secure-read-contract.test.js` utilise désormais un fixture conforme au schéma réel et vérifie explicitement la conservation des booléens `fonctionnement`/`dommages` et des coordonnées numériques lors du chargement sécurisé Chef.
+- Commit test : `34295506248814caf2b6bba1f097eebd5647edb3` (`test: align inspection read fixture with Supabase types`).
+- Vérification : `v150B-2B checks` runs `33242971071` et `33242972753`, `RailOps lifecycle regression` `33242972795`, `RailOps modules regression` `33242972802` et `Final RLS hotfix check` `33242972790` sont terminés en `success`; Vercel preview est également `success`.
+- Garde-fous respectés : aucun code runtime, donnée, schéma, migration, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni changement de `main`.
+- Point en attente : aucun choix produit ni test utilisateur requis ; poursuivre les inspections uniquement par des contrôles caractérisables et réversibles.
