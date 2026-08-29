@@ -39,6 +39,7 @@ Les contrôles diagnostics restent auto-découverts par le runner et ne sont pas
 ## Autres gardes documentaires auto-découvertes
 
 - `v150b2b-branch-drift-doc-contract.test.js` — garantit que la revue de dérive relève les SHA et le merge-base depuis l’état GitHub réel, vérifie Supabase uniquement en lecture, maintient `main` intact et interdit toute conclusion de compatibilité ou intégration automatique sans validation explicite.
+- `v150b2b-inspection-persistence-contract.test.js` — caractérise le contrat de persistance existant des inspections : collection `S.scans`, cache local stable, upsert idempotent par `id`, rechargement des champs attendus et fusion sans doublon par identifiant.
 
 Cette liste sert d’index humain. La source d’autorité pour l’exécution reste la découverte automatique de `tests/v150b2b-*.test.js`; ajouter ou retirer un test nécessite donc de vérifier le résultat du runner plutôt que de se fier uniquement à ce document.
 

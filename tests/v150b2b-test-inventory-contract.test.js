@@ -24,10 +24,15 @@ for (const testName of criticalTests) {
   );
 }
 
+assert.ok(
+  inventory.includes('`v150b2b-inspection-persistence-contract.test.js`'),
+  'verification inventory must document the inspection persistence contract guard'
+);
+
 assert.match(
   inventory,
   /node tests\/run-v150b2b-checks\.js/,
   'verification inventory must keep the canonical local runner command'
 );
 
-console.log(`PASS: verification inventory documents ${criticalTests.length} critical runner guards`);
+console.log(`PASS: verification inventory documents ${criticalTests.length} critical runner guards and the inspection persistence guard`);
