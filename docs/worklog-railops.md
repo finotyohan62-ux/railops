@@ -133,3 +133,12 @@
 - Vérification : comparaison Git/Supabase fraîche effectuée en lecture seule ; aucune écriture de données ni changement de sécurité n'a été effectué.
 - Garde-fous respectés : documentation uniquement ; aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
 - Point en attente : aucun choix produit ni test utilisateur requis.
+
+## 2026-08-29 — snapshot santé lecture seule 23:14 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head `7019480e386a16c8519570f10385e9b73be7c22b`, `631 ahead / 0 behind` par rapport à `main`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) contrôlé en lecture seule et `ACTIVE_HEALTHY`.
+- Diagnostic : les volumes cœur restent stables (`scans=124`, `materiels=1689`, `users=34`). Les comptages RLS/policies restent `agents=0`, `chantiers=4`, `deleted_ids=1`, `inspections=0`, `materiels=4`, `prix_catalogue=1`, `scans=4`, `users=2`; Security Advisor et Performance Advisor restent matériellement inchangés.
+- Amélioration documentaire : ajout du snapshot `docs/supabase-state/2026-08-29-2314.md` aux commits `43568c39117323b9519be53bf07c143b4773c922` puis `ec16ce1e34a5081b74a582b42e2f96851677a60e` après correction du contrat documentaire RLS/policies détectée par le CI.
+- Vérification : le premier run a correctement signalé l'absence du marqueur contractuel `### RLS / policies — lecture seule`; le snapshot a été complété sans toucher au runtime ni à Supabase. Les autres workflows observés sur le premier commit (`RailOps lifecycle regression`, `RailOps modules regression`, `Final RLS hotfix check`) étaient en `success`.
+- Garde-fous respectés : documentation uniquement ; aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
+- Point en attente : aucun choix produit ni test utilisateur requis ; les alertes sécurité connues restent volontairement hors périmètre sans validation explicite.
