@@ -4,9 +4,9 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync(process.argv[2] || 'js/core/lifecycle.js', 'utf8');
 
-function makeContext() {
+function makeContext(options = {}) {
   const calls = [];
-  const storage = new Map();
+  const storage = new Map(Object.entries(options.storage || {}));
   const inspection = {
     id: 'inspection-1',
     materielId: 'mat-1',
@@ -42,7 +42,7 @@ function makeContext() {
     lng: 0,
   };
 
-  const inspections = [inspection, inspectionEdge];
+  const inspections = options.inspections === undefined ? [inspection, inspectionEdge] : options.inspections;
   const rpcData = {
     railops_session_context: { ok: true, nom: 'Chef Test', role: 'chef', is_admin_owner: false },
     railops_chantiers_scope: [{ id: 'chantier-1', nom: 'Chantier Test' }],
@@ -126,7 +126,15 @@ function makeContext() {
     'secure cache must mirror the complete scoped inspection payload including false, zero and null values'
   );
 
-  console.log('PASS: Chef inspection secure-read contract preserves scoped records, display fields, backend types and falsy values');
+  const empty = makeContext({
+    inspections: [],
+    storage: { ro3_s: JSON.stringify([{ id: 'stale-inspection' }]) },
+  });
+  await empty.ctx.window.load();
+  assert.deepEqual(Array.from(empty.ctx.S.scans), [], 'an empty scoped inspection response must clear in-memory stale inspections');
+  assert.equal(empty.storage.get('ro3_s'), '[]', 'an empty scoped inspection response must replace stale cached inspections');
+
+  console.log('PASS: Chef inspection secure-read contract preserves scoped records, backend values and authoritative empty responses');
 })().catch(error => {
   console.error(error);
   process.exit(1);
