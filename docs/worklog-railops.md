@@ -93,3 +93,12 @@
 - Vérification : le snapshot a été relu sur la branche ; Supabase n’a reçu aucune écriture et `main` est resté inchangé.
 - Garde-fous respectés : aucune modification Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucun déploiement production, aucune activation stricte RLS et aucun changement de règle métier.
 - Point en attente : aucune action autonome sur les index. Leur suppression, remplacement ou ajout nécessiterait une analyse de requêtes et une validation explicite avant toute modification de schéma.
+
+## 2026-08-30 — snapshot sécurité Supabase 12:18 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head initial `7fc6c970f7d73ec4bf37c8bca470bc511d1f0559`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) confirmé `ACTIVE_HEALTHY` en lecture seule.
+- Diagnostic : les conseillers Supabase confirment les alertes déjà connues : tables RLS sans policy, plusieurs RPC `SECURITY DEFINER` exécutables par `authenticated`, protection des mots de passe compromis désactivée, ainsi que les deux index `inspections_*` encore signalés inutilisés. Toute remédiation toucherait sécurité, permissions, Auth ou schéma et reste donc bloquée sans validation explicite.
+- Changement sûr : ajout de `docs/supabase-state/2026-08-30-1218-security.md` au commit `9013e5f04c97fd5642c10b15c6c9fba9a7de9daa` (`docs: snapshot current Supabase advisory state`). Aucun runtime, test métier, donnée, schéma, RLS, policy ou permission n’a été modifié.
+- Vérification : le snapshot est présent sur la branche ; aucune écriture Supabase n’a été effectuée, `main` est resté inchangé et le commit ne porte que de la documentation. Aucun statut CI n’était encore publié au moment de la vérification immédiate.
+- Garde-fous respectés : aucune modification Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucun déploiement production, aucune activation stricte RLS et aucun changement de règle métier.
+- Point en attente : les avertissements de sécurité Supabase nécessitent une décision explicite avant toute remédiation ; les deux index inutilisés restent également hors périmètre autonome car leur suppression modifierait le schéma.
