@@ -91,3 +91,12 @@
 - Vérification finale sur `168904e99969cdca88f79545dadf7e246b56c604` : `v150B-2B checks` run `33330618755`, `RailOps modules regression` run `33330618759`, `RailOps lifecycle regression` run `33330618753` et `Final RLS hotfix check` run `33330618794` sont tous terminés en `success`.
 - Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
 - Point en attente : aucun nouveau point ; les avertissements sécurité/Auth et index connus restent volontairement sans remédiation automatique.
+
+## 2026-08-30 — snapshot maintenance lecture seule 22:16 Europe/Paris
+
+- État réel contrôlé avant changement : `main` à `fd590aff348f52aade83f51e838f96457a14402c` et laissé intact ; branche `security/v150b2b-rls-ready` au head initial `7dd24583c6ae2eb11fbfc7c68995161a7f88f662`, à 719 commits d’avance / 0 de retard. Supabase `railops` confirmé `ACTIVE_HEALTHY` sous PostgreSQL `17.6.1.084`.
+- Diagnostic lecture seule : les Advisors restent dans les familles déjà connues — tables avec RLS active sans policy, RPC `SECURITY DEFINER` exécutables par `authenticated`, protection des mots de passe compromis désactivée, et 2 index `inspections_*` signalés inutilisés.
+- Changement faible risque : ajout du snapshot `docs/supabase-state/2026-08-30-2216.md` au commit `ffcb73ff1db2bce5e197eef67111deb9b1064de3`. Aucun runtime ni Supabase n’a été modifié.
+- Vérification : fichier relu depuis la branche après commit ; `main` est resté inchangé. Aucun workflow GitHub n’était attaché à ce commit au moment du contrôle.
+- Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
+- Point en attente : aucun nouveau point ; les avertissements sécurité/Auth et index connus restent volontairement sans remédiation automatique.
