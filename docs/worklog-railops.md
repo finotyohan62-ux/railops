@@ -19,3 +19,12 @@
 - Vérification : `v150B-2B checks` run `33287684719` terminé en `success`; le commit est bien porté par `security/v150b2b-rls-ready`.
 - Garde-fous respectés : aucune modification de `main`, Supabase, données, schéma, RLS, policy, permissions, règles métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge ni activation stricte RLS.
 - Point en attente : le raccordement UI du rapport reste en attente de validation d’emplacement ; aucun nouvel arbitrage n’est requis pour cette passe.
+
+## 2026-08-30 — renderer robuste aux collections clairsemées 05:17 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head initial `84ed2e861fa265bc91ec250072fb3ae74dc8d05c`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) contrôlé en lecture seule et `ACTIVE_HEALTHY`; les avis sécurité existants ont seulement été inspectés, sans écriture ni changement RLS/policy/schema/données.
+- Diagnostic : `buildInspectionReportModel` filtrait déjà les entrées vides, mais `renderInspectionReportHtml` pouvait encore lever une erreur si un modèle fourni directement contenait des entrées `null`/`undefined` dans `anomalies`, `controls` ou `byAgent`.
+- Cycle rouge/vert : test de régression au commit `13ae29eb889d7eac0f7b2acbccd4abfd04ffc2f6` (`test: guard sparse report render collections`), avec `v150B-2B checks` run `33289990357` en échec attendu ; correction minimale au commit `942c33d368a41470094825fc9522459a7489154f` (`fix: tolerate sparse report render collections`) en filtrant seulement les entrées vides avant rendu.
+- Vérification : le job `checks` du run `33290017466` s’est terminé en `success`, y compris `Run v150B-2B verification suite`.
+- Garde-fous respectés : aucune modification de `main`, aucune écriture Supabase, aucun changement de données, schéma, RLS, policy, permission, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge ni déploiement production.
+- Point en attente : le raccordement UI du rapport reste volontairement hors périmètre tant que son emplacement n’est pas validé ; aucun nouvel arbitrage n’est requis pour cette passe.
