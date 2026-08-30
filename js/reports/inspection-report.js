@@ -33,8 +33,8 @@
     agents = Array.isArray(agents) ? agents : [];
     materiels = Array.isArray(materiels) ? materiels : [];
 
-    const agentById = new Map(agents.map(agent => [String(agent.id), agent]));
-    const materialById = new Map(materiels.map(material => [String(material.id), material]));
+    const agentById = new Map(agents.filter(Boolean).map(agent => [String(agent.id), agent]));
+    const materialById = new Map(materiels.filter(Boolean).map(material => [String(material.id), material]));
 
     const controls = scans.map(scan => {
       const agentId = scan.agent_id ?? scan.agentId ?? '';
