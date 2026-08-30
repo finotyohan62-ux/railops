@@ -92,4 +92,16 @@ assert.equal(sparseLookupModel.summary.totalControls, 1);
 assert.equal(sparseLookupModel.controls[0].agentName, 'Alice Martin');
 assert.equal(sparseLookupModel.controls[0].materialReference, 'MAT-001');
 
+const sparseScansModel = buildInspectionReportModel({
+  scans: [
+    null,
+    { id: 'scan-valid', agent_id: 'agent-1', materiel_id: 'mat-1', statut: 'OK' },
+    undefined,
+  ],
+  agents: [{ id: 'agent-1', nom: 'Martin', prenom: 'Alice' }],
+  materiels: [{ id: 'mat-1', reference: 'MAT-001' }],
+});
+assert.equal(sparseScansModel.summary.totalControls, 1);
+assert.equal(sparseScansModel.controls[0].id, 'scan-valid');
+
 console.log('PASS: inspection report model and renderer contract');
