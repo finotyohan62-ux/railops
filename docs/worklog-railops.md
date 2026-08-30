@@ -160,3 +160,12 @@
 - Vérification : `v150B-2B checks` run `33280728158`, `RailOps lifecycle regression` run `33280728155`, `RailOps modules regression` run `33280728161` et `Final RLS hotfix check` run `33280728162` sont tous terminés en `success`.
 - Garde-fous respectés : aucun raccordement UI du rapport, aucune donnée Supabase, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
 - Point en attente : le raccordement du rapport à l’interface reste volontairement hors périmètre tant que son emplacement n’est pas validé ; aucun autre choix produit ni test utilisateur requis pour ce durcissement interne.
+
+## 2026-08-30 — rapport robuste aux référentiels clairsemés 02:17 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` observée au head initial `bc0c7d8bd623ea75644fc7c3d4fa92d25cdb23a9`; `main` laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) contrôlé en lecture seule et `ACTIVE_HEALTHY`.
+- Diagnostic : les collections entières `agents` et `materiels` pouvaient déjà être absentes, mais une entrée `null` ou `undefined` à l’intérieur d’un référentiel faisait encore échouer la construction des tables de correspondance du rapport.
+- Cycle rouge/vert : commit test `f747123274ccebc195c97582d12d725e8852d873` (`test: guard sparse report lookup collections`) avec `v150B-2B checks` run `33282870209` en échec attendu et ciblé (`54/55` contrôles passés), puis correction minimale au commit `20be927bf0efbc9b0660aa255bb3e3d522567e70` (`fix: tolerate sparse report lookup collections`) ignorant uniquement les entrées de lookup absentes avant création des `Map`.
+- Vérification : `v150B-2B checks` run `33282932046` est terminé en `success` sur le commit de correction ; le rapport conserve les correspondances valides agent/matériel et aucune règle métier n’est modifiée.
+- Garde-fous respectés : aucun raccordement UI du rapport, aucune écriture Supabase, aucune donnée, schéma, migration, index, policy, RLS stricte, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge ni déploiement production.
+- Point en attente : le raccordement UI du rapport reste hors périmètre tant que son emplacement n’est pas validé ; aucun autre choix produit ni test utilisateur requis.
