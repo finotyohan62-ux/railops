@@ -83,4 +83,13 @@ assert.deepEqual(nullSafeModel.controls, []);
 assert.deepEqual(nullSafeModel.byAgent, []);
 assert.ok(renderInspectionReportHtml(nullSafeModel).includes('Aucun contrôle sur la période.'));
 
+const sparseLookupModel = buildInspectionReportModel({
+  scans: [{ id: 'scan-sparse', agent_id: 'agent-1', materiel_id: 'mat-1', statut: 'OK' }],
+  agents: [null, { id: 'agent-1', nom: 'Martin', prenom: 'Alice' }],
+  materiels: [undefined, { id: 'mat-1', reference: 'MAT-001' }],
+});
+assert.equal(sparseLookupModel.summary.totalControls, 1);
+assert.equal(sparseLookupModel.controls[0].agentName, 'Alice Martin');
+assert.equal(sparseLookupModel.controls[0].materialReference, 'MAT-001');
+
 console.log('PASS: inspection report model and renderer contract');
