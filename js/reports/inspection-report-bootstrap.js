@@ -2,7 +2,10 @@
   const uiApi = typeof module !== 'undefined' && module.exports
     ? require('./inspection-report-ui.js')
     : root?.RailOpsInspectionReportUI;
-  const api = factory(uiApi);
+  const routerApi = typeof module !== 'undefined' && module.exports
+    ? require('./pdf-action-router.js')
+    : root?.RailOpsPdfActionRouter;
+  const api = factory(uiApi, routerApi);
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) root.RailOpsInspectionReportBootstrap = api;
 
@@ -15,11 +18,9 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
     else start();
   }
-})(typeof globalThis !== 'undefined' ? globalThis : this, function (uiApi) {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (uiApi, routerApi) {
   function isReportPdfButton(label, contextText) {
-    const buttonText = String(label || '').trim();
-    const context = String(contextText || '').trim();
-    return /pdf/i.test(buttonText) && /rapport|contr[oô]le|cte/i.test(context);
+    return routerApi?.classifyPdfAction?.(label, contextText) === 'inspection-report';
   }
 
   function dateOnly(value) {
@@ -87,7 +88,8 @@
     for (const button of root.querySelectorAll('button')) {
       if (button?.dataset?.railopsReportHook === '1') continue;
       const container = button.closest?.('.msheet,.modal,[role="dialog"]') || button.parentElement;
-      if (!isReportPdfButton(button.textContent, container?.textContent)) continue;
+      const actionType = routerApi?.classifyPdfAction?.(button.textContent, container?.textContent) || null;
+      if (actionType !== 'inspection-report') continue;
       button.dataset.railopsReportHook = '1';
       button.addEventListener('click', event => {
         event.preventDefault();
