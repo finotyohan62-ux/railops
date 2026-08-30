@@ -75,3 +75,12 @@
 - Vérification : `v150B-2B checks` run `33298883094` (#1162) terminé en `success` sur le commit de test.
 - Garde-fous respectés : aucune modification de `main`, aucune écriture Supabase, aucun changement de données, schéma, RLS, policy, permission, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucun déploiement production et aucune activation stricte RLS.
 - Point en attente : les avertissements Supabase déjà connus (fonctions `SECURITY DEFINER` exposées et protection des mots de passe compromis désactivée) nécessitent un arbitrage explicite avant toute action ; aucun changement n’a été entrepris sur ces points.
+
+## 2026-08-30 — snapshot diagnostic Supabase 10:16 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head initial `8068778fd1b978455c27e48732bc33320e2b29cb`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) confirmé `ACTIVE_HEALTHY` en lecture seule.
+- Diagnostic : les avis sécurité présents restent les catégories connues `rls_enabled_no_policy`, fonctions `SECURITY DEFINER` exécutables par `authenticated`, et protection des mots de passe compromis désactivée. Leur correction modifierait les permissions, la sécurité ou l’authentification et reste donc hors périmètre autonome.
+- Changement sûr : ajout de `docs/supabase-state/2026-08-30-1016.md` pour figer l’état observé et la frontière de décision, commit `e3ee497b76c486f38b425d9dcf21a174c37933fe` (`docs: snapshot current Supabase security baseline`). Aucun runtime, test métier, donnée, schéma, RLS, policy ou permission n’a été modifié.
+- Vérification : le snapshot est présent sur `security/v150b2b-rls-ready`; `main` reste inchangé et Supabase n’a reçu aucune écriture.
+- Garde-fous respectés : aucune modification Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucun déploiement production, aucune activation stricte RLS et aucun changement de règle métier.
+- Point en attente : les alertes Supabase documentées nécessitent toujours une approbation explicite avant remédiation ; aucun nouvel arbitrage n’est requis pour la documentation de cette passe.
