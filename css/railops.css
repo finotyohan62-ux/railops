@@ -25,6 +25,7 @@ html,body{height:100%;width:100%;background:var(--bg);overflow:hidden;font-famil
 .screen{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:20px}
 .screen::-webkit-scrollbar{display:none}
 *::-webkit-scrollbar{display:none}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[role="button"]:focus-visible,.chip:focus-visible,.tab:focus-visible,.ro:focus-visible,.tgl:focus-visible,.cc:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .sb{padding:10px 20px 4px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;background:var(--bg)}
 .sb .t{font-size:13px;font-weight:500;color:var(--text)}
 .sb .r{font-size:11px;color:var(--text2)}
