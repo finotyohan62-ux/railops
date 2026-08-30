@@ -54,3 +54,12 @@
 - Vérification finale sur `75233a96295890e08fd3eb098a622ccf3b0cdc8b` : `v150B-2B checks` run `33319205281`, `RailOps modules regression` run `33319205317`, `RailOps lifecycle regression` run `33319205303` et `Final RLS hotfix check` run `33319205325` sont tous en `success`.
 - Garde-fous respectés : aucun changement Supabase, RLS, policy, permission, donnée, schéma, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge et aucun déploiement production.
 - Point en attente : aucun ; amélioration réversible d’accessibilité/confort uniquement.
+
+## 2026-08-30 — garde-fou CSS accessibilité 18:20 Europe/Paris
+
+- État réel contrôlé avant changement : `main` à `fd590aff348f52aade83f51e838f96457a14402c` et laissé intact ; branche `security/v150b2b-rls-ready` au head initial `6447bc1e145d3e675f4a410d731601c50067e6f1`. Supabase `railops` confirmé `ACTIVE_HEALTHY`; Advisors sécurité relus en lecture seule et inchangés sur les familles connues.
+- Diagnostic : les améliorations récentes `:focus-visible`, `prefers-reduced-motion` et taille mobile 16 px étaient présentes mais n’étaient pas couvertes ensemble par un contrat de non-régression unique.
+- Changement faible risque : ajout de `tests/v150b2b-accessibility-css-contract.test.js` au commit `d4450e80ad2a5ef29edf06b2222534e397f22aaa`, sans modification runtime.
+- Vérification : `v150B-2B checks` run `33322115015` terminé en `success` sur le commit de test.
+- Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge et aucun déploiement production.
+- Point en attente : aucun ; garde-fou réversible uniquement.
