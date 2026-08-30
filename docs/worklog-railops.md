@@ -118,3 +118,12 @@
 - Vérification sur `4ce42bdd1ec06bd5be186e784a597d53e90f34cf` : `v150B-2B checks` run `33338695446`, `RailOps modules regression` run `33338697133`, `RailOps lifecycle regression` run `33338697128` et `Final RLS hotfix check` run `33338697255` sont tous terminés en `success`; `main` a été revérifié inchangé après le commit.
 - Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
 - Point en attente : aucun nouveau point ; les avertissements sécurité/Auth et les index connus restent volontairement sans remédiation automatique.
+
+## 2026-08-31 — snapshot maintenance lecture seule 01:17 Europe/Paris
+
+- État réel contrôlé avant changement : `main` à `fd590aff348f52aade83f51e838f96457a14402c` et laissé intact ; branche `security/v150b2b-rls-ready` au head initial `fa3035a51763087ecf44d1b959c69d8a2a6daa49`, alignée sur l’ascendance de `main` (0 commit de retard). Supabase `railops` confirmé `ACTIVE_HEALTHY` sous PostgreSQL `17.6.1.084`.
+- Diagnostic lecture seule : policies cœur relues directement (`agents=0`, `chantiers=4`, `deleted_ids=1`, `inspections=0`, `materiels=4`, `prix_catalogue=1`, `scans=4`, `users=2`) ; Advisors inchangés dans les familles connues (5 RLS sans policy, fonctions `SECURITY DEFINER`, protection mots de passe compromis désactivée, 2 index `inspections_*` inutilisés).
+- Changement faible risque : ajout de `docs/supabase-state/2026-08-31-0117.md` au commit `26997c8917f346491c23703ec548d097940e7203`, puis corrections documentaires `6b921af633091a53a5beba585bfbe1dd8b048c03` et `69b27820bdcf32ca77a60124c556c8ced9c3347d` après diagnostic des contrats de snapshot (marqueurs exacts et horodatage du titre). Aucun runtime ni Supabase n’a été modifié.
+- Vérification finale sur `69b27820bdcf32ca77a60124c556c8ced9c3347d` : `v150B-2B checks` run `33341637871`, `RailOps modules regression` run `33341637900`, `RailOps lifecycle regression` run `33341637870` et `Final RLS hotfix check` run `33341637857` sont tous terminés en `success`.
+- Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
+- Point en attente : aucun nouveau point ; les avertissements sécurité/Auth et les index connus restent volontairement sans remédiation automatique.
