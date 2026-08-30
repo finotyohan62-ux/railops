@@ -100,3 +100,12 @@
 - Vérification : fichier relu depuis la branche après commit ; `main` est resté inchangé. Aucun workflow GitHub n’était attaché à ce commit au moment du contrôle.
 - Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
 - Point en attente : aucun nouveau point ; les avertissements sécurité/Auth et index connus restent volontairement sans remédiation automatique.
+
+## 2026-08-30 — remise en conformité du snapshot 23:17 Europe/Paris
+
+- État réel contrôlé avant changement : `main` à `fd590aff348f52aade83f51e838f96457a14402c` et laissé intact ; branche `security/v150b2b-rls-ready` au head initial `c176f7578b687b3cc9a98801a2d2cdf95ba177bb`, à 721 commits d’avance / 0 de retard. Supabase `railops` confirmé `ACTIVE_HEALTHY` sous PostgreSQL `17.6.1.084` ; comptages RLS/policies relus directement (`agents=0`, `chantiers=4`, `deleted_ids=1`, `inspections=0`, `materiels=4`, `prix_catalogue=1`, `scans=4`, `users=2`).
+- Diagnostic : le snapshot de 22:16 ne reprenait pas toutes les sections du contrat documentaire `v150b2b-snapshot-contract`, ce qui pouvait laisser le dernier relevé hors format malgré un état applicatif inchangé.
+- Changement faible risque : ajout du snapshot conforme `docs/supabase-state/2026-08-30-2317.md` au commit `ac417e46c8b914e3c9ef597c70bb39d4385ee786`, sans modification runtime ni écriture Supabase.
+- Vérification sur `ac417e46c8b914e3c9ef597c70bb39d4385ee786` : `v150B-2B checks` run `33336099825`, `RailOps modules regression` run `33336099862`, `RailOps lifecycle regression` run `33336099827` et `Final RLS hotfix check` run `33336099833` sont tous terminés en `success`.
+- Garde-fous respectés : aucune modification de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
+- Point en attente : aucun nouveau point ; les avertissements sécurité/Auth et les deux index inutilisés restent uniquement documentés, sans remédiation automatique.
