@@ -45,3 +45,12 @@
 - Vérification finale sur `e1855817d90a6b6bd053a8f3659032dd666af15a` : `v150B-2B checks` run `33316537014`, `RailOps modules regression` run `33316537028`, `RailOps lifecycle regression` run `33316537010` et `Final RLS hotfix check` run `33316537034` sont tous en `success`.
 - Garde-fous respectés : aucune modification de règle métier, permission, RLS, policy, Auth, donnée, schéma, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucun déploiement production. Les deux index `inspections_*` restent simplement signalés comme inutilisés et n’ont pas été modifiés.
 - Point en attente : aucun ; amélioration purement réversible et limitée à la visibilité clavier.
+
+## 2026-08-30 — respect de la préférence de mouvement réduit 17:13 Europe/Paris
+
+- État réel contrôlé avant changement : `main` est resté à `fd590aff348f52aade83f51e838f96457a14402c`; branche `security/v150b2b-rls-ready` alignée sur son ascendance (`behind_by: 0`). Supabase `railops` confirmé `ACTIVE_HEALTHY`; Advisors lus en lecture seule, sans écriture ni remédiation automatique.
+- Diagnostic UX : plusieurs transitions et animations décoratives (`pulse-red`, faisceau scanner, `pulse-sync`) étaient actives sans prise en compte de `prefers-reduced-motion`.
+- Cycle rouge/vert : test `tests/v150b2b-reduced-motion.test.js` ajouté au commit `2100178b9f6bf7b65946d77c031e5c9abdb15b60`, avec `v150B-2B checks` run `33319097150` en échec attendu ; correctif CSS au commit `75233a96295890e08fd3eb098a622ccf3b0cdc8b` désactivant les animations et réduisant les transitions uniquement lorsque le système demande moins de mouvement.
+- Vérification finale sur `75233a96295890e08fd3eb098a622ccf3b0cdc8b` : `v150B-2B checks` run `33319205281`, `RailOps modules regression` run `33319205317`, `RailOps lifecycle regression` run `33319205303` et `Final RLS hotfix check` run `33319205325` sont tous en `success`.
+- Garde-fous respectés : aucun changement Supabase, RLS, policy, permission, donnée, schéma, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge et aucun déploiement production.
+- Point en attente : aucun ; amélioration réversible d’accessibilité/confort uniquement.
