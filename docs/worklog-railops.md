@@ -36,3 +36,12 @@
 - Vérification finale du snapshot : `v150B-2B checks` run `33313782154`, `Final RLS hotfix check` run `33313782148`, `RailOps modules regression` run `33313782145` et `RailOps lifecycle regression` run `33313782144` sont tous terminés en `success` sur `0d62a5b1e35e75b411ed828e8b31265daf03ee40`.
 - Garde-fous respectés : aucune écriture Supabase, aucune modification de données, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
 - Point en attente : les avertissements sécurité/Auth et les index inutilisés restent volontairement sans action automatique car toute remédiation toucherait aux permissions, à l'Auth ou au schéma et exige une validation explicite.
+
+## 2026-08-30 — visibilité clavier des contrôles 16:19 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` à `c6ea59ea4117799c60fdd921dd689f73b1fd0bf4`, `main` à `fd590aff348f52aade83f51e838f96457a14402c` et laissé intact. Les Advisors Supabase restent inchangés sur les familles connues ; aucune écriture Supabase n’a été effectuée.
+- Diagnostic UX : `css/railops.css` ne définissait aucun état `:focus-visible` global, ce qui rendait la navigation clavier peu lisible sur les boutons, liens, champs et contrôles interactifs.
+- Cycle rouge/vert : garde-fou ajouté au commit `24ec670b8a332a7350c7f01dac4a8e83ce8d9ade` (`test: require visible keyboard focus states`), avec `v150B-2B checks` run `33316469295` en échec attendu ; correctif minimal au commit `e1855817d90a6b6bd053a8f3659032dd666af15a` (`feat: improve keyboard focus visibility`) ajoutant un contour accentué de 2 px avec offset de 2 px uniquement sur `:focus-visible`.
+- Vérification finale sur `e1855817d90a6b6bd053a8f3659032dd666af15a` : `v150B-2B checks` run `33316537014`, `RailOps modules regression` run `33316537028`, `RailOps lifecycle regression` run `33316537010` et `Final RLS hotfix check` run `33316537034` sont tous en `success`.
+- Garde-fous respectés : aucune modification de règle métier, permission, RLS, policy, Auth, donnée, schéma, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucun déploiement production. Les deux index `inspections_*` restent simplement signalés comme inutilisés et n’ont pas été modifiés.
+- Point en attente : aucun ; amélioration purement réversible et limitée à la visibilité clavier.
