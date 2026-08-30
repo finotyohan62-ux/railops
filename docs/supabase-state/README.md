@@ -24,6 +24,57 @@ Les snapshots doivent nommer explicitement la métrique mesurée afin d'éviter 
 
 Un tableau ou une liste de nombres ne doit donc jamais être présenté sous le seul terme « comptage » lorsqu'il s'agit de policies. Si les volumes de données ne sont pas nécessaires au diagnostic, le snapshot peut les omettre plutôt que de les déduire d'un autre indicateur.
 
+## Gabarit minimal avant commit
+
+Pour éviter qu'un nouveau relevé soit incomplet, recopier cette ossature puis remplacer uniquement les valeurs réellement observées. Les huit tables cœur doivent toutes apparaître dans la section RLS/policies, même lorsque le nombre de policies vaut `0`.
+
+```md
+# RailOps — état GitHub / Supabase
+
+Relevé strictement en lecture seule.
+
+## GitHub
+- Branche : `security/v150b2b-rls-ready`
+- `main` : `<sha>`
+- Divergence : **<behind> behind / <ahead> ahead**
+
+## Supabase
+- Projet : `railops` (`<project-ref>`)
+- Santé/version : `<état réellement observé>`
+
+### RLS / policies — lecture seule
+- `agents` : <policy_count> ; rls_enabled=<true|false>
+- `chantiers` : <policy_count> ; rls_enabled=<true|false>
+- `deleted_ids` : <policy_count> ; rls_enabled=<true|false>
+- `inspections` : <policy_count> ; rls_enabled=<true|false>
+- `materiels` : <policy_count> ; rls_enabled=<true|false>
+- `prix_catalogue` : <policy_count> ; rls_enabled=<true|false>
+- `scans` : <policy_count> ; rls_enabled=<true|false>
+- `users` : <policy_count> ; rls_enabled=<true|false>
+
+### Security Advisor
+- <résumé factuel des familles observées>
+
+Ces alertes restent des signaux de diagnostic uniquement.
+Aucune permission, fonction, policy, Auth ou RLS n'est modifiée automatiquement.
+
+### Performance Advisor
+- <résumé factuel des familles observées>
+
+Aucun index ni changement de schéma n'est appliqué.
+
+## Diagnostic
+- <constat uniquement, sans déduire une remédiation risquée>
+
+## Garde-fous
+- aucun merge, rebase ou changement de `main` ;
+- aucune activation de RLS stricte ;
+- aucune écriture Supabase, donnée, schéma, permission ou règle métier ;
+- aucun changement Import, Multi-chantier ou purge hebdomadaire.
+```
+
+Avant commit, exécuter la suite `v150B-2B checks` ou au minimum le contrat `tests/v150b2b-snapshot-contract.test.js` afin de vérifier que le relevé le plus récent reste conforme.
+
 ## Confidentialité des relevés
 
 Les snapshots restent **metadata-only**. Ils peuvent contenir des identifiants techniques non secrets utiles au diagnostic (SHA Git, nom de branche, identifiant public du projet, noms de tables/functions et états de policies), mais ne doivent jamais contenir de jeton de session, JWT, bearer token, clé `service_role`, clé Supabase secrète, mot de passe ou autre secret d'authentification.
