@@ -100,8 +100,9 @@
   }
 
   function tableRows(items, rowRenderer, emptyText) {
-    if (!items.length) return `<tr><td colspan="5" class="empty">${escapeHtml(emptyText)}</td></tr>`;
-    return items.map(rowRenderer).join('');
+    const rows = Array.isArray(items) ? items.filter(Boolean) : [];
+    if (!rows.length) return `<tr><td colspan="5" class="empty">${escapeHtml(emptyText)}</td></tr>`;
+    return rows.map(rowRenderer).join('');
   }
 
   function renderInspectionReportHtml(model) {
@@ -124,8 +125,9 @@
         <td>${escapeHtml(control.comment || '—')}</td>
       </tr>`, 'Aucun contrôle sur la période.');
 
-    const agentRows = (safeModel.byAgent || []).length
-      ? safeModel.byAgent.map(item => `
+    const agentItems = Array.isArray(safeModel.byAgent) ? safeModel.byAgent.filter(Boolean) : [];
+    const agentRows = agentItems.length
+      ? agentItems.map(item => `
         <tr>
           <td>${escapeHtml(item.agentName)}</td>
           <td class="num">${escapeHtml(item.totalControls)}</td>
