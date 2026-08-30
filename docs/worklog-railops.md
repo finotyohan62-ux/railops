@@ -46,3 +46,12 @@
 - Vérification : le job `checks` du run `33294386253` a terminé `Run v150B-2B verification suite` en `success`.
 - Garde-fous respectés : aucune modification de `main`, aucune écriture Supabase, aucun changement de données, schéma, RLS, policy, permission, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucun déploiement production et aucune activation stricte RLS.
 - Point en attente : le raccordement UI du rapport reste volontairement hors périmètre tant que son emplacement n’est pas validé ; les alertes Supabase déjà connues restent inchangées et n’ont fait l’objet d’aucune action risquée.
+
+## 2026-08-30 — garde dédiée contre l’injection HTML 08:20 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head initial `a1fdcfa2d3fb3f487c4c5ad1bba90319d50d8718`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) contrôlé en lecture seule et `ACTIVE_HEALTHY`; les avis sécurité existants ont été inspectés sans écriture ni changement RLS/policy/schema/données.
+- Diagnostic : l’échappement HTML du rapport était déjà implémenté et partiellement couvert ; une garde dédiée avec une charge de type balise/attribut événementiel permet de verrouiller explicitement l’absence de HTML utilisateur brut dans le document généré, y compris chantier, période, matériel, agent, statut et commentaire.
+- Changement sûr : ajout de `tests/v150b2b-report-html-escaping.test.js`, sans modification du runtime ni des règles métier. Commit `4b1ce3d99bf1325d5bfacb6a421623e611cf199c` (`test: cover report HTML escaping`).
+- Vérification : `v150B-2B checks` push run `33296645472` (#1137) terminé en `success` sur le commit de test.
+- Garde-fous respectés : aucune modification de `main`, aucune écriture Supabase, aucun changement de données, schéma, RLS, policy, permission, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucun déploiement production demandé et aucune activation stricte RLS.
+- Point en attente : le raccordement UI du rapport reste volontairement hors périmètre tant que son emplacement n’est pas validé ; les avertissements Supabase déjà connus restent inchangés et nécessiteraient une approbation explicite avant toute action de durcissement.
