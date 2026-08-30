@@ -37,3 +37,12 @@
 - Vérification : `v150B-2B checks` run `33292171899` terminé en `success` sur le commit de test.
 - Garde-fous respectés : aucune modification de `main`, aucune écriture Supabase, aucun changement de données, schéma, RLS, policy, permission, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucun déploiement production et aucune activation stricte RLS.
 - Point en attente : le raccordement UI du rapport reste volontairement hors périmètre tant que son emplacement n’est pas validé ; aucun nouvel arbitrage n’est requis pour cette passe.
+
+## 2026-08-30 — conservation des identifiants sans correspondance 07:18 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head initial `fef8fdd99e6b4599be153e2b1cea15728d2a3b2b`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) contrôlé en lecture seule et `ACTIVE_HEALTHY`; les avis sécurité existants ont été relus sans aucune modification de configuration, RLS, policy, schéma ou données.
+- Diagnostic : le rapport conserve déjà l’identifiant brut d’un agent ou matériel lorsque la liste de correspondance n’est pas chargée, mais ce comportement utile n’était pas verrouillé par un test dédié.
+- Changement sûr : ajout de `tests/v150b2b-report-missing-lookups.test.js` pour caractériser la conservation de `agent_id` et `materiel_id` dans le modèle et le HTML quand les lookups sont absents. Aucun fichier runtime ni règle métier n’a été modifié. Commit `34cd33e59976dbdac95ade8bb275e5cdd8912954` (`test: preserve report identifiers for missing lookups`).
+- Vérification : le job `checks` du run `33294386253` a terminé `Run v150B-2B verification suite` en `success`.
+- Garde-fous respectés : aucune modification de `main`, aucune écriture Supabase, aucun changement de données, schéma, RLS, policy, permission, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucun déploiement production et aucune activation stricte RLS.
+- Point en attente : le raccordement UI du rapport reste volontairement hors périmètre tant que son emplacement n’est pas validé ; les alertes Supabase déjà connues restent inchangées et n’ont fait l’objet d’aucune action risquée.
