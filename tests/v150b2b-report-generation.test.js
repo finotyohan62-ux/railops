@@ -125,4 +125,26 @@ const sparseScansModel = buildInspectionReportModel({
 assert.equal(sparseScansModel.summary.totalControls, 1);
 assert.equal(sparseScansModel.controls[0].id, 'scan-valid');
 
+const sparseRenderedModel = {
+  chantierName: 'Chantier Test',
+  period: { from: '2026-08-29', to: '2026-08-29' },
+  summary: { totalControls: 1, anomalies: 1 },
+  anomalies: [
+    null,
+    { date: '', materialReference: 'MAT-001', agentName: 'Alice Martin', status: 'ANOMALIE', comment: 'À revoir', isAnomaly: true },
+  ],
+  controls: [
+    undefined,
+    { date: '', materialReference: 'MAT-001', agentName: 'Alice Martin', status: 'ANOMALIE', comment: 'À revoir', isAnomaly: true },
+  ],
+  byAgent: [
+    null,
+    { agentName: 'Alice Martin', totalControls: 1, anomalies: 1 },
+  ],
+};
+assert.doesNotThrow(() => renderInspectionReportHtml(sparseRenderedModel));
+const sparseRenderedHtml = renderInspectionReportHtml(sparseRenderedModel);
+assert.ok(sparseRenderedHtml.includes('MAT-001'));
+assert.ok(sparseRenderedHtml.includes('Alice Martin'));
+
 console.log('PASS: inspection report model and renderer contract');
