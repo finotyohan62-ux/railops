@@ -36,7 +36,7 @@
     const agentById = new Map(agents.filter(Boolean).map(agent => [String(agent.id), agent]));
     const materialById = new Map(materiels.filter(Boolean).map(material => [String(material.id), material]));
 
-    const controls = scans.map(scan => {
+    const controls = scans.filter(Boolean).map(scan => {
       const agentId = scan.agent_id ?? scan.agentId ?? '';
       const materialId = scan.materiel_id ?? scan.material_id ?? scan.materialId ?? '';
       return {
