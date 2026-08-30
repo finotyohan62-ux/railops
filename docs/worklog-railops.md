@@ -72,3 +72,12 @@
 - Vérification : `v150B-2B checks` run `33324897028`, `RailOps modules regression` run `33324897033`, `Final RLS hotfix check` run `33324897022` et `RailOps lifecycle regression` run `33324897072` sont tous terminés en `success` sur le commit de test.
 - Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
 - Point en attente : aucun ; garde-fou réversible de confort mobile uniquement.
+
+## 2026-08-30 — retour à la ligne des alertes longues 20:18 Europe/Paris
+
+- État réel contrôlé avant changement : `main` à `fd590aff348f52aade83f51e838f96457a14402c` et laissé intact ; branche `security/v150b2b-rls-ready` au head initial `3d0b3900433d6fdacc91442cda09bfdc0c80b2d6`, à 713 commits d’avance / 0 de retard. Supabase `railops` confirmé `ACTIVE_HEALTHY` sous PostgreSQL `17.6.1.084`; Advisors sécurité/performance relus en lecture seule, sans remédiation automatique.
+- Diagnostic UX : le texte `.at` des boîtes d’alerte n’avait ni `min-width:0` ni stratégie de coupure, donc un identifiant, message technique ou diagnostic très long pouvait forcer un débordement horizontal sur petit écran.
+- Cycle rouge/vert : contrat `tests/v150b2b-alert-overflow-contract.test.js` ajouté au commit `1d5e6ed9872f29786a139444ca580ecc37f2321b`, avec `v150B-2B checks` run `33327629675` en échec attendu ; correctif CSS minimal au commit `a33593c8a2f85005d2c1359a071d51e9bbe68b1d` ajoutant `min-width:0` et `overflow-wrap:anywhere` uniquement au texte d’alerte.
+- Vérification finale sur `a33593c8a2f85005d2c1359a071d51e9bbe68b1d` : `v150B-2B checks` run `33327692870`, `RailOps modules regression` run `33327692852`, `RailOps lifecycle regression` run `33327692812` et `Final RLS hotfix check` run `33327692831` sont tous terminés en `success`.
+- Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
+- Point en attente : aucun ; amélioration réversible de confort mobile uniquement.
