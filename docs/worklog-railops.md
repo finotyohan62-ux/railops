@@ -84,3 +84,12 @@
 - Vérification : le snapshot est présent sur `security/v150b2b-rls-ready`; `main` reste inchangé et Supabase n’a reçu aucune écriture.
 - Garde-fous respectés : aucune modification Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucun déploiement production, aucune activation stricte RLS et aucun changement de règle métier.
 - Point en attente : les alertes Supabase documentées nécessitent toujours une approbation explicite avant remédiation ; aucun nouvel arbitrage n’est requis pour la documentation de cette passe.
+
+## 2026-08-30 — snapshot performance Supabase 11:15 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head initial `b457d03353567cde8ff1814cbf6e6fad8e42ef73`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) confirmé `ACTIVE_HEALTHY` en lecture seule.
+- Diagnostic : le conseiller performance signale deux avis `unused_index` de niveau `INFO` sur `inspections_agent_id_idx` et `inspections_materiel_id_idx`. Une suppression automatique serait une modification de schéma potentiellement régressive et reste donc hors périmètre autonome.
+- Changement sûr : ajout de `docs/supabase-state/2026-08-30-1115-performance.md` pour documenter ces deux avis et la décision de ne pas toucher aux index. Commit `37cda2ec8d9d7abaf7ba92c6abb9c2e90c7e53b7` (`docs: snapshot Supabase performance advisors`). Aucun runtime, test métier, donnée, schéma, RLS, policy ou permission n’a été modifié.
+- Vérification : le snapshot a été relu sur la branche ; Supabase n’a reçu aucune écriture et `main` est resté inchangé.
+- Garde-fous respectés : aucune modification Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucun déploiement production, aucune activation stricte RLS et aucun changement de règle métier.
+- Point en attente : aucune action autonome sur les index. Leur suppression, remplacement ou ajout nécessiterait une analyse de requêtes et une validation explicite avant toute modification de schéma.
