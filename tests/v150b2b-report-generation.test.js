@@ -147,4 +147,27 @@ const sparseRenderedHtml = renderInspectionReportHtml(sparseRenderedModel);
 assert.ok(sparseRenderedHtml.includes('MAT-001'));
 assert.ok(sparseRenderedHtml.includes('Alice Martin'));
 
+const compatibilityAliasModel = buildInspectionReportModel({
+  chantier: { name: 'Chantier Alias' },
+  period: { from: '2026-08-30', to: '2026-08-30' },
+  scans: [{
+    id: 'scan-alias',
+    agentId: 'agent-alias',
+    material_id: 'mat-alias',
+    created_at: '2026-08-30T04:00:00.000Z',
+    status: 'ANOMALIE',
+    comment: 'Alias conservés',
+  }],
+  agents: [{ id: 'agent-alias', name: 'Agent Alias' }],
+  materiels: [{ id: 'mat-alias', nom: 'Matériel Alias' }],
+});
+assert.equal(compatibilityAliasModel.chantierName, 'Chantier Alias');
+assert.equal(compatibilityAliasModel.summary.totalControls, 1);
+assert.equal(compatibilityAliasModel.summary.anomalies, 1);
+assert.equal(compatibilityAliasModel.controls[0].agentName, 'Agent Alias');
+assert.equal(compatibilityAliasModel.controls[0].materialReference, 'Matériel Alias');
+assert.equal(compatibilityAliasModel.controls[0].status, 'ANOMALIE');
+assert.equal(compatibilityAliasModel.controls[0].comment, 'Alias conservés');
+assert.equal(compatibilityAliasModel.controls[0].date, '2026-08-30T04:00:00.000Z');
+
 console.log('PASS: inspection report model and renderer contract');
