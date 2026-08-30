@@ -102,3 +102,11 @@
 - Vérification : le snapshot est présent sur la branche ; aucune écriture Supabase n’a été effectuée, `main` est resté inchangé et le commit ne porte que de la documentation. Aucun statut CI n’était encore publié au moment de la vérification immédiate.
 - Garde-fous respectés : aucune modification Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucun déploiement production, aucune activation stricte RLS et aucun changement de règle métier.
 - Point en attente : les avertissements de sécurité Supabase nécessitent une décision explicite avant toute remédiation ; les deux index inutilisés restent également hors périmètre autonome car leur suppression modifierait le schéma.
+
+## 2026-08-30 — restauration du snapshot canonique 13:15 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` à `d396672dfbd04921bf5c1857381d7cee8f0c177d`, `main` laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`, PR #1 toujours ouverte/DRAFT/non fusionnée et Supabase `railops` confirmé `ACTIVE_HEALTHY` en lecture seule.
+- Diagnostic : le snapshot `2026-08-30-1016.md` était devenu le dernier fichier canonique reconnu par le test, mais ne contenait plus les marqueurs structurels exigés par `v150b2b-snapshot-contract.test.js`; le défaut était documentaire uniquement.
+- Changement sûr : ajout du snapshot canonique frais `docs/supabase-state/2026-08-30-1315.md` au commit `f797150eea4392541d9c1cca916eb56e1cae1d6f`, avec divergence Git fraîche, état Supabase, volumétrie, comptages de policies et Advisors observés sans écriture.
+- Vérification : `v150B-2B checks` run `33308543661` terminé en `success`; le contrat de snapshot repasse au vert. Aucun runtime, donnée, schéma, RLS, policy, permission, Import, Multi-chantier ou purge hebdomadaire n’a été modifié.
+- Point en attente : aucune action autonome supplémentaire ; les alertes SECURITY DEFINER/Auth et les index inutilisés restent volontairement non modifiés car ils nécessitent une décision explicite avant toute remédiation.
