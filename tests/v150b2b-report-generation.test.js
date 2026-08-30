@@ -60,13 +60,34 @@ for (const expected of [
 }
 
 const escaped = renderInspectionReportHtml(buildInspectionReportModel({
-  chantier: { id: 'chantier-x', nom: '<script>alert(1)</script>' },
+  chantier: { id: 'chantier-x', nom: '<script>alert("chantier")</script>' },
   period: { from: '2026-08-29', to: '2026-08-29' },
-  scans: [],
-  agents: [],
-  materiels: [],
+  scans: [{
+    id: 'scan-x',
+    agent_id: 'agent-x',
+    materiel_id: 'mat-x',
+    statut: 'ANOMALIE',
+    commentaire: '<img src=x onerror="alert(1)">',
+  }],
+  agents: [{ id: 'agent-x', prenom: '<b>Alice</b>', nom: 'Martin' }],
+  materiels: [{ id: 'mat-x', reference: '<svg onload="alert(2)">' }],
 }));
-assert.ok(!escaped.includes('<script>alert(1)</script>'), 'Le HTML du rapport doit échapper les données affichées');
+for (const unsafe of [
+  '<script>alert("chantier")</script>',
+  '<img src=x onerror="alert(1)">',
+  '<b>Alice</b>',
+  '<svg onload="alert(2)">',
+]) {
+  assert.ok(!escaped.includes(unsafe), `Le HTML du rapport doit échapper : ${unsafe}`);
+}
+for (const safe of [
+  '&lt;script&gt;alert(&quot;chantier&quot;)&lt;/script&gt;',
+  '&lt;img src=x onerror=&quot;alert(1)&quot;&gt;',
+  '&lt;b&gt;Alice&lt;/b&gt; Martin',
+  '&lt;svg onload=&quot;alert(2)&quot;&gt;',
+]) {
+  assert.ok(escaped.includes(safe), `Le HTML du rapport doit conserver la valeur échappée : ${safe}`);
+}
 
 const nullSafeModel = buildInspectionReportModel({
   chantier: null,
