@@ -63,3 +63,12 @@
 - Vérification : `v150B-2B checks` run `33322115015` terminé en `success` sur le commit de test.
 - Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge et aucun déploiement production.
 - Point en attente : aucun ; garde-fou réversible uniquement.
+
+## 2026-08-30 — garde-fou tailles tactiles 19:17 Europe/Paris
+
+- État réel contrôlé avant changement : `main` est resté à `fd590aff348f52aade83f51e838f96457a14402c`; branche `security/v150b2b-rls-ready` au head initial `f70dfa1a412b7b44b26f697abd6d822a97387c9b`, puis `24c9f33135dfad755a777d35567847eced9ca0d7`. Supabase `railops` confirmé `ACTIVE_HEALTHY` sous PostgreSQL `17.6.1.084`; Advisors sécurité/performance relus en lecture seule, sans remédiation automatique.
+- Diagnostic UX : les principaux contrôles mobiles disposent déjà de zones tactiles d’au moins 44 px (`.tbk`, `.ni`, `.ro`, `.btn`, `.chip`, `.tab`) et le bouton flottant mesure 46×46 px, mais ce confort n’était pas protégé par un test dédié.
+- Changement faible risque : ajout du contrat `tests/v150b2b-touch-targets-contract.test.js` au commit `24c9f33135dfad755a777d35567847eced9ca0d7`, sans modification runtime.
+- Vérification : `v150B-2B checks` run `33324897028`, `RailOps modules regression` run `33324897033`, `Final RLS hotfix check` run `33324897022` et `RailOps lifecycle regression` run `33324897072` sont tous terminés en `success` sur le commit de test.
+- Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
+- Point en attente : aucun ; garde-fou réversible de confort mobile uniquement.
