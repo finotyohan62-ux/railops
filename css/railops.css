@@ -133,6 +133,9 @@ select.fi{cursor:pointer}
 .cc:active{border-color:var(--accent)}
 @keyframes pulse-sync{0%,100%{opacity:1}50%{opacity:.3}}
 @media (max-width:600px){.fi{font-size:16px}}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition-duration:0.01ms!important;scroll-behavior:auto!important}
+}
 @media print{
   body > *:not(#print-zone){display:none!important}
   #print-zone{display:flex!important;position:fixed;inset:0;background:#fff;align-items:center;justify-content:center;z-index:9999}
