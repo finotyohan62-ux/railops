@@ -4,6 +4,7 @@ const OFFLINE_KEY='ro_offline_queue';function assertSyncResult(a){if(a&&a.error)
 (function loadRailOpsReportModules(){
   if(typeof document==='undefined'||typeof document.createElement!=='function')return;
   const modules=[
+    {src:'./js/reports/pdf-design-system.js',ready:()=>!!window.RailOpsPdfDesignSystem},
     {src:'./js/reports/inspection-report.js',ready:()=>!!window.RailOpsInspectionReport},
     {src:'./js/reports/inspection-report-ui.js',ready:()=>!!window.RailOpsInspectionReportUI},
     {src:'./js/reports/inspection-report-bootstrap.js',ready:()=>!!window.RailOpsInspectionReportBootstrap}
