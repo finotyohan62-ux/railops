@@ -28,3 +28,12 @@
 - Vérification : le job `checks` du run `33290017466` s’est terminé en `success`, y compris `Run v150B-2B verification suite`.
 - Garde-fous respectés : aucune modification de `main`, aucune écriture Supabase, aucun changement de données, schéma, RLS, policy, permission, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge ni déploiement production.
 - Point en attente : le raccordement UI du rapport reste volontairement hors périmètre tant que son emplacement n’est pas validé ; aucun nouvel arbitrage n’est requis pour cette passe.
+
+## 2026-08-30 — couverture des alias de compatibilité du rapport 06:18 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head initial `60d71b1b317f440f4485cf54ff1068b6f31f44aa`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Supabase `railops` (`tbmzmmamaiftbbbuelgd`) contrôlé en lecture seule et `ACTIVE_HEALTHY`, sans écriture ni changement de configuration.
+- Diagnostic : le modèle de rapport accepte déjà plusieurs alias de données (`name`, `status`, `comment`, `created_at`, `agentId`, `material_id`, ainsi que les libellés `name`/`nom`), mais cette compatibilité n’était pas verrouillée explicitement par le test de contrat.
+- Changement sûr : ajout d’un test de caractérisation dans `tests/v150b2b-report-generation.test.js` couvrant ces alias existants, sans modification du runtime ni des règles métier. Commit `6aa21773f82cfa87eda7df33254ce69d14f3fe51` (`test: cover report compatibility aliases`).
+- Vérification : `v150B-2B checks` run `33292171899` terminé en `success` sur le commit de test.
+- Garde-fous respectés : aucune modification de `main`, aucune écriture Supabase, aucun changement de données, schéma, RLS, policy, permission, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucun déploiement production et aucune activation stricte RLS.
+- Point en attente : le raccordement UI du rapport reste volontairement hors périmètre tant que son emplacement n’est pas validé ; aucun nouvel arbitrage n’est requis pour cette passe.
