@@ -79,7 +79,7 @@ select.fi{cursor:pointer}
 .a-danger{background:rgba(226,75,74,.1);border:.5px solid rgba(226,75,74,.3)}
 .a-warn{background:rgba(61,181,74,.1);border:.5px solid rgba(61,181,74,.3)}
 .a-ok{background:rgba(29,158,117,.1);border:.5px solid rgba(29,158,117,.3)}
-.at{font-size:12px}
+.at{font-size:12px;min-width:0;overflow-wrap:anywhere}
 .a-danger .at{color:#F09595}
 .a-warn .at{color:var(--accent)}
 .a-ok .at{color:#5DCAA5}
