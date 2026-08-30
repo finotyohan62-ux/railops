@@ -30,4 +30,11 @@ assert.deepEqual(input.scans.map(s => s.id), ['s2']);
 assert.deepEqual(input.materiels.map(m => m.id), ['M-1', 'M-2']);
 assert.equal(input.agents.length, 1);
 
+const noActiveChantier = buildCurrentReportInput({ ...state, curC: null, modalData: null }, []);
+assert.deepEqual(noActiveChantier.chantier, {});
+assert.deepEqual(noActiveChantier.scans, []);
+assert.deepEqual(noActiveChantier.materiels, []);
+assert.deepEqual(noActiveChantier.period, { from: '', to: '' });
+assert.equal(noActiveChantier.agents.length, 1);
+
 console.log('PASS: existing report PDF hook preserves current UI scope');
