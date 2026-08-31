@@ -144,3 +144,12 @@
 - Vérification : snapshot relu depuis la branche après commit ; `main` revérifié inchangé. Aucun workflow GitHub n’était attaché au commit au moment du contrôle, donc la vérification repose sur le contrat documentaire déjà satisfait par le fichier et sur la comparaison GitHub finale.
 - Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
 - Point en attente : aucun nouveau point ; les avertissements sécurité/Auth et les deux index inutilisés restent volontairement sans remédiation automatique.
+
+## 2026-08-31 — garde-fou iOS safe-area 04:18 Europe/Paris
+
+- État réel contrôlé avant changement : `main` à `fd590aff348f52aade83f51e838f96457a14402c` et laissé intact ; branche `security/v150b2b-rls-ready` au head initial `08c93c9f0885c91e3a0260d94654ab97b25b82e6`, alignée sur l’ascendance de `main`. Supabase `railops` confirmé `ACTIVE_HEALTHY`; aucune écriture Supabase.
+- Diagnostic UX : `css/railops.css` protège déjà les safe areas iOS pour le shell, la navigation basse, les feuilles modales et le bouton flottant, mais aucun test dédié ne verrouillait ces garanties.
+- Changement faible risque : ajout de `tests/v150b2b-safe-area-css-contract.test.js` au commit `fe8fa6abe50dace4f95e512e25d392254412b6ad` (`test: guard iOS safe-area layout`). Aucun runtime, style ou comportement produit n’a été modifié.
+- Vérification : `v150B-2B checks` run `33350229830` terminé en `success`, avec la suite `Run v150B-2B verification suite` en succès.
+- Garde-fous respectés : aucune modification Supabase, donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
+- Point en attente : aucun nouveau point ; les avertissements sécurité/Auth et index connus restent volontairement sans remédiation automatique.
