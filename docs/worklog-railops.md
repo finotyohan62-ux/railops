@@ -47,7 +47,6 @@
 - Point en attente : aucun ; amélioration purement réversible et limitée à la visibilité clavier.
 
 ## 2026-08-30 — respect de la préférence de mouvement réduit 17:13 Europe/Paris
-
 - État réel contrôlé avant changement : `main` est resté à `fd590aff348f52aade83f51e838f96457a14402c`; branche `security/v150b2b-rls-ready` alignée sur son ascendance (`behind_by: 0`). Supabase `railops` confirmé `ACTIVE_HEALTHY`; Advisors lus en lecture seule, sans écriture ni remédiation automatique.
 - Diagnostic UX : plusieurs transitions et animations décoratives (`pulse-red`, faisceau scanner, `pulse-sync`) étaient actives sans prise en compte de `prefers-reduced-motion`.
 - Cycle rouge/vert : test `tests/v150b2b-reduced-motion.test.js` ajouté au commit `2100178b9f6bf7b65946d77c031e5c9abdb15b60`, avec `v150B-2B checks` run `33319097150` en échec attendu ; correctif CSS au commit `75233a96295890e08fd3eb098a622ccf3b0cdc8b` désactivant les animations et réduisant les transitions uniquement lorsque le système demande moins de mouvement.
@@ -136,3 +135,12 @@
 - Vérification sur `7353e4b8f6b4fa77fda7cfbc3de523eeb12725ba` : `v150B-2B checks` run `33343951855`, `RailOps modules regression` run `33343951904`, `RailOps lifecycle regression` run `33343952006` et `Final RLS hotfix check` run `33343951838` sont tous terminés en `success`; comparaison finale GitHub à 730 commits d'avance / 0 de retard.
 - Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
 - Point en attente : aucun nouveau point ; les avertissements sécurité/Auth et les index connus restent volontairement sans remédiation automatique.
+
+## 2026-08-31 — snapshot Advisor horodaté 03:16 Europe/Paris
+
+- État réel contrôlé avant changement : `main` à `fd590aff348f52aade83f51e838f96457a14402c` et laissé intact ; branche `security/v150b2b-rls-ready` au head initial `35618a0ffb66f854db440361dba9289b4828286a`, à 731 commits d’avance / 0 de retard. Supabase `railops` confirmé `ACTIVE_HEALTHY` sous PostgreSQL `17.6.1.084`.
+- Diagnostic lecture seule : les huit tables cœur gardent RLS active avec comptages de policies `agents=0`, `chantiers=4`, `deleted_ids=1`, `inspections=0`, `materiels=4`, `prix_catalogue=1`, `scans=4`, `users=2`. Security Advisor observé à `2026-08-31T01:17:21.460Z` et Performance Advisor à `2026-08-31T01:17:28.517Z`; aucune famille nouvelle n’a été identifiée.
+- Changement faible risque : ajout du snapshot `docs/supabase-state/2026-08-31-0316.md` au commit `e185a137bfd1966e92b440fdd39dbcc3be7cd1be`, avec conservation explicite des `observed_at` afin de distinguer une lecture fraîche d’un signal historique. Aucun runtime ni Supabase n’a été modifié.
+- Vérification : snapshot relu depuis la branche après commit ; `main` revérifié inchangé. Aucun workflow GitHub n’était attaché au commit au moment du contrôle, donc la vérification repose sur le contrat documentaire déjà satisfait par le fichier et sur la comparaison GitHub finale.
+- Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
+- Point en attente : aucun nouveau point ; les avertissements sécurité/Auth et les deux index inutilisés restent volontairement sans remédiation automatique.
