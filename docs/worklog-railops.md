@@ -50,7 +50,7 @@
 - État réel contrôlé avant changement : `main` est resté à `fd590aff348f52aade83f51e838f96457a14402c`; branche `security/v150b2b-rls-ready` alignée sur son ascendance (`behind_by: 0`). Supabase `railops` confirmé `ACTIVE_HEALTHY`; Advisors lus en lecture seule, sans écriture ni remédiation automatique.
 - Diagnostic UX : plusieurs transitions et animations décoratives (`pulse-red`, faisceau scanner, `pulse-sync`) étaient actives sans prise en compte de `prefers-reduced-motion`.
 - Cycle rouge/vert : test `tests/v150b2b-reduced-motion.test.js` ajouté au commit `2100178b9f6bf7b65946d77c031e5c9abdb15b60`, avec `v150B-2B checks` run `33319097150` en échec attendu ; correctif CSS au commit `75233a96295890e08fd3eb098a622ccf3b0cdc8b` désactivant les animations et réduisant les transitions uniquement lorsque le système demande moins de mouvement.
-- Vérification finale sur `75233a96295890e08fd3eb098a622ccf3b0cdc8b` : `v150B-2B checks` run `33319205281`, `RailOps modules regression` run `33319205317`, `RailOps lifecycle regression` run `33319205303` et `Final RLS hotfix check` run `33319205325` sont tous en `success`.
+- Vérification finale sur `75233a96295890e08fd3eb098a622ccf3b0cdc8b` : `v150B-2B checks` run `33319205281`, `RailOps modules regression` run `33319205317`, `RailOps lifecycle regression` run `33319205303` et `Final RLS hotfix check` run `33319205325` sont tous terminés en `success`.
 - Garde-fous respectés : aucun changement Supabase, RLS, policy, permission, donnée, schéma, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge et aucun déploiement production.
 - Point en attente : aucun ; amélioration réversible d’accessibilité/confort uniquement.
 
@@ -153,3 +153,12 @@
 - Vérification : `v150B-2B checks` run `33350229830` terminé en `success`, avec la suite `Run v150B-2B verification suite` en succès.
 - Garde-fous respectés : aucune modification Supabase, donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
 - Point en attente : aucun nouveau point ; les avertissements sécurité/Auth et index connus restent volontairement sans remédiation automatique.
+
+## 2026-08-31 — sous-titres de topbar robustes 05:18 Europe/Paris
+
+- État réel contrôlé avant changement : `main` à `fd590aff348f52aade83f51e838f96457a14402c` et laissé intact ; branche `security/v150b2b-rls-ready` au head initial `8b907967c7026a1ca80029d2eadcd313354d3f2d`. Supabase `railops` confirmé `ACTIVE_HEALTHY`; Advisors sécurité/performance relus en lecture seule, sans remédiation.
+- Diagnostic UX : `.tbi` autorisait déjà la réduction de largeur, mais `.tbs` ne définissait aucun retour à la ligne sûr pour les sous-titres contenant une référence ou un identifiant long sur écran étroit.
+- Cycle rouge/vert : test `tests/v150b2b-topbar-subtitle-wrap.test.js` ajouté au commit `cd2780a46faeb76d3cebd0ed82b11158c23027fa`, avec `v150B-2B checks` run `33353342925` en échec attendu ; correctif CSS minimal au commit `31a6586d93c152bc6c1e88ce8041913e24647a1d` ajoutant uniquement `overflow-wrap:anywhere` à `.tbs`.
+- Vérification finale sur `31a6586d93c152bc6c1e88ce8041913e24647a1d` : `v150B-2B checks` run `33353417328`, `RailOps modules regression` run `33353417341`, `RailOps lifecycle regression` run `33353417383` et `Final RLS hotfix check` run `33353417344` sont tous terminés en `success`.
+- Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
+- Point en attente : aucun ; amélioration réversible de confort mobile uniquement.
