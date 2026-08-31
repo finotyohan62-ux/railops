@@ -24,6 +24,18 @@ Les snapshots doivent nommer explicitement la métrique mesurée afin d'éviter 
 
 Un tableau ou une liste de nombres ne doit donc jamais être présenté sous le seul terme « comptage » lorsqu'il s'agit de policies. Si les volumes de données ne sont pas nécessaires au diagnostic, le snapshot peut les omettre plutôt que de les déduire d'un autre indicateur.
 
+## Fraîcheur et comparaison des Advisors
+
+Les sorties Security/Performance Advisor sont des observations horodatées. Pour éviter de présenter une alerte ancienne comme une nouveauté :
+
+- conserver l'`observed_at` fourni par Supabase lorsqu'il est disponible, ou au minimum l'heure locale du relevé ;
+- comparer d'abord les familles d'alertes et leurs `cache_key` avec le snapshot précédent avant d'annoncer un changement ;
+- considérer un niveau `INFO` comme un signal de diagnostic, pas comme une anomalie à corriger automatiquement ;
+- considérer un niveau `WARN` comme un point à qualifier, pas comme une autorisation de modifier Auth, permissions, RLS, fonctions ou schéma ;
+- ne notifier Yohan que si une famille nouvelle, une hausse significative, une régression observable ou une décision humaine apparaît. Une famille identique déjà documentée ne constitue pas à elle seule un nouvel incident.
+
+Cette règle évite le bruit dans les contrôles récurrents tout en conservant l'historique nécessaire pour détecter une vraie dérive.
+
 ## Gabarit minimal avant commit
 
 Pour éviter qu'un nouveau relevé soit incomplet, recopier cette ossature puis remplacer uniquement les valeurs réellement observées. Les huit tables cœur doivent toutes apparaître dans la section RLS/policies, même lorsque le nombre de policies vaut `0`.
@@ -53,13 +65,13 @@ Relevé strictement en lecture seule.
 - `users` : <policy_count> ; rls_enabled=<true|false>
 
 ### Security Advisor
-- <résumé factuel des familles observées>
+- <résumé factuel des familles observées, avec observed_at si disponible>
 
 Ces alertes restent des signaux de diagnostic uniquement.
 Aucune permission, fonction, policy, Auth ou RLS n'est modifiée automatiquement.
 
 ### Performance Advisor
-- <résumé factuel des familles observées>
+- <résumé factuel des familles observées, avec observed_at si disponible>
 
 Aucun index ni changement de schéma n'est appliqué.
 
