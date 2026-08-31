@@ -171,3 +171,13 @@
 - Vérification : `v150B-2B checks` run `33356432931` terminé en `success` sur `06481b0009d82cd4057aa05e5a62f780d43f204c`.
 - Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
 - Point en attente : aucun ; garde-fou réversible de confort mobile uniquement.
+
+## 2026-08-31 — garde-fou zoom des champs iOS 07:15 Europe/Paris
+
+- État réel contrôlé avant changement : `main` à `fd590aff348f52aade83f51e838f96457a14402c` et laissé intact ; branche `security/v150b2b-rls-ready` au head initial `8e76c3a7bf9059e1200aee73faaa0e95d12cf768`, à 740 commits d’avance / 0 de retard. Supabase `railops` confirmé `ACTIVE_HEALTHY` sous PostgreSQL `17.6.1.084`.
+- Diagnostic UX : `css/railops.css` contient déjà le garde-fou mobile `@media (max-width:600px){.fi{font-size:16px}}`, qui évite le zoom automatique d’iOS lors du focus sur les champs, mais cette garantie n’était pas couverte par un test dédié.
+- Changement faible risque : ajout de `tests/v150b2b-ios-input-zoom-guard.test.js` au commit `8471f5b2bb24d3138399e2dfe7a9951302a03f52` (`test: guard iOS input focus zoom`). Aucun runtime, CSS ou comportement produit n’a été modifié.
+- Vérification sur `8471f5b2bb24d3138399e2dfe7a9951302a03f52` : `v150B-2B checks` run `33359944736`, `RailOps modules regression` run `33359944604`, `RailOps lifecycle regression` run `33359944679` et `Final RLS hotfix check` run `33359944656` sont tous terminés en `success`.
+- Advisors relus en lecture seule : aucune nouvelle famille ; restent les avertissements connus `RLS Enabled No Policy`, RPC `SECURITY DEFINER` exécutables par `authenticated`, protection des mots de passe compromis désactivée et les deux index `inspections_*` inutilisés.
+- Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
+- Point en attente : aucun nouveau point ; aucune décision utilisateur requise pour cette passe.
