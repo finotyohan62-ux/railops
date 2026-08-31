@@ -181,3 +181,12 @@
 - Advisors relus en lecture seule : aucune nouvelle famille ; restent les avertissements connus `RLS Enabled No Policy`, RPC `SECURITY DEFINER` exécutables par `authenticated`, protection des mots de passe compromis désactivée et les deux index `inspections_*` inutilisés.
 - Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
 - Point en attente : aucun nouveau point ; aucune décision utilisateur requise pour cette passe.
+
+## 2026-08-31 — garde-fou défilement mobile 08:17 Europe/Paris
+
+- État réel contrôlé avant changement : `main` à `fd590aff348f52aade83f51e838f96457a14402c` et laissé intact ; branche `security/v150b2b-rls-ready` au head initial `9715f79dd00d672f439caecddcd013b416e9e170`, à 742 commits d’avance / 0 de retard. Supabase `railops` confirmé `ACTIVE_HEALTHY` sous PostgreSQL `17.6.1.084`; Advisors sécurité/performance relus en lecture seule, sans remédiation.
+- Diagnostic UX : le conteneur principal `.screen` possède déjà le défilement vertical, bloque la dérive horizontale et active l’inertie tactile iOS (`overflow-y:auto`, `overflow-x:hidden`, `-webkit-overflow-scrolling:touch`), mais ce confort n’était pas couvert par un test dédié.
+- Changement faible risque : ajout du contrat `tests/v150b2b-mobile-scroll-contract.test.js` au commit `88acc145825ad022f7413cd4e2e9f778a1a070e5` (`test: guard mobile screen scrolling`). Aucun runtime, CSS ou comportement produit n’a été modifié.
+- Vérification sur `88acc145825ad022f7413cd4e2e9f778a1a070e5` : `v150B-2B checks` run `33363689075`, `RailOps modules regression` run `33363689089`, `RailOps lifecycle regression` run `33363689055` et `Final RLS hotfix check` run `33363689085` sont tous terminés en `success`.
+- Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
+- Point en attente : aucun nouveau point ; les avertissements sécurité/Auth et les deux index inutilisés restent volontairement sans remédiation automatique.
