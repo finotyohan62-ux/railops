@@ -162,3 +162,12 @@
 - Vérification finale sur `31a6586d93c152bc6c1e88ce8041913e24647a1d` : `v150B-2B checks` run `33353417328`, `RailOps modules regression` run `33353417341`, `RailOps lifecycle regression` run `33353417383` et `Final RLS hotfix check` run `33353417344` sont tous terminés en `success`.
 - Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
 - Point en attente : aucun ; amélioration réversible de confort mobile uniquement.
+
+## 2026-08-31 — garde-fou débordement titre topbar 06:15 Europe/Paris
+
+- État réel contrôlé avant changement : `main` à `fd590aff348f52aade83f51e838f96457a14402c` et laissé intact ; branche `security/v150b2b-rls-ready` au head initial `d810f149df065480cc8a3da952b59375e394ef20`, à 738 commits d’avance / 0 de retard. Supabase `railops` confirmé `ACTIVE_HEALTHY` sous PostgreSQL `17.6.1.084`; Advisors sécurité/performance relus en lecture seule, sans remédiation.
+- Diagnostic UX : le titre `.tbt` est déjà correctement contenu par `white-space:nowrap`, `overflow:hidden` et `text-overflow:ellipsis`, avec `.tbi{min-width:0}`, mais cette protection contre les titres longs sur écrans étroits n’était pas couverte par un test dédié.
+- Changement faible risque : ajout du contrat `tests/v150b2b-topbar-title-overflow.test.js` au commit `06481b0009d82cd4057aa05e5a62f780d43f204c` (`test: guard topbar title overflow`). Aucun runtime, CSS ou comportement produit n’a été modifié.
+- Vérification : `v150B-2B checks` run `33356432931` terminé en `success` sur `06481b0009d82cd4057aa05e5a62f780d43f204c`.
+- Garde-fous respectés : aucune écriture Supabase, aucun changement de donnée, schéma, RLS, policy, permission, Auth, règle métier, Import, Multi-chantier ou purge hebdomadaire ; aucun merge, aucune RLS stricte et aucun déploiement production.
+- Point en attente : aucun ; garde-fou réversible de confort mobile uniquement.
