@@ -33,7 +33,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .tbk{background:none;border:none;color:var(--text2);cursor:pointer;padding:2px;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .tbi{flex:1;min-width:0}
 .tbt{font-size:19px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tbs{font-size:12px;color:var(--text2);margin-top:2px}
+.tbs{font-size:12px;color:var(--text2);margin-top:2px;overflow-wrap:anywhere}
 .bnav{position:relative;width:100%;background:var(--bg2);border-top:.5px solid var(--border);display:flex;padding:8px 0 env(safe-area-inset-bottom,12px);z-index:100;flex-shrink:0}
 .ni{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 0;min-height:44px;background:none;border:none}
 .ni svg{width:20px;height:20px;stroke:var(--text3);fill:none;stroke-width:1.8}
