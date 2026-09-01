@@ -4,6 +4,7 @@ const OFFLINE_KEY='ro_offline_queue';function assertSyncResult(a){if(a&&a.error)
 (function loadRailOpsReportModules(){
   if(typeof document==='undefined'||typeof document.createElement!=='function')return;
   const modules=[
+    {src:'./js/core/secure-register.js',ready:()=>!!window.RailOpsSecureRegistration},
     {src:'./js/reports/pdf-design-system.js',ready:()=>!!window.RailOpsPdfDesignSystem},
     {src:'./js/reports/inspection-report.js',ready:()=>!!window.RailOpsInspectionReport},
     {src:'./js/reports/inspection-report-ui.js',ready:()=>!!window.RailOpsInspectionReportUI},
@@ -19,7 +20,7 @@ const OFFLINE_KEY='ro_offline_queue';function assertSyncResult(a){if(a&&a.error)
     script.src=item.src;
     script.async=false;
     script.onload=next;
-    script.onerror=()=>console.warn('[RailOps] module rapport indisponible:',item.src);
+    script.onerror=()=>console.warn('[RailOps] module indisponible:',item.src);
     (document.head||document.documentElement).appendChild(script);
   }
   next();
