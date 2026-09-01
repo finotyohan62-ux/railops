@@ -22,13 +22,16 @@ const journalFiles = [
     .filter(name => /^worklog-railops-archive-through-.*\.md$/.test(name))
     .sort(),
 ];
-const durableJournal = journalFiles
-  .map(name => fs.readFileSync(path.join(docsDir, name), 'utf8'))
-  .join('\n');
+// The main journal explicitly points to versioned append fragments as part of the
+// detailed durable history. Include those Git-tracked fragments in the contract.
+const durableJournal = [
+  ...journalFiles.map(name => fs.readFileSync(path.join(docsDir, name), 'utf8')),
+  ...appendFiles.map(name => fs.readFileSync(path.join(appendDir, name), 'utf8')),
+].join('\n');
 
 assert.ok(
   durableJournal.includes(heading),
   `durable worklog history must include the latest append entry heading: ${heading}`
 );
 
-console.log(`PASS: durable worklog history includes latest append entry ${latestName} across ${journalFiles.length} journal file(s)`);
+console.log(`PASS: durable worklog history includes latest append entry ${latestName} across ${journalFiles.length} journal file(s) plus ${appendFiles.length} versioned fragment(s)`);
