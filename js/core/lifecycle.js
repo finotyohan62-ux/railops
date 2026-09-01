@@ -196,6 +196,110 @@ if(mutationRootV155){
   observerV155.observe(mutationRootV155,{childList:true,subtree:true,characterData:true});
 }
 
+// Compatibility layer for structured Excel registers whose visible counters can be stale
+// and whose source contains exact duplicates inside the same site. The original v145
+// importer remains the only code that creates/moves material and chantiers.
+function installRegisterImportToleranceV155(){
+  if(window.RailOpsRegisterImportToleranceV155?.installed)return true;
+  if(typeof XLSX==='undefined'||typeof window.importCSV!=='function')return false;
+  const baseImport=window.importCSV;
+
+  function textV155(v){return String(v??'').trim();}
+  function keyV155(v){return textV155(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
+  function siteKeyV155(v){return textV155(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'');}
+  function refV155(v){
+    if(window.RailOpsImportFix?.normalizeReference)return window.RailOpsImportFix.normalizeReference(v);
+    return textV155(v).normalize('NFKC').toUpperCase().replace(/[‐‑‒–—−]/g,'-').replace(/\s+/g,'').replace(/[^A-Z0-9._\/-]/g,'-').replace(/-{2,}/g,'-').replace(/^-+|-+$/g,'');
+  }
+  function headerInfoV155(rows){
+    for(let r=0;r<Math.min(30,rows.length);r++){
+      const h=(Array.isArray(rows[r])?rows[r]:[]).map(keyV155);
+      const refCol=h.findIndex(x=>/^(ref|reference|references|ref materiel|reference materiel|code|code materiel|identifiant)$/.test(x)||x.startsWith('ref '));
+      const siteCol=h.findIndex(x=>/^(site|zone|emplacement|affectation|sous chantier|sous chantier actuel|chantier|lieu)$/.test(x)||/site actuel|zone actuelle|sous chantier/.test(x));
+      if(refCol>=0&&siteCol>=0)return {headerIdx:r,refCol,siteCol};
+    }
+    return null;
+  }
+  function normalizeStructuredRowsV155(rows){
+    const info=headerInfoV155(rows);if(!info)return null;
+    const seen=new Map(),sitesByRef=new Map(),duplicateRows=[];
+    for(let r=info.headerIdx+1;r<rows.length;r++){
+      const row=Array.isArray(rows[r])?rows[r]:[];
+      const ref=refV155(row[info.refCol]);if(!ref)continue;
+      const site=siteKeyV155(row[info.siteCol]);if(!site)continue;
+      const k=site+'|'+ref;
+      if(seen.has(k)){duplicateRows.push(r);continue;}
+      seen.set(k,r);
+      if(!sitesByRef.has(ref))sitesByRef.set(ref,new Set());
+      sitesByRef.get(ref).add(site);
+    }
+    const crossSiteDuplicate=[...sitesByRef.entries()].filter(([,sites])=>sites.size>1);
+    // Destination ambiguity stays under v145's normal blocking policy.
+    if(crossSiteDuplicate.length)return null;
+    const clean=rows.map(row=>Array.isArray(row)?row.slice():[]);
+    for(const r of duplicateRows.slice().sort((a,b)=>b-a))clean.splice(r,1);
+    const uniqueCount=seen.size;
+    let declaredMismatch=false;
+    const topLimit=Math.min(info.headerIdx,clean.length);
+    for(let r=0;r<topLimit;r++){
+      for(let c=0;c<(clean[r]||[]).length;c++){
+        const raw=textV155(clean[r][c]);if(!raw)continue;
+        const m=raw.match(/(\d{1,5})(\s*(?:articles?|materiels?|matériels?|references?|références?))/i);
+        if(!m)continue;
+        const declared=Number(m[1]);
+        if(declared&&declared!==uniqueCount){
+          declaredMismatch=true;
+          clean[r][c]=raw.replace(m[0],String(uniqueCount)+m[2]);
+        }
+      }
+    }
+    if(!duplicateRows.length&&!declaredMismatch)return null;
+    return {rows:clean,duplicateRows,declaredMismatch,uniqueCount};
+  }
+  function normalizeWorkbookV155(wb){
+    const reports=[];
+    for(const name of wb.SheetNames||[]){
+      const sheet=wb.Sheets[name];if(!sheet)continue;
+      const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,dateNF:'dd/mm/yyyy',blankrows:false});
+      const normalized=normalizeStructuredRowsV155(rows);if(!normalized)continue;
+      wb.Sheets[name]=XLSX.utils.aoa_to_sheet(normalized.rows);
+      reports.push({sheet:name,duplicateRows:normalized.duplicateRows.length,declaredMismatch:normalized.declaredMismatch,uniqueCount:normalized.uniqueCount});
+    }
+    return reports;
+  }
+  async function tolerantImportV155(input){
+    const file=input?.files?.[0];
+    if(!file)return baseImport(input);
+    const ext=(file.name.split('.').pop()||'').toLowerCase();
+    if(!['xlsx','xls','xlsm','xlsb','ods'].includes(ext)||typeof file.arrayBuffer!=='function')return baseImport(input);
+    try{
+      const originalBuffer=await file.arrayBuffer();
+      const wb=XLSX.read(originalBuffer,{type:'array',cellDates:true,bookVBA:true});
+      const reports=normalizeWorkbookV155(wb);
+      if(!reports.length)return baseImport(input);
+      const rewritten=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+      const syntheticFile={
+        name:file.name,
+        size:rewritten.byteLength||rewritten.length||file.size||0,
+        arrayBuffer:async()=>rewritten
+      };
+      const duplicates=reports.reduce((n,r)=>n+r.duplicateRows,0);
+      const stale=reports.filter(r=>r.declaredMismatch).length;
+      console.info('[RailOps v155 import tolerance]',reports);
+      if(typeof toast==='function')toast(`Registre contrôlé : ${duplicates} doublon(s) identique(s) neutralisé(s)${stale?' · total annoncé obsolète corrigé pour lecture':''}`,'warn');
+      return baseImport({files:[syntheticFile],value:''});
+    }catch(e){
+      console.warn('[RailOps v155 import tolerance] lecture inchangée',e);
+      return baseImport(input);
+    }
+  }
+  window.RailOpsRegisterImportToleranceV155={installed:true,normalizeStructuredRows:normalizeStructuredRowsV155,normalizeWorkbook:normalizeWorkbookV155,baseImport};
+  window.importCSV=tolerantImportV155;
+  try{importCSV=tolerantImportV155;}catch(e){}
+  return true;
+}
+setTimeout(()=>{if(!installRegisterImportToleranceV155())setTimeout(installRegisterImportToleranceV155,250);},0);
+
 // Restore an existing Supabase session after all inline adapters have registered
 // their lifecycle hooks. Offline startup keeps the already-loaded local cache.
 setTimeout(async()=>{
