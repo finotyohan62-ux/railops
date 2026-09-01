@@ -1,0 +1,9 @@
+## 2026-09-01 — correction inscription sécurisée 14:20 Europe/Paris
+
+- État réel contrôlé avant changement : branche `security/v150b2b-rls-ready` à `8b46c2c2cd4eee86326fcdb1b7a48ef09fe587d9`; `main` contrôlé séparément et laissé intact.
+- Diagnostic confirmé : l'inscription publique utilisait encore le chemin legacy direct vers `public.users`, rejeté par Supabase en `401`, alors que l'Edge Function `railops-register` est active et crée de façon atomique l'identité Auth + le profil RailOps.
+- Cycle de correction : garde-fou `tests/auth-register-secure-flow.test.js` ajouté au commit `aff75e2801c3573cd7091bfdf3461e8f252d8586`; adaptateur `js/core/secure-register.js` ajouté au commit `336feb91575bef04ea3184d74758e835e6da9aae`; chargement via `js/core/sync.js` au commit `2eb504bf9715f9c2f4912e30e8eb49199458589d`; test ajusté à l'architecture modulaire au commit `50fb469207eb6c9d17feb1f6c127971ae81b2665`.
+- Comportement : `doInscription` appelle désormais `railops-register`, installe la session Supabase renvoyée, puis reprend le chargement sécurisé normal. Aucun `insert/upsert` direct sur `public.users` n'est présent dans l'adaptateur.
+- Vérification sur `50fb469207eb6c9d17feb1f6c127971ae81b2665` : `v150B-2B checks` run `33507664781`, `RailOps modules regression` run `33507664678`, `RailOps lifecycle regression` run `33507664656` et `Final RLS hotfix check` run `33507664705` sont tous terminés en `success`; statut Vercel de branche également `success`.
+- Garde-fous : aucune modification Supabase, RLS, policy, donnée, schéma, permission, Import, Multi-chantier ou purge hebdomadaire ; aucun merge de `main` et aucune activation RLS stricte.
+- Point en attente : déploiement production / validation réelle de l'inscription de Lahsini El Mahdi. Ne pas considérer le retry utilisateur comme validé avant mise en production explicite.
