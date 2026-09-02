@@ -23,26 +23,10 @@ assert.strictEqual(parsed.groups.length,2);
 assert.strictEqual(parsed.crossSiteReferences.length,1);
 assert.deepStrictEqual(parsed.groups.map(g=>[g.site,g.items.length]),[['Zone A',1],['Zone B',2]]);
 
-const win={S:{chantiers:[
-  {id:'CH_A',nom:'Zone A',statut:'actif'},
-  {id:'CH_B',nom:'Zone B',statut:'actif'}
-]}};
-const mapping=core.resolveExistingTargets(parsed.groups,win);
-assert.strictEqual(mapping.ok,true);
-const payload=core.buildPayload(mapping.resolved);
-assert.strictEqual(payload.targets.length,2);
-assert.strictEqual(payload.targets[0].items[0].reference,'REF-001');
-assert.strictEqual(payload.targets[1].items[0].reference,'REF-001');
-
-const fs=require('fs');
-const source=fs.readFileSync(require.resolve('../js/core/register-import-v156.js'),'utf8');
-assert(source.includes("input?.id==='replaceFile'"),'replace picker must use its dedicated path');
-assert(source.includes('railops_replace_material_register_admin'),'replacement must use the atomic replace RPC');
-assert(source.includes('railops_import_material_register_admin'),'multi-chantier import must use the atomic batch import RPC');
-
 (async()=>{
   let baseCalls=0;
-  let rpcCalls=0;
+  const rpcCalls=[];
+  let dialogConfig=null;
   const runtimeWorkbook={SheetNames:['INVENTAIRE'],Sheets:{INVENTAIRE:{rows}}};
   const runtimeXlsx={
     read:()=>runtimeWorkbook,
@@ -52,19 +36,43 @@ assert(source.includes('railops_import_material_register_admin'),'multi-chantier
   const runtimeWin={
     XLSX:runtimeXlsx,
     S:{chantiers:[
-      {id:'ROOT_A',nom:'CDG',statut:'actif'},
-      {id:'ROOT_B',nom:'DPI 3053 LISON',statut:'actif'}
+      {id:'ROOT_A',nom:'CDG',statut:'actif',parent_id:null},
+      {id:'ROOT_B',nom:'DPI 3053 LISON',statut:'actif',parent_id:null}
     ],mat:[]},
     RailOpsRegisterImportToleranceV155:{baseImport:async()=>{baseCalls++;return {legacy:true};}},
-    db:{rpc:async()=>{rpcCalls++;return {data:{},error:null};}},
+    RailOpsStructuredRegisterUI:{open:cfg=>{dialogConfig=cfg;}},
+    db:{rpc:async(name,args)=>{rpcCalls.push({name,args});return {data:{targets:2,processed:3,createdTargets:2},error:null};}},
     toast:()=>{},
     console:{warn:()=>{},info:()=>{},error:()=>{}},
     File:function(){}
   };
   const api=core.createBrowserApi(runtimeWin);
   const fakeFile={name:'REGISTRE_DPI2455.xlsm',arrayBuffer:async()=>new ArrayBuffer(8)};
-  await api.handleInput({files:[fakeFile],value:'x'});
-  assert.strictEqual(rpcCalls,0,'atomic RPC must not run until destinations are mapped');
-  assert.strictEqual(baseCalls,1,'when structured destinations do not exist yet, import must fall back to the mapping/create flow instead of blocking');
+  const input={id:'importFile',files:[fakeFile],value:'x'};
+  const result=await api.handleInput(input);
+  assert.strictEqual(result?.handled,true,'structured register must be owned by v156');
+  assert.strictEqual(baseCalls,0,'structured register must never fall back to legacy v145');
+  assert(dialogConfig,'structured register mapping dialog must open');
+  assert.strictEqual(dialogConfig.mode,'import');
+  assert.deepStrictEqual(dialogConfig.groups.map(g=>[g.site,g.items.length]),[['Zone A',1],['Zone B',2]]);
+  assert.deepStrictEqual(dialogConfig.masters.map(m=>m.id),['ROOT_A','ROOT_B']);
+
+  await dialogConfig.onSubmit('ROOT_A');
+  assert.strictEqual(rpcCalls.length,1,'one atomic RPC must own target creation and material import');
+  assert.strictEqual(rpcCalls[0].name,'railops_apply_structured_register_admin');
+  assert.strictEqual(rpcCalls[0].args.p_payload.mode,'import');
+  assert.strictEqual(rpcCalls[0].args.p_payload.parentId,'ROOT_A');
+  assert.strictEqual(rpcCalls[0].args.p_payload.targets.length,2);
+  assert.strictEqual(rpcCalls[0].args.p_payload.targets[0].items[0].reference,'REF-001');
+  assert.strictEqual(rpcCalls[0].args.p_payload.targets[1].items[0].reference,'REF-001');
+
+  dialogConfig=null;rpcCalls.length=0;
+  await api.handleInput({id:'replaceFile',files:[fakeFile],value:'x'});
+  assert(dialogConfig,'replacement must use the same structured dialog');
+  assert.strictEqual(dialogConfig.mode,'replace');
+  await dialogConfig.onSubmit('ROOT_A');
+  assert.strictEqual(rpcCalls[0].name,'railops_apply_structured_register_admin');
+  assert.strictEqual(rpcCalls[0].args.p_payload.mode,'replace');
+
   console.log('PASS register import/replace business-reference semantics');
 })().catch(err=>{console.error(err);process.exit(1);});
