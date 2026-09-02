@@ -24,3 +24,5 @@ jobs:
         run: node tests/lifecycle-refactor.test.js
       - name: Check register import and replacement invariants
         run: node tests/register-import-reference-safe.test.js
+      - name: Check material reference persistence invariants
+        run: node tests/material-reference-persistence.test.js
