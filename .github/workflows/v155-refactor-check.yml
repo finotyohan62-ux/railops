@@ -22,3 +22,5 @@ jobs:
           node-version: '22'
       - name: Check lifecycle invariants
         run: node tests/lifecycle-refactor.test.js
+      - name: Check register import and replacement invariants
+        run: node tests/register-import-reference-safe.test.js
