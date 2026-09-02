@@ -31,6 +31,11 @@ assert.match(lifecycle, /declaredMismatch/);
 assert.match(lifecycle, /baseImport/);
 assert.match(lifecycle, /window\.importCSV\s*=\s*tolerantImportV155/);
 
+// The legacy v132 importer passes its file to FileReader.readAsArrayBuffer, therefore the
+// normalized workbook must be handed back as a genuine File/Blob, not a plain object.
+assert.match(lifecycle, /new\s+File\s*\(/);
+assert.doesNotMatch(lifecycle, /const\s+syntheticFile\s*=\s*\{/);
+
 // Ambiguous cross-site duplicates must not be silently normalized.
 assert.match(lifecycle, /crossSiteDuplicate/);
 assert.match(lifecycle, /return\s+null/);
