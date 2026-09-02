@@ -1,0 +1,109 @@
+name: v150B-2B checks
+
+on:
+  push:
+    branches:
+      - security/v150b2b-rls-ready
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v150b2b-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Report branch drift (non-blocking)
+        if: github.event_name == 'push'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          read -r behind ahead <<< "$(git rev-list --left-right --count origin/main...HEAD)"
+          main_sha="$(git rev-parse --short=12 origin/main)"
+          head_sha="$(git rev-parse --short=12 HEAD)"
+          merge_base_full_sha="$(git merge-base origin/main HEAD)"
+          merge_base_sha="$(printf '%s' "${merge_base_full_sha}" | cut -c1-12)"
+          merge_base_date="$(git show -s --format=%cI "${merge_base_full_sha}")"
+          main_only_all_files="$(git diff --name-only "${merge_base_full_sha}"..origin/main)"
+          main_only_file_count="$(printf '%s\n' "${main_only_all_files}" | awk 'NF{n++} END{print n+0}')"
+          main_only_commit_count="$(git rev-list --count HEAD..origin/main)"
+          app_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^(index\.html|[^/]+\.(js|html)|css\/|js\/)/{n++} END{print n+0}')"
+          tests_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^(tests\/|\.github\/)/{n++} END{print n+0}')"
+          backend_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^supabase\//{n++} END{print n+0}')"
+          docs_file_count="$(printf '%s\n' "${main_only_all_files}" | awk '/^docs\//{n++} END{print n+0}')"
+          other_file_count=$(( main_only_file_count - app_file_count - tests_file_count - backend_file_count - docs_file_count ))
+          runtime_impact_file_count=$(( app_file_count + backend_file_count ))
+          runtime_impact_files="$(printf '%s\n' "${main_only_all_files}" | awk '/^(index\.html|[^/]+\.(js|html)|css\/|js\/|supabase\/)/' | sed -n '1,20p')"
+          main_only_files="$(printf '%s\n' "${main_only_all_files}" | sed -n '1,20p')"
+          main_only_commits="$(git log --oneline --no-decorate HEAD..origin/main | sed -n '1,12p')"
+          echo "ℹ branch drift against main: behind=${behind} ahead=${ahead} main=${main_sha} branch=${head_sha} merge-base=${merge_base_sha} date=${merge_base_date}"
+          {
+            echo "## Branch drift diagnostic"
+            echo ""
+            echo "- Behind main: **${behind}** commit(s)"
+            echo "- Ahead of main: **${ahead}** commit(s)"
+            echo "- Main-only changed file count: **${main_only_file_count}**"
+            echo "- Main-only commit count: **${main_only_commit_count}**"
+            echo "- Main-only impact: app=${app_file_count} · tests=${tests_file_count} · backend=${backend_file_count} · docs=${docs_file_count} · other=${other_file_count}"
+            echo "- Main-only runtime-impact files: **${runtime_impact_file_count}**"
+            if [ "${runtime_impact_file_count}" -gt 0 ]; then
+              echo "- Compatibility review: **recommended** before any merge/rebase/cherry-pick."
+            else
+              echo "- Compatibility review: not required from runtime drift."
+            fi
+            printf '%s\n' "- Main SHA: **\`${main_sha}\`**"
+            printf '%s\n' "- Branch SHA: **\`${head_sha}\`**"
+            printf '%s\n' "- Merge base: **\`${merge_base_sha}\`**"
+            printf '%s\n' "- Merge-base date: **${merge_base_date}**"
+            echo "- Branch drift is informational only; no merge or rebase is performed."
+            echo ""
+            echo "### Main-only runtime-impact file list (up to 20):"
+            if [ -n "${runtime_impact_files}" ]; then
+              while IFS= read -r file; do
+                printf '%s\n' "- \`${file}\`"
+              done <<< "${runtime_impact_files}"
+            else
+              echo "- None"
+            fi
+            echo ""
+            echo "### Main-only changed files (up to 20):"
+            if [ -n "${main_only_files}" ]; then
+              while IFS= read -r file; do
+                printf '%s\n' "- \`${file}\`"
+              done <<< "${main_only_files}"
+            else
+              echo "- None"
+            fi
+            echo ""
+            echo "### Main-only commits (up to 12):"
+            if [ -n "${main_only_commits}" ]; then
+              while IFS= read -r commit; do
+                printf '%s\n' "- \`${commit}\`"
+              done <<< "${main_only_commits}"
+            else
+              echo "- None"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run v150B-2B verification suite
+        run: node tests/run-v150b2b-checks.js

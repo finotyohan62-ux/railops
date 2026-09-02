@@ -1,0 +1,9 @@
+## 2026-08-29 — garde inspection hors ligne → reconnexion 12:18 Europe/Paris
+
+- État réel contrôlé avant changement : `security/v150b2b-rls-ready` au head `358089f3b8ba0a080c5f87a56d962bfb06f23391`; `main` observé et laissé intact à `37b216936a6692d54f82cbc004b30c936d13785a`. Le flux existant confirme que les inspections opérationnelles sont des `scans`, conservés dans `ro_offline_queue` lorsque la synchronisation ne peut pas aboutir.
+- Diagnostic : `js/core/sync.js` n’écrit rien lorsque `navigator.onLine` est faux ; une erreur Supabase conserve le scan en file ; le retry réutilise le même identifiant et l’upsert `scans` reste idempotent avec `onConflict: 'id'`.
+- Amélioration test uniquement : `tests/sync-error-handling.test.js` couvre désormais explicitement le scénario combiné hors ligne → retour réseau → synchronisation réussie, en vérifiant que le scan reste en attente hors ligne, qu’aucune écriture n’est tentée avant reconnexion, puis que le même `id` est envoyé une seule fois et que la file est vidée après succès.
+- Commit test : `2ce41037196d9db506ad9fa067c4bf80e1632583` (`test: guard offline inspection reconnect sync`).
+- Vérification : `v150B-2B checks` run `33247492083`, `RailOps lifecycle regression` run `33247492074`, `RailOps modules regression` run `33247492090` et `Final RLS hotfix check` run `33247492116` sont tous terminés en `success`.
+- Garde-fous respectés : aucun code runtime, donnée, schéma, migration, RLS stricte, policy, permission, règle métier, Import, logique Multi-chantier ou purge hebdomadaire modifiés ; aucun merge, aucun déploiement production et aucun changement de `main`.
+- Point en attente : le comportement logiciel hors ligne/reconnexion est maintenant verrouillé par test ; un essai terrain réel en coupant puis rétablissant le réseau reste le dernier niveau de validation pour confirmer le comportement sur téléphone en conditions réelles.
