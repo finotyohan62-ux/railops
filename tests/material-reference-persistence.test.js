@@ -11,6 +11,7 @@ if(!sync.includes("String(S?.role||'').trim().toLowerCase()==='agent'"))fail('ag
 if(!sync.includes("String(S?.role||'').trim().toLowerCase()==='cte'"))fail('cte update-only path was removed');
 if(!sync.includes("Object.assign(row,resolved)"))fail('resolved server id is not copied back into local material state');
 if(!legacy.includes('await roPersistMaterial(b)'))fail('legacy live material save bypasses the central persistence resolver');
-if(!register.includes('return baseImport(input)')||!register.includes('return baseImport({files:[syntheticFile],value:\'\'})'))fail('v156 register preprocessing no longer delegates to the base import engine');
+if(!register.includes("railops_apply_structured_register_admin"))fail('structured register import/replace no longer uses the atomic reference-aware server path');
+if(!register.includes('return baseImport(input)'))fail('unstructured legacy-compatible register fallback was removed');
 
 console.log('PASS: register/material persistence is routed through reference-aware server resolution');
