@@ -36,6 +36,12 @@ function install(){
 
   window.importCSV=importWithNativeFile;
   try{importCSV=importWithNativeFile;}catch(e){}
+
+  // v145 captures file-input changes and calls generalizedImport(input) directly.
+  // Patch that same global binding so the real picker path cannot bypass normalization.
+  window.generalizedImport=importWithNativeFile;
+  try{generalizedImport=importWithNativeFile;}catch(e){}
+
   window.RailOpsRegisterImportFileReaderHotfix={installed:true,version:VERSION,baseImport};
   console.info('[RailOps] correctif FileReader import registre actif —',VERSION);
   return true;
