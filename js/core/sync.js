@@ -5,7 +5,7 @@ const OFFLINE_KEY='ro_offline_queue';function assertSyncResult(a){if(a&&a.error)
 // Its capture listener therefore owns register-file selection and prevents older listeners
 // from processing the same file a second time.
 (function installUnifiedRegisterPickerGate(){
-  if(typeof document==='undefined'||window.__ro156ImportCapture)return;
+  if(typeof document==='undefined'||typeof document.addEventListener!=='function'||window.__ro156ImportCapture)return;
   window.__ro156ImportCapture=true;
   document.addEventListener('change',function(ev){
     const input=ev.target;
