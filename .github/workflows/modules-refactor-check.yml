@@ -32,3 +32,5 @@ jobs:
         run: node tests/sync-extraction.test.js
       - name: Check offline sync server acknowledgement handling
         run: node tests/sync-error-handling.test.js
+      - name: Check multi-chantier source reconciliation
+        run: node tests/multichantier-source-reconciliation.test.js
