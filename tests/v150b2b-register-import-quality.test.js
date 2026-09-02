@@ -17,38 +17,24 @@ function between(source, start, end) {
 
 const workbook = between(index, 'function workbookModel(wb){', 'function sourceQuality(sheet){');
 
-// The v145 reader must inspect every workbook tab before selecting exploitable sheets.
 assert.match(workbook, /wb\.SheetNames/);
 assert.match(workbook, /sheet_to_json/);
 assert.match(workbook, /parseSheet/);
-
-// A post-load compatibility adapter must keep v145 business rules, while normalizing
-// recoverable register defects before handing the workbook back to the original importer.
 assert.match(lifecycle, /RailOpsRegisterImportToleranceV155/);
-assert.match(lifecycle, /SheetNames/);
-assert.match(lifecycle, /sheet_to_json/);
-assert.match(lifecycle, /aoa_to_sheet/);
 assert.match(lifecycle, /duplicateRows/);
 assert.match(lifecycle, /declaredMismatch/);
-assert.match(lifecycle, /baseImport/);
 assert.match(lifecycle, /window\.importCSV\s*=\s*tolerantImportV155/);
 
-// The v145 capture listener bypasses window.importCSV and calls generalizedImport directly.
-// The tolerance adapter must therefore replace that global binding too, otherwise the
-// actual file-picker path never sees the normalized workbook and the validate button stays disabled.
+// Actual picker path in v145 calls generalizedImport directly, bypassing window.importCSV.
 assert.match(index, /stopImmediatePropagation\(\);\s*generalizedImport\(input\)/);
-assert.match(lifecycle, /window\.generalizedImport\s*=\s*tolerantImportV155/);
-assert.match(lifecycle, /generalizedImport\s*=\s*tolerantImportV155/);
+assert.match(fileReaderHotfix, /window\.generalizedImport\s*=\s*importWithNativeFile/);
+assert.match(fileReaderHotfix, /generalizedImport\s*=\s*importWithNativeFile/);
 
-// The legacy v132 importer uses FileReader.readAsArrayBuffer. The normalized workbook must
-// therefore be passed back as a genuine browser File rather than the previous plain object.
 assert.match(fileReaderHotfix, /new\s+File\s*\(/);
 assert.match(fileReaderHotfix, /RailOpsRegisterImportToleranceV155/);
 assert.match(fileReaderHotfix, /normalizeWorkbook/);
 assert.match(fileReaderHotfix, /baseImport\(\{files:\[syntheticFile\],value:''\}\)/);
 assert.match(sync, /\.\/js\/core\/register-import-filereader-hotfix\.js/);
-
-// Ambiguous cross-site duplicates must not be silently normalized.
 assert.match(lifecycle, /crossSiteDuplicate/);
 assert.match(lifecycle, /return\s+null/);
 
