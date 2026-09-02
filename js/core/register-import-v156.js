@@ -9,7 +9,7 @@ if(root){
 }
 })(typeof window!=='undefined'?window:null,function(){
 'use strict';
-const VERSION='156.1-reference-safe-register-import';
+const VERSION='156.2-reference-safe-register-import';
 const EXCEL_EXT=new Set(['xlsx','xls','xlsm','xlsb','ods']);
 
 function text(v){return String(v??'').trim();}
@@ -206,8 +206,13 @@ function createBrowserApi(win){
     if(!parsed.groups.length)return {handled:false};
     const mapping=resolveExistingTargets(parsed.groups,win);
     if(!mapping.ok){
-      if(parsed.crossSiteReferences.length){notify('Import multi-chantier bloqué sans écriture : '+mappingMessage(mapping),'danger');return {handled:true,blocked:true};}
-      return {handled:false};
+      // Les sous-chantiers peuvent être absents lors du tout premier import.
+      // Dans ce cas, ne jamais bloquer : rendre la main au moteur de mapping
+      // v145 qui permet de choisir le chantier maître puis créer/réutiliser
+      // chaque destination. Une fois les destinations résolues, les imports
+      // suivants peuvent repasser par le RPC atomique ci-dessous.
+      notify('Certaines destinations doivent être associées ou créées avant import','warn');
+      return {handled:false,needsMapping:true};
     }
     if(!parsed.crossSiteReferences.length)return {handled:false};
     const total=mapping.resolved.reduce((n,g)=>n+g.items.length,0);
