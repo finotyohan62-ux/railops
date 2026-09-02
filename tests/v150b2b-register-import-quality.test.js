@@ -33,6 +33,13 @@ assert.match(lifecycle, /declaredMismatch/);
 assert.match(lifecycle, /baseImport/);
 assert.match(lifecycle, /window\.importCSV\s*=\s*tolerantImportV155/);
 
+// The v145 capture listener bypasses window.importCSV and calls generalizedImport directly.
+// The tolerance adapter must therefore replace that global binding too, otherwise the
+// actual file-picker path never sees the normalized workbook and the validate button stays disabled.
+assert.match(index, /stopImmediatePropagation\(\);\s*generalizedImport\(input\)/);
+assert.match(lifecycle, /window\.generalizedImport\s*=\s*tolerantImportV155/);
+assert.match(lifecycle, /generalizedImport\s*=\s*tolerantImportV155/);
+
 // The legacy v132 importer uses FileReader.readAsArrayBuffer. The normalized workbook must
 // therefore be passed back as a genuine browser File rather than the previous plain object.
 assert.match(fileReaderHotfix, /new\s+File\s*\(/);
