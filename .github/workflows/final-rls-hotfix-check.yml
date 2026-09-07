@@ -26,4 +26,6 @@ jobs:
           failed=0
           node tests/final-agent-material-save.test.js || failed=1
           node tests/final-secure-user-admin.test.js || failed=1
+          node tests/password-runtime.test.js || failed=1
+          node tests/register-runtime.test.js || failed=1
           exit "$failed"

@@ -26,7 +26,12 @@ window.doChangePass=async function(id,selfMode){
   const p1=document.getElementById('new-mdp')?.value||'';const p2=document.getElementById('new-mdp2')?.value||'';
   if(p1.length<6){notify('Mot de passe trop court (6 caractères minimum).','danger');return;}
   if(p1!==p2){notify('Les mots de passe ne correspondent pas.','danger');return;}
-  const target=selfMode?selfUser()?.id:id;if(!target){notify('Compte introuvable.','danger');return;}
+  if(selfMode){
+    try{const {error}=await db.auth.updateUser({password:p1});if(error)throw error;document.getElementById('movl')?.remove();notify('Mot de passe mis à jour ✓','ok');}
+    catch(e){console.error('[RailOps secure admin] self password',e);notify(errorText(e.code||e.message),'danger');}
+    return;
+  }
+  const target=id;if(!target){notify('Compte introuvable.','danger');return;}
   try{await invokeAdmin('change_password',{user_id:target,password:p1});document.getElementById('movl')?.remove();notify('Mot de passe mis à jour ✓','ok');}
   catch(e){console.error('[RailOps secure admin] password',e);notify(errorText(e.code||e.message),'danger');}
 };
