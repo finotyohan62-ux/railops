@@ -19,8 +19,9 @@ const OFFLINE_KEY='ro_offline_queue';function assertSyncResult(a){if(a&&a.error)
       const handler=window.RailOpsRegisterImportV156?.handleInput;
       if(typeof handler==='function')return handler(input);
       if(attempts++<40)return setTimeout(dispatch,50);
-      if(typeof window.importCSV==='function')return window.importCSV(input);
-      if(typeof toast==='function')toast('Moteur d’import indisponible','danger');
+      if(typeof toast==='function')toast('Moteur d’import sécurisé indisponible. Réessayez dans quelques secondes.','danger');
+      try{input.value='';}catch(e){}
+      return false;
     };
     dispatch();
   },true);
@@ -29,8 +30,8 @@ const OFFLINE_KEY='ro_offline_queue';function assertSyncResult(a){if(a&&a.error)
 (function loadRailOpsReportModules(){
   if(typeof document==='undefined'||typeof document.createElement!=='function')return;
   const modules=[
-    {src:'./js/core/secure-register.js',ready:()=>!!window.RailOpsSecureRegistration},
     {src:'./js/core/register-import-v156.js',ready:()=>!!window.RailOpsRegisterImportV156},
+    {src:'./js/core/secure-register.js',ready:()=>!!window.RailOpsSecureRegistration},
     {src:'./js/reports/pdf-design-system.js',ready:()=>!!window.RailOpsPdfDesignSystem},
     {src:'./js/reports/inspection-report.js',ready:()=>!!window.RailOpsInspectionReport},
     {src:'./js/reports/inspection-report-ui.js',ready:()=>!!window.RailOpsInspectionReportUI},
@@ -46,7 +47,7 @@ const OFFLINE_KEY='ro_offline_queue';function assertSyncResult(a){if(a&&a.error)
     script.src=item.src;
     script.async=false;
     script.onload=next;
-    script.onerror=()=>console.warn('[RailOps] module indisponible:',item.src);
+    script.onerror=()=>{console.warn('[RailOps] module indisponible:',item.src);next();};
     (document.head||document.documentElement).appendChild(script);
   }
   next();

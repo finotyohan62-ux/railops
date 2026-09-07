@@ -12,6 +12,10 @@ assert.ok(sync.includes('function getOfflineQueue(){'),'sync.js must own getOffl
 assert.ok(sync.includes('function addToOfflineQueue('),'sync.js must own addToOfflineQueue');
 assert.ok(sync.includes('async function flushOfflineQueue(){'),'sync.js must own flushOfflineQueue');
 assert.ok(sync.includes("window['addEventListener']"),'sync.js must preserve current network listeners');
+assert.ok(!sync.includes("if(typeof window.importCSV==='function')return window.importCSV(input);"),'register picker must fail closed instead of falling back to the legacy importer');
+assert.ok(sync.includes("Moteur d’import sécurisé indisponible"),'failed v156 startup must surface a safe import error');
+assert.ok(sync.indexOf("./js/core/register-import-v156.js")<sync.indexOf("./js/core/secure-register.js"),'safety-critical v156 importer must load before secure registration');
+assert.ok(sync.includes("script.onerror=()=>{console.warn('[RailOps] module indisponible:',item.src);next();};"),'one failed optional module must not block later modules');
 
 assert.ok(!legacy.includes("const OFFLINE_KEY='ro_offline_queue';"),'legacy-core.js must no longer own the offline queue block');
 assert.ok(legacy.includes('const S='),'legacy-core.js must still own app state');
