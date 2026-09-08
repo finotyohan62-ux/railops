@@ -9,7 +9,7 @@ if(root){
 }
 })(typeof window!=='undefined'?window:null,function(){
 'use strict';
-const VERSION='156.3-structured-register-owner';
+const VERSION='156.4-merged-site-cells';
 const EXCEL_EXT=new Set(['xlsx','xls','xlsm','xlsb','ods']);
 
 function text(v){return String(v??'').trim();}
@@ -37,9 +37,13 @@ function normalizeStructuredRows(rows){
   const info=headerInfo(rows);
   if(!info)return {kind:'not-structured',rows,duplicateRows:[],declaredMismatch:false,uniqueCount:0,crossSiteDuplicate:[]};
   const seen=new Map(),sitesByRef=new Map(),duplicateRows=[];
+  let lastSite='';
   for(let r=info.headerIdx+1;r<rows.length;r++){
     const row=Array.isArray(rows[r])?rows[r]:[];
-    const ref=normalizeRef(row[info.refCol]),site=siteKey(row[info.siteCol]);
+    const explicitSite=text(row[info.siteCol]);
+    if(explicitSite)lastSite=explicitSite;
+    else if(!row.some(v=>text(v))){lastSite='';continue;}
+    const ref=normalizeRef(row[info.refCol]),site=siteKey(explicitSite||lastSite);
     if(!ref||!site)continue;
     const pair=site+'|'+ref;
     if(seen.has(pair)){duplicateRows.push(r);continue;}
@@ -94,9 +98,13 @@ function structuredGroupsFromWorkbook(wb,XLSX){
     const sheet=wb.Sheets?.[sheetName];if(!sheet)continue;
     const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,dateNF:'dd/mm/yyyy',blankrows:false});
     const info=headerInfo(rows);if(!info)continue;
+    let lastSite='';
     for(let r=info.headerIdx+1;r<rows.length;r++){
       const row=Array.isArray(rows[r])?rows[r]:[];
-      const reference=normalizeRef(row[info.refCol]),site=text(row[info.siteCol]),sk=siteKey(site);
+      const explicitSite=text(row[info.siteCol]);
+      if(explicitSite)lastSite=explicitSite;
+      else if(!row.some(v=>text(v))){lastSite='';continue;}
+      const reference=normalizeRef(row[info.refCol]),site=explicitSite||lastSite,sk=siteKey(site);
       if(!reference||!sk)continue;
       const item={id:reference,reference,nom:info.nameCol>=0?text(row[info.nameCol])||reference:reference,cat:info.catCol>=0?text(row[info.catCol])||'Outillage':'Outillage',echeance:info.dateCol>=0?formatDate(row[info.dateCol]):''};
       if(!groups.has(sk))groups.set(sk,{site,siteKey:sk,items:new Map()});
