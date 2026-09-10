@@ -188,8 +188,8 @@ with target_ids(id) as (
   select material_id,
          max(scan_date) filter (where latest_rn=1) as latest_scan,
          max(etat_general) filter (where latest_rn=1) as latest_etat,
-         max(jsonb_build_object('weekKey',week_key,'date',scan_date,'agentNom',agent_nom)) filter (where rn=1) as verif_1,
-         max(jsonb_build_object('weekKey',week_key,'date',scan_date,'agentNom',agent_nom)) filter (where rn=2) as verif_2
+         (jsonb_agg(jsonb_build_object('weekKey',week_key,'date',scan_date,'agentNom',agent_nom) order by scan_date,scan_id) filter (where rn=1))->0 as verif_1,
+         (jsonb_agg(jsonb_build_object('weekKey',week_key,'date',scan_date,'agentNom',agent_nom) order by scan_date,scan_id) filter (where rn=2))->0 as verif_2
   from ranked
   group by material_id
 )
