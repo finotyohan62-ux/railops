@@ -14,10 +14,11 @@ const required = [
   /update\s+public\.materiels/i,
   /"verifLundi"/,
   /"verifSemaine"/,
-  /presence\s*=\s*'confirme'/i,
-  /etat\s*=\s*coalesce\s*\(/i,
-  /scan\s*=\s*v_row\.date/i,
+  /presence\s*=\s*case[\s\S]*?'confirme'/i,
+  /etat\s*=\s*case[\s\S]*?coalesce\s*\(/i,
+  /scan\s*=\s*case[\s\S]*?v_row\.date/i,
   /v_existing\.id\s+is\s+null/i,
+  /where\s+m\.id\s*=\s*v_mid/i,
   /weekKey/i,
 ];
 
