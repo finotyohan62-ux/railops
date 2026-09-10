@@ -19,7 +19,7 @@ const eventDecoder = new Map([[0x455, 'online'], [0x273, 'addEventListener']]);
 function createHarness({
   queue,
   online = true,
-  scanResults = [{ data: null, error: null }],
+  scanResults = [{ data: { id: 'scan-ok' }, error: null }],
   materielResults = [{ data: null, error: null }]
 }) {
   const storage = new Map([['ro_offline_queue', JSON.stringify(queue)]]);
@@ -32,15 +32,27 @@ function createHarness({
   };
   const next = (results, index) => results[Math.min(index, results.length - 1)];
   const db = {
+    async rpc(name, args) {
+      calls.push({ kind: 'rpc', name, args });
+      if (name === 'railops_upsert_scan') return next(scanResults, scanIndex++);
+      if (name === 'railops_upsert_material_admin') return next(materielResults, materielIndex++);
+      throw new Error(`unexpected rpc ${name}`);
+    },
     from(table) {
       if (table === 'deleted_ids') return { select: async () => ({ data: [], error: null }) };
       return {
         upsert: async (...args) => {
-          calls.push({ table, args });
+          calls.push({ kind: 'upsert', table, args });
           if (table === 'scans') return next(scanResults, scanIndex++);
-          if (table === 'materiels') return next(materielResults, materielIndex++);
-          throw new Error(`unexpected table ${table}`);
-        }
+          throw new Error(`unexpected upsert table ${table}`);
+        },
+        update: (...args) => ({
+          eq: async (...eqArgs) => {
+            calls.push({ kind: 'update', table, args, eqArgs });
+            if (table === 'materiels') return next(materielResults, materielIndex++);
+            throw new Error(`unexpected update table ${table}`);
+          }
+        })
       };
     }
   };
@@ -53,7 +65,7 @@ function createHarness({
     document: { getElementById: () => null },
     window: { addEventListener: () => {} },
     db,
-    S: { mat: [{ id: 'mat-1' }] },
+    S: { role: 'agent', mat: [{ id: 'mat-1' }] },
     toast: () => {},
     setSyncStatus: () => {},
     setTimeout: () => {},
@@ -69,35 +81,23 @@ function createHarness({
   };
 }
 
-async function testScanSupabaseErrorStaysQueued() {
-  const item = { type: 'scan', data: { id: 'scan-1', materielId: 'mat-1' }, ts: 1 };
+async function testScanRpcErrorStaysQueued() {
+  const item = { type: 'scan', data: { id: 'scan-1', materielId: 'mat-1', chantierId: 'ch-1' }, ts: 1 };
   const harness = createHarness({
     queue: [item],
-    scanResults: [{ data: null, error: new Error('Supabase rejected scan') }]
+    scanResults: [{ data: null, error: new Error('Supabase rejected atomic scan') }]
   });
   await harness.context.flushOfflineQueue();
-  assert.deepStrictEqual(harness.getQueue(), [item], 'scan must stay queued on Supabase error');
-}
-
-async function testRelatedMaterielErrorKeepsScanQueuedForRetry() {
-  const item = { type: 'scan', data: { id: 'scan-2', materielId: 'mat-1' }, ts: 2 };
-  const harness = createHarness({
-    queue: [item],
-    scanResults: [{ data: null, error: null }],
-    materielResults: [{ data: null, error: new Error('Supabase rejected materiel update') }]
-  });
-  await harness.context.flushOfflineQueue();
-  assert.deepStrictEqual(harness.getQueue(), [item], 'scan must stay queued if its related material update fails');
+  assert.deepStrictEqual(harness.getQueue(), [item], 'scan must stay queued on atomic RPC error');
 }
 
 async function testMissingRelatedMaterielNeverUploadsScan() {
-  const item = { type: 'scan', data: { id: 'scan-ghost', materielId: 'missing-mat' }, ts: 3 };
+  const item = { type: 'scan', data: { id: 'scan-ghost', materielId: 'missing-mat', chantierId: 'ch-1' }, ts: 3 };
   const harness = createHarness({ queue: [item] });
   harness.context.S.mat = [];
   await harness.context.flushOfflineQueue();
   assert.deepStrictEqual(harness.getQueue(), [item], 'scan must stay queued while its related material is missing');
-  assert.strictEqual(harness.calls.filter(call => call.table === 'scans').length, 0, 'orphan scan must not be uploaded');
-  assert.strictEqual(harness.calls.filter(call => call.table === 'materiels').length, 0, 'missing material must not trigger a material write');
+  assert.strictEqual(harness.calls.filter(call => call.name === 'railops_upsert_scan').length, 0, 'orphan scan must not call the atomic RPC');
 }
 
 async function testMaterielSupabaseErrorStaysQueued() {
@@ -110,53 +110,55 @@ async function testMaterielSupabaseErrorStaysQueued() {
   assert.deepStrictEqual(harness.getQueue(), [item], 'material must stay queued on Supabase error');
 }
 
-async function testSuccessfulSyncDrainsQueue() {
-  const item = { type: 'scan', data: { id: 'scan-3', materielId: 'mat-1' }, ts: 5 };
+async function testSuccessfulScanSyncUsesAtomicRpcAndDrainsQueue() {
+  const scan = { id: 'scan-3', materielId: 'mat-1', chantierId: 'ch-1', date: '2026-09-11T00:00:00.000Z' };
+  const item = { type: 'scan', data: scan, ts: 5 };
   const harness = createHarness({ queue: [item] });
   await harness.context.flushOfflineQueue();
-  assert.deepStrictEqual(harness.getQueue(), [], 'successful scan sync must drain queue');
-  const scanCall = harness.calls.find(call => call.table === 'scans');
-  assert.ok(scanCall, 'scan upsert must be called');
-  assert.strictEqual(scanCall.args[1].onConflict, 'id', 'scan retry must remain idempotent by id');
+  assert.deepStrictEqual(harness.getQueue(), [], 'successful atomic scan sync must drain queue');
+  const rpcCall = harness.calls.find(call => call.kind === 'rpc' && call.name === 'railops_upsert_scan');
+  assert.ok(rpcCall, 'offline scan must use railops_upsert_scan');
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(rpcCall.args)), { p_scan: scan }, 'atomic RPC must receive the queued scan unchanged');
+  assert.strictEqual(harness.calls.filter(call => call.kind === 'upsert' && call.table === 'scans').length, 0, 'offline scan must not bypass the RPC with a direct scans upsert');
+  assert.strictEqual(harness.calls.filter(call => call.kind === 'update' && call.table === 'materiels').length, 0, 'atomic scan RPC must not be followed by a separate material update');
 }
 
 async function testOfflineDoesNotAttemptSync() {
-  const item = { type: 'scan', data: { id: 'scan-4', materielId: 'mat-1' }, ts: 6 };
+  const item = { type: 'scan', data: { id: 'scan-4', materielId: 'mat-1', chantierId: 'ch-1' }, ts: 6 };
   const harness = createHarness({ queue: [item], online: false });
   await harness.context.flushOfflineQueue();
   assert.deepStrictEqual(harness.getQueue(), [item], 'offline queue must remain untouched while offline');
   assert.strictEqual(harness.calls.length, 0, 'no database write may be attempted while offline');
 }
 
-async function testRetryUsesSameStableScanId() {
-  const item = { type: 'scan', data: { id: 'scan-stable', materielId: 'mat-1' }, ts: 7 };
+async function testRetryUsesSameStableScanIdThroughRpc() {
+  const scan = { id: 'scan-stable', materielId: 'mat-1', chantierId: 'ch-1' };
+  const item = { type: 'scan', data: scan, ts: 7 };
   const harness = createHarness({
     queue: [item],
     scanResults: [
       { data: null, error: new Error('temporary rejection') },
-      { data: null, error: null }
+      { data: { id: 'scan-stable' }, error: null }
     ]
   });
   await harness.context.flushOfflineQueue();
   assert.deepStrictEqual(harness.getQueue(), [item], 'failed first attempt must remain queued');
   await harness.context.flushOfflineQueue();
   assert.deepStrictEqual(harness.getQueue(), [], 'successful retry must drain queue');
-  const scanCalls = harness.calls.filter(call => call.table === 'scans');
-  assert.strictEqual(scanCalls.length, 2, 'scan must be retried exactly once in this scenario');
-  assert.strictEqual(scanCalls[0].args[0][0].id, 'scan-stable');
-  assert.strictEqual(scanCalls[1].args[0][0].id, 'scan-stable');
-  assert.strictEqual(scanCalls[1].args[1].onConflict, 'id');
+  const scanCalls = harness.calls.filter(call => call.kind === 'rpc' && call.name === 'railops_upsert_scan');
+  assert.strictEqual(scanCalls.length, 2, 'atomic scan RPC must be retried exactly once in this scenario');
+  assert.strictEqual(scanCalls[0].args.p_scan.id, 'scan-stable');
+  assert.strictEqual(scanCalls[1].args.p_scan.id, 'scan-stable');
 }
 
 (async () => {
-  await testScanSupabaseErrorStaysQueued();
-  await testRelatedMaterielErrorKeepsScanQueuedForRetry();
+  await testScanRpcErrorStaysQueued();
   await testMissingRelatedMaterielNeverUploadsScan();
   await testMaterielSupabaseErrorStaysQueued();
-  await testSuccessfulSyncDrainsQueue();
+  await testSuccessfulScanSyncUsesAtomicRpcAndDrainsQueue();
   await testOfflineDoesNotAttemptSync();
-  await testRetryUsesSameStableScanId();
-  console.log('sync error handling checks passed (7 cases)');
+  await testRetryUsesSameStableScanIdThroughRpc();
+  console.log('sync error handling checks passed (6 cases)');
 })().catch(err => {
   console.error(err.stack || err);
   process.exit(1);
