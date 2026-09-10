@@ -28,4 +28,5 @@ jobs:
           node tests/final-secure-user-admin.test.js || failed=1
           node tests/password-runtime.test.js || failed=1
           node tests/register-runtime.test.js || failed=1
+          node tests/scan-verification-contract.test.js || failed=1
           exit "$failed"
