@@ -8,8 +8,9 @@ if(!sync.includes('async function roPersistExistingMaterial('))fail('missing upd
 if(!sync.includes("db.from('materiels').update(payload).eq('id',payload.id)"))fail('agent existing material path is not UPDATE by id');
 if(!sync.includes("String(S?.role||'').trim().toLowerCase()==='agent'"))fail('missing agent role gate');
 if(!sync.includes('return await roPersistExistingMaterial(row)'))fail('agent gate does not use update-only helper');
-if(!sync.includes('await roPersistMaterial(S[aw(0x684)][j])'))fail('offline scan material save still bypasses role-aware persistence');
+if(!sync.includes("db.rpc('railops_upsert_scan',{p_scan:i[aw(0x1f4)]})"))fail('offline scan does not use atomic scan RPC');
+if(sync.includes('await roPersistMaterial(S[aw(0x684)][j])'))fail('offline scan still performs a separate material save after atomic RPC');
 if(!sync.includes("await roPersistMaterial(i[aw(0x1f4)])"))fail('offline material queue still bypasses role-aware persistence');
 if(!legacy.includes('await roPersistMaterial(b)'))fail('live saveMat still bypasses role-aware persistence');
 if(!legacy.includes("if(i!==-0x1)saveMat(S['curM'])"))fail('live scan no longer routes material state through saveMat');
-console.log('PASS: agent material persistence uses UPDATE for existing rows on live/offline paths');
+console.log('PASS: agent material persistence keeps live/material queues safe and offline scans atomic');
