@@ -31,6 +31,7 @@ const OFFLINE_KEY='ro_offline_queue';function assertSyncResult(a){if(a&&a.error)
   if(typeof document==='undefined'||typeof document.createElement!=='function')return;
   const modules=[
     {src:'./js/core/sync-status.js',ready:()=>!!window.RailOpsSyncStatusUI},
+    {src:'./js/core/visual-refresh.js',ready:()=>!!window.RailOpsVisualRefresh},
     {src:'./js/core/register-import-v156.js',ready:()=>!!window.RailOpsRegisterImportV156},
     {src:'./js/core/secure-register.js',ready:()=>!!window.RailOpsSecureRegistration},
     {src:'./js/reports/pdf-design-system.js',ready:()=>!!window.RailOpsPdfDesignSystem},
