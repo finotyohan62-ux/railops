@@ -6,7 +6,7 @@ if(root){root.RailOpsVisualRefresh=api;try{api.install(root.document);}catch(e){
 })(typeof window!=='undefined'?window:null,function(){
 'use strict';
 
-const VISUAL_REFRESH_VERSION='1.0-visual-refresh-phase1';
+const VISUAL_REFRESH_VERSION='1.1-visual-refresh-phase2-inventory';
 const STYLE_ID='ro-visual-refresh-phase1';
 const CSS=`
 /* VISUAL REFRESH PHASE 1 — presentation only */
@@ -26,7 +26,29 @@ const CSS=`
 .sl{font-size:11px;line-height:1.35;margin-top:5px}
 .cc{border-radius:16px;padding:16px;border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.09);transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
 .cc:active{transform:scale(.99);box-shadow:0 4px 14px rgba(0,0,0,.08)}
-.reg-item{border-radius:16px;padding:14px 15px;border:1px solid var(--border);box-shadow:0 6px 18px rgba(0,0,0,.07)}
+.reg-item{border-radius:18px;padding:15px 15px 15px 18px;border:1px solid var(--border);box-shadow:0 7px 20px rgba(0,0,0,.08);position:relative;overflow:hidden;margin-bottom:10px;transition:transform .14s ease,border-color .14s ease,box-shadow .14s ease}
+
+/* VISUAL REFRESH PHASE 2 — inventory and material cards */
+.reg-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--border)}
+.reg-item.present::before{background:var(--success)}
+.reg-item.non-confirme::before{background:var(--accent)}
+.reg-item.absent::before{background:var(--danger)}
+.reg-item.present{border-color:rgba(29,158,117,.22)}
+.reg-item.non-confirme{border-color:rgba(244,121,32,.28)}
+.reg-item.absent{border-color:rgba(226,75,74,.40);background:linear-gradient(90deg,rgba(226,75,74,.055),var(--bg2) 34%)}
+.reg-item:active{transform:scale(.992);box-shadow:0 4px 13px rgba(0,0,0,.07)}
+.reg-top{min-height:44px;display:flex;align-items:center;gap:12px}
+.reg-item .it{font-size:15px;font-weight:750;letter-spacing:-.01em;line-height:1.2}
+.reg-item .is{font-size:11px;line-height:1.35;margin-top:4px;color:var(--text2)}
+.reg-item .badge{padding:5px 9px;font-weight:700}
+.reg-item .ic{width:42px;height:42px;border-radius:13px;background:var(--bg3)}
+.reg-body{margin-top:12px;padding:10px;border-top:0;border-radius:12px;background:var(--bg3);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.reg-body .badge{background:var(--bg2);border:1px solid var(--border)}
+.ps-ok,.ps-warn,.ps-absent{width:34px;height:34px;border:1px solid var(--border);box-shadow:inset 0 0 0 1px rgba(255,255,255,.02)}
+.ps-ok{background:rgba(29,158,117,.14)}
+.ps-warn{background:rgba(244,121,32,.12)}
+.ps-absent{background:rgba(226,75,74,.14)}
+.avatar{width:38px;height:38px;border-radius:12px;font-size:12px;font-weight:750}
 
 .btn{min-height:48px;padding:12px 18px;border-radius:14px;font-size:14px;font-weight:650;letter-spacing:.005em;transition:transform .12s ease,opacity .12s ease,box-shadow .15s ease}
 .btn:active{opacity:.9;transform:scale(.985)}
@@ -71,6 +93,10 @@ const CSS=`
   .stat-grid{padding-left:14px;padding-right:14px;gap:10px}
   .stat-card{padding:14px}
   .sv{font-size:25px}
+  .reg-item{padding:13px 13px 13px 16px;border-radius:16px}
+  .reg-top{gap:10px}
+  .reg-item .it{font-size:14px}
+  .reg-body{padding:9px;gap:8px}
 }
 
 @media (prefers-reduced-motion: reduce){
