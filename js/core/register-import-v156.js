@@ -9,7 +9,7 @@ if(root){
 }
 })(typeof window!=='undefined'?window:null,function(){
 'use strict';
-const VERSION='156.5-multichantier-reconciliation';
+const VERSION='156.6-adaptive-register-reader';
 const EXCEL_EXT=new Set(['xlsx','xls','xlsm','xlsb','ods']);
 
 function text(v){return String(v??'').trim();}
@@ -117,13 +117,7 @@ function siteSheetItems(sheet){
   for(let r=info.headerIdx+1;r<rows.length;r++){
     const row=Array.isArray(rows[r])?rows[r]:[];
     const reference=normalizeRef(row[info.refCol]);if(!reference)continue;
-    const item={
-      id:reference,
-      reference,
-      nom:info.nameCol>=0?text(row[info.nameCol])||reference:reference,
-      cat:info.catCol>=0?text(row[info.catCol])||'Outillage':'Outillage',
-      echeance:info.dateCol>=0?formatDate(row[info.dateCol]):''
-    };
+    const item={id:reference,reference,nom:info.nameCol>=0?text(row[info.nameCol])||reference:reference,cat:info.catCol>=0?text(row[info.catCol])||'Outillage':'Outillage',echeance:info.dateCol>=0?formatDate(row[info.dateCol]):''};
     items.set(reference,mergeItem(items.get(reference),item));
   }
   if(!items.size)return null;
@@ -131,128 +125,62 @@ function siteSheetItems(sheet){
 }
 function buildInventoryRow(headerRow,info,item,site){
   const row=Array(Math.max(Array.isArray(headerRow)?headerRow.length:0,Math.max(info.refCol,info.siteCol,info.nameCol,info.catCol,info.dateCol)+1)).fill('');
-  row[info.refCol]=item.reference;
-  row[info.siteCol]=site;
+  row[info.refCol]=item.reference;row[info.siteCol]=site;
   if(info.nameCol>=0)row[info.nameCol]=item.nom||item.reference;
   if(info.catCol>=0)row[info.catCol]=item.cat||'Outillage';
   if(info.dateCol>=0)row[info.dateCol]=item.echeance||'';
   return row;
 }
 function reconcileStructuredSources(sheets){
-  const models=(Array.isArray(sheets)?sheets:[]).map(s=>({
-    name:text(s?.name),
-    rows:(Array.isArray(s?.rows)?s.rows:[]).map(r=>Array.isArray(r)?r.slice():[])
-  }));
+  const models=(Array.isArray(sheets)?sheets:[]).map(s=>({name:text(s?.name),rows:(Array.isArray(s?.rows)?s.rows:[]).map(r=>Array.isArray(r)?r.slice():[])}));
   const structured=models.map((sheet,index)=>({sheet,index,info:headerInfo(sheet.rows)})).filter(x=>x.info);
   const named=structured.filter(x=>/inventaire/.test(key(x.sheet.name))).sort((a,b)=>b.sheet.rows.length-a.sheet.rows.length)[0];
   const inventory=named||(structured.length===1?structured[0]:null);
   if(!inventory)return {sheets:models,added:0,conflicts:0,conflictRefs:[],blockingConflictRefs:[],inventorySheet:null,changed:false};
-
-  const inventoryByRef=new Map();
-  let lastSite='';
+  const inventoryByRef=new Map();let lastSite='';
   for(let r=inventory.info.headerIdx+1;r<inventory.sheet.rows.length;r++){
     const row=Array.isArray(inventory.sheet.rows[r])?inventory.sheet.rows[r]:[];
-    const explicitSite=text(row[inventory.info.siteCol]);
-    if(explicitSite)lastSite=explicitSite;
-    else if(!row.some(v=>text(v))){lastSite='';continue;}
-    const ref=normalizeRef(row[inventory.info.refCol]),sk=siteKey(explicitSite||lastSite);
-    if(!ref||!sk)continue;
-    if(!inventoryByRef.has(ref))inventoryByRef.set(ref,new Set());
-    inventoryByRef.get(ref).add(sk);
+    const explicitSite=text(row[inventory.info.siteCol]);if(explicitSite)lastSite=explicitSite;else if(!row.some(v=>text(v))){lastSite='';continue;}
+    const ref=normalizeRef(row[inventory.info.refCol]),sk=siteKey(explicitSite||lastSite);if(!ref||!sk)continue;
+    if(!inventoryByRef.has(ref))inventoryByRef.set(ref,new Set());inventoryByRef.get(ref).add(sk);
   }
-
   const candidatesByRef=new Map();
-  for(const model of models){
-    if(model===inventory.sheet)continue;
-    const source=siteSheetItems(model);if(!source)continue;
-    for(const item of source.items){
-      if(!candidatesByRef.has(item.reference))candidatesByRef.set(item.reference,[]);
-      candidatesByRef.get(item.reference).push({source,item});
-    }
-  }
-
-  const conflictRefs=new Set(),blockingConflictRefs=new Set();
-  let added=0;
-  const headerRow=inventory.sheet.rows[inventory.info.headerIdx]||[];
+  for(const model of models){if(model===inventory.sheet)continue;const source=siteSheetItems(model);if(!source)continue;for(const item of source.items){if(!candidatesByRef.has(item.reference))candidatesByRef.set(item.reference,[]);candidatesByRef.get(item.reference).push({source,item});}}
+  const conflictRefs=new Set(),blockingConflictRefs=new Set();let added=0;const headerRow=inventory.sheet.rows[inventory.info.headerIdx]||[];
   for(const [ref,candidates] of candidatesByRef){
     const existingSites=inventoryByRef.get(ref);
-    if(existingSites){
-      if(candidates.some(c=>!existingSites.has(c.source.siteKey)))conflictRefs.add(ref);
-      continue;
-    }
+    if(existingSites){if(candidates.some(c=>!existingSites.has(c.source.siteKey)))conflictRefs.add(ref);continue;}
     const sourceSites=new Set(candidates.map(c=>c.source.siteKey).filter(Boolean));
-    if(sourceSites.size!==1){
-      conflictRefs.add(ref);
-      blockingConflictRefs.add(ref);
-      continue;
-    }
-    const chosen=candidates[0];
-    inventory.sheet.rows.push(buildInventoryRow(headerRow,inventory.info,chosen.item,chosen.source.site));
-    inventoryByRef.set(ref,new Set([chosen.source.siteKey]));
-    added++;
+    if(sourceSites.size!==1){conflictRefs.add(ref);blockingConflictRefs.add(ref);continue;}
+    const chosen=candidates[0];inventory.sheet.rows.push(buildInventoryRow(headerRow,inventory.info,chosen.item,chosen.source.site));inventoryByRef.set(ref,new Set([chosen.source.siteKey]));added++;
   }
-  return {
-    sheets:models,
-    added,
-    conflicts:conflictRefs.size,
-    conflictRefs:[...conflictRefs].sort(),
-    blockingConflictRefs:[...blockingConflictRefs].sort(),
-    inventorySheet:inventory.sheet.name,
-    changed:added>0
-  };
+  return {sheets:models,added,conflicts:conflictRefs.size,conflictRefs:[...conflictRefs].sort(),blockingConflictRefs:[...blockingConflictRefs].sort(),inventorySheet:inventory.sheet.name,changed:added>0};
 }
 function normalizeWorkbook(wb,XLSX){
   const reports=[];
   if(!wb||!XLSX?.utils)return {reports,ambiguous:false,reconciliation:{added:0,conflicts:0,conflictRefs:[],blockingConflictRefs:[]}};
   const sheetModels=[];
-  for(const name of wb.SheetNames||[]){
-    const sheet=wb.Sheets?.[name];if(!sheet)continue;
-    const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,dateNF:'dd/mm/yyyy',blankrows:false});
-    sheetModels.push({name,rows});
-  }
+  for(const name of wb.SheetNames||[]){const sheet=wb.Sheets?.[name];if(!sheet)continue;const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,dateNF:'dd/mm/yyyy',blankrows:false});sheetModels.push({name,rows});}
   const reconciliation=reconcileStructuredSources(sheetModels);
-  if(reconciliation.changed&&reconciliation.inventorySheet){
-    const inv=reconciliation.sheets.find(s=>s.name===reconciliation.inventorySheet);
-    if(inv)wb.Sheets[inv.name]=XLSX.utils.aoa_to_sheet(inv.rows);
-  }
+  if(reconciliation.changed&&reconciliation.inventorySheet){const inv=reconciliation.sheets.find(s=>s.name===reconciliation.inventorySheet);if(inv)wb.Sheets[inv.name]=XLSX.utils.aoa_to_sheet(inv.rows);}
   for(const name of wb.SheetNames||[]){
-    const sheet=wb.Sheets?.[name];if(!sheet)continue;
-    const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,dateNF:'dd/mm/yyyy',blankrows:false});
-    const result=normalizeStructuredRows(rows);
-    if(result.kind==='not-structured')continue;
-    if(result.kind==='normalized')wb.Sheets[name]=XLSX.utils.aoa_to_sheet(result.rows);
+    const sheet=wb.Sheets?.[name];if(!sheet)continue;const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,dateNF:'dd/mm/yyyy',blankrows:false});const result=normalizeStructuredRows(rows);
+    if(result.kind==='not-structured')continue;if(result.kind==='normalized')wb.Sheets[name]=XLSX.utils.aoa_to_sheet(result.rows);
     reports.push({sheet:name,kind:result.kind,duplicateRows:result.duplicateRows.length,declaredMismatch:result.declaredMismatch,uniqueCount:result.uniqueCount,crossSiteDuplicate:result.crossSiteDuplicate});
   }
-  if(reconciliation.added||reconciliation.conflicts){
-    reports.push({
-      sheet:reconciliation.inventorySheet||'',
-      kind:'reconciled',
-      added:reconciliation.added,
-      conflicts:reconciliation.conflicts,
-      conflictRefs:reconciliation.conflictRefs,
-      blockingConflictRefs:reconciliation.blockingConflictRefs
-    });
-  }
+  if(reconciliation.added||reconciliation.conflicts)reports.push({sheet:reconciliation.inventorySheet||'',kind:'reconciled',added:reconciliation.added,conflicts:reconciliation.conflicts,conflictRefs:reconciliation.conflictRefs,blockingConflictRefs:reconciliation.blockingConflictRefs});
   return {reports,ambiguous:false,reconciliation};
 }
 function structuredGroupsFromWorkbook(wb,XLSX){
-  const groups=new Map(),sitesByRef=new Map();
-  if(!wb||!XLSX?.utils)return {groups:[],crossSiteReferences:[]};
+  const groups=new Map(),sitesByRef=new Map();if(!wb||!XLSX?.utils)return {groups:[],crossSiteReferences:[]};
   for(const sheetName of wb.SheetNames||[]){
-    const sheet=wb.Sheets?.[sheetName];if(!sheet)continue;
-    const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,dateNF:'dd/mm/yyyy',blankrows:false});
-    const info=headerInfo(rows);if(!info)continue;
+    const sheet=wb.Sheets?.[sheetName];if(!sheet)continue;const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,dateNF:'dd/mm/yyyy',blankrows:false});const info=headerInfo(rows);if(!info)continue;
     let lastSite='';
     for(let r=info.headerIdx+1;r<rows.length;r++){
-      const row=Array.isArray(rows[r])?rows[r]:[];
-      const explicitSite=text(row[info.siteCol]);
-      if(explicitSite)lastSite=explicitSite;
-      else if(!row.some(v=>text(v))){lastSite='';continue;}
-      const reference=normalizeRef(row[info.refCol]),site=explicitSite||lastSite,sk=siteKey(site);
-      if(!reference||!sk)continue;
+      const row=Array.isArray(rows[r])?rows[r]:[];const explicitSite=text(row[info.siteCol]);if(explicitSite)lastSite=explicitSite;else if(!row.some(v=>text(v))){lastSite='';continue;}
+      const reference=normalizeRef(row[info.refCol]),site=explicitSite||lastSite,sk=siteKey(site);if(!reference||!sk)continue;
       const item={id:reference,reference,nom:info.nameCol>=0?text(row[info.nameCol])||reference:reference,cat:info.catCol>=0?text(row[info.catCol])||'Outillage':'Outillage',echeance:info.dateCol>=0?formatDate(row[info.dateCol]):''};
-      if(!groups.has(sk))groups.set(sk,{site,siteKey:sk,items:new Map()});
-      const group=groups.get(sk);group.items.set(reference,mergeItem(group.items.get(reference),item));
+      if(!groups.has(sk))groups.set(sk,{site,siteKey:sk,items:new Map()});const group=groups.get(sk);group.items.set(reference,mergeItem(group.items.get(reference),item));
       if(!sitesByRef.has(reference))sitesByRef.set(reference,new Set());sitesByRef.get(reference).add(sk);
     }
   }
@@ -260,123 +188,69 @@ function structuredGroupsFromWorkbook(wb,XLSX){
 }
 function activeChantiers(win){return (win.S?.chantiers||[]).filter(c=>c&&String(c.statut||'').toLowerCase()!=='termine');}
 function activeMasters(win){return activeChantiers(win).filter(c=>!c.parent_id);}
-function resolveExistingTargets(groups,win){
-  const ch=activeChantiers(win),resolved=[],missing=[],ambiguous=[];
-  for(const group of groups||[]){const matches=ch.filter(c=>siteKey(c.nom)===group.siteKey);if(matches.length===1)resolved.push({chantier:matches[0],site:group.site,items:group.items});else if(!matches.length)missing.push(group.site);else ambiguous.push({site:group.site,count:matches.length});}
-  return {resolved,missing,ambiguous,ok:missing.length===0&&ambiguous.length===0&&resolved.length>0};
-}
+function resolveExistingTargets(groups,win){const ch=activeChantiers(win),resolved=[],missing=[],ambiguous=[];for(const group of groups||[]){const matches=ch.filter(c=>siteKey(c.nom)===group.siteKey);if(matches.length===1)resolved.push({chantier:matches[0],site:group.site,items:group.items});else if(!matches.length)missing.push(group.site);else ambiguous.push({site:group.site,count:matches.length});}return {resolved,missing,ambiguous,ok:missing.length===0&&ambiguous.length===0&&resolved.length>0};}
 function buildPayload(resolved){return {targets:resolved.map(g=>({chantierId:String(g.chantier.id),items:g.items.map(item=>({id:item.id||item.reference,reference:item.reference,nom:item.nom,cat:item.cat,echeance:item.echeance||''}))}))};}
-function buildStructuredPayload(mode,parentId,groups){
-  return {mode,parentId:String(parentId),targets:(groups||[]).map(g=>({site:g.site,items:g.items.map(item=>({id:item.id||item.reference,reference:item.reference,nom:item.nom,cat:item.cat,echeance:item.echeance||''}))}))};
-}
-function sheetGroupsFromV145(wb,win){
-  try{const model=win.RailOpsProductionV145?.workbookModel?.(wb);if(!model?.sheets?.length)return [];return model.sheets.filter(s=>Array.isArray(s.items)&&s.items.length).map(s=>({site:s.name,siteKey:siteKey(s.name),items:s.items.map(x=>({id:normalizeRef(x.ref),reference:normalizeRef(x.ref),nom:text(x.nom)||normalizeRef(x.ref),cat:text(x.cat)||'Outillage',echeance:text(x.echeance)})).filter(x=>x.reference)}));}catch(e){return [];}
-}
+function buildStructuredPayload(mode,parentId,groups){return {mode,parentId:String(parentId),targets:(groups||[]).map(g=>({site:g.site,items:g.items.map(item=>({id:item.id||item.reference,reference:item.reference,nom:item.nom,cat:item.cat,echeance:item.echeance||''}))}))};}
+function sheetGroupsFromV145(wb,win){try{const model=win.RailOpsProductionV145?.workbookModel?.(wb);if(!model?.sheets?.length)return [];return model.sheets.filter(s=>Array.isArray(s.items)&&s.items.length).map(s=>({site:s.name,siteKey:siteKey(s.name),items:s.items.map(x=>({id:normalizeRef(x.ref),reference:normalizeRef(x.ref),nom:text(x.nom)||normalizeRef(x.ref),cat:text(x.cat)||'Outillage',echeance:text(x.echeance)})).filter(x=>x.reference)}));}catch(e){return [];}}
+function workbookSheetModels(wb,XLSX){const out=[];if(!wb||!XLSX?.utils)return out;for(const name of wb.SheetNames||[]){const sheet=wb.Sheets?.[name];if(!sheet)continue;const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,dateNF:'dd/mm/yyyy',blankrows:false});out.push({name,rows});}return out;}
+function nodeAdaptiveReader(){try{if(typeof module==='object'&&module.exports&&typeof require==='function')return require('./register-adaptive-reader.js');}catch(e){}return null;}
 
 function createBrowserApi(win){
-  let resolvedBaseImport=null;
-  function resolveBaseImport(){
-    if(resolvedBaseImport)return resolvedBaseImport;
-    const toleranceBase=win.RailOpsRegisterImportToleranceV155?.baseImport;
-    if(typeof toleranceBase==='function'){resolvedBaseImport=toleranceBase;return resolvedBaseImport;}
-    const current=win.importCSV;if(typeof current==='function'&&current!==api.handleInput){resolvedBaseImport=current;return resolvedBaseImport;}
-    return null;
-  }
+  let resolvedBaseImport=null,adaptivePromise=null;
+  function resolveBaseImport(){if(resolvedBaseImport)return resolvedBaseImport;const toleranceBase=win.RailOpsRegisterImportToleranceV155?.baseImport;if(typeof toleranceBase==='function'){resolvedBaseImport=toleranceBase;return resolvedBaseImport;}const current=win.importCSV;if(typeof current==='function'&&current!==api.handleInput){resolvedBaseImport=current;return resolvedBaseImport;}return null;}
   function notify(msg,type='ok'){try{win.toast?.(msg,type);}catch(e){}}
-  async function readWorkbook(file){
-    if(!file||!win.XLSX)throw new Error('Bibliothèque XLSX indisponible');
-    const ext=(file.name.split('.').pop()||'').toLowerCase();
-    if(['csv','txt'].includes(ext)){const str=await file.text();return win.XLSX.read(str,{type:'string',raw:false,cellDates:true});}
-    return win.XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true,bookVBA:true});
-  }
-  async function refresh(){
-    try{if(typeof win.load==='function')await win.load();}catch(e){try{win.console?.warn?.('[RailOps registre] recharge',e);}catch(_){} }
-    try{if(typeof win.render==='function')win.render();win.RailOpsDisplayV142?.apply?.();}catch(e){}
-  }
+  async function readWorkbook(file){if(!file||!win.XLSX)throw new Error('Bibliothèque XLSX indisponible');const ext=(file.name.split('.').pop()||'').toLowerCase();if(['csv','txt'].includes(ext)){const str=await file.text();return win.XLSX.read(str,{type:'string',raw:false,cellDates:true});}return win.XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true,bookVBA:true});}
+  async function refresh(){try{if(typeof win.load==='function')await win.load();}catch(e){try{win.console?.warn?.('[RailOps registre] recharge',e);}catch(_){} }try{if(typeof win.render==='function')win.render();win.RailOpsDisplayV142?.apply?.();}catch(e){}}
   async function rpc(name,payload){const result=await win.db.rpc(name,{p_payload:payload});if(result?.error)throw result.error;return Array.isArray(result?.data)?result.data[0]:result?.data;}
+  async function ensureAdaptiveReader(){
+    if(win.RailOpsAdaptiveRegisterReader?.detectAndParseWorkbook)return win.RailOpsAdaptiveRegisterReader;
+    const nodeReader=nodeAdaptiveReader();if(nodeReader?.detectAndParseWorkbook)return nodeReader;
+    if(adaptivePromise)return adaptivePromise;
+    if(!win.document?.createElement)return null;
+    adaptivePromise=new Promise(resolve=>{
+      let settled=false;const done=()=>{if(settled)return;settled=true;resolve(win.RailOpsAdaptiveRegisterReader||null);};
+      try{const script=win.document.createElement('script');script.src='./js/core/register-adaptive-reader.js';script.async=false;script.onload=done;script.onerror=done;(win.document.head||win.document.documentElement||win.document.body)?.appendChild(script);setTimeout(done,3000);}catch(e){done();}
+    });
+    return adaptivePromise;
+  }
+  async function adaptiveGroupsFromWorkbook(wb){
+    const reader=await ensureAdaptiveReader();if(!reader?.detectAndParseWorkbook)return null;
+    const model=reader.detectAndParseWorkbook(workbookSheetModels(wb,win.XLSX));
+    if(!model||model.confidence<0.8)return null;
+    if(model.blockingConflicts?.length)return {error:'AMBIGUOUS_ADAPTIVE_SOURCE',conflicts:model.blockingConflicts,format:model.format};
+    if(!['sheet-per-site','block-per-site'].includes(model.format))return null;
+    const groups=(model.groups||[]).filter(g=>g?.siteKey&&Array.isArray(g.items)&&g.items.length).map(g=>({site:g.site,siteKey:g.siteKey,items:g.items}));
+    if(!groups.length)return null;
+    const sitesByRef=new Map();for(const group of groups)for(const item of group.items){if(!sitesByRef.has(item.reference))sitesByRef.set(item.reference,new Set());sitesByRef.get(item.reference).add(group.siteKey);}
+    return {groups,crossSiteReferences:[...sitesByRef.entries()].filter(([,sites])=>sites.size>1).map(([reference,sites])=>({reference,sites:[...sites]})),adaptiveFormat:model.format,warnings:model.warnings||[]};
+  }
   function defaultDialog(cfg){
-    const doc=win.document;if(!doc)throw new Error('Interface de sélection indisponible');
-    doc.getElementById('ro-v156-register-modal')?.remove();
-    const overlay=doc.createElement('div');overlay.id='ro-v156-register-modal';overlay.className='moverlay';
-    const total=cfg.groups.reduce((n,g)=>n+g.items.length,0);
-    const duplicates=(cfg.reports||[]).reduce((n,r)=>n+(r.duplicateRows||0),0);
-    const stale=(cfg.reports||[]).filter(r=>r.declaredMismatch).length;
-    const added=cfg.reconciliation?.added||0;
-    const conflicts=cfg.reconciliation?.conflicts||0;
-    const modeLabel=cfg.mode==='replace'?'Remplacer le registre':'Importer le registre';
-    const warning=cfg.mode==='replace'?'Les références absentes du nouveau registre seront retirées des chantiers concernés, mais leur identité, scans et historique seront conservés.':'Aucune référence déjà présente sur un autre chantier ne sera supprimée. Une référence commune restera une occurrence distincte et conservera la pastille Multi-chantier.';
-    overlay.innerHTML=`<div class="msheet" style="max-height:90vh;overflow:auto"><div class="mhandle"></div><h3 style="margin:0 0 4px">${modeLabel}</h3><div style="font-size:11px;color:var(--text2);margin-bottom:12px">${esc(cfg.fileName)} · ${total} occurrence(s) · ${cfg.groups.length} destination(s)</div><label class="fl">Chantier maître</label><select id="ro-v156-master" class="fi">${cfg.masters.map(m=>`<option value="${esc(m.id)}">${esc(m.nom)}</option>`).join('')}</select><div style="margin:12px 0">${cfg.groups.map(g=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 10px;margin-bottom:6px;border-radius:9px;background:var(--bg3)"><strong>${esc(g.site)}</strong><span style="color:var(--text2)">${g.items.length} réf.</span></div>`).join('')}</div><div style="font-size:11px;color:var(--text2);padding:9px 11px;border-radius:9px;background:var(--bg3);margin-bottom:10px">${warning}${added?`<br><strong>${added}</strong> référence(s) manquante(s) récupérée(s) depuis les onglets site.`:''}${conflicts?`<br><strong>${conflicts}</strong> conflit(s) de source détecté(s) ; les affectations explicites d’INVENTAIRE sont conservées.`:''}${duplicates?`<br><strong>${duplicates}</strong> doublon(s) du même chantier seront neutralisés.`:''}${stale?'<br>Les compteurs obsolètes du fichier sont ignorés au profit des lignes réellement présentes.':''}</div><div id="ro-v156-error" style="display:none;font-size:11px;color:#e24b4a;margin:8px 0"></div><button id="ro-v156-go" class="btn btn-accent">${modeLabel}</button><button id="ro-v156-cancel" class="btn btn-outline" style="margin-top:8px">Annuler</button></div>`;
-    (doc.getElementById('app')||doc.body).appendChild(overlay);
-    doc.getElementById('ro-v156-cancel').onclick=()=>overlay.remove();
-    doc.getElementById('ro-v156-go').onclick=async()=>{
-      const button=doc.getElementById('ro-v156-go'),errorBox=doc.getElementById('ro-v156-error'),parentId=doc.getElementById('ro-v156-master')?.value;
-      button.disabled=true;button.textContent='Traitement sécurisé…';errorBox.style.display='none';
-      try{await cfg.onSubmit(parentId);overlay.remove();}catch(e){errorBox.textContent=e.message||String(e);errorBox.style.display='block';button.disabled=false;button.textContent=modeLabel;}
-    };
+    const doc=win.document;if(!doc)throw new Error('Interface de sélection indisponible');doc.getElementById('ro-v156-register-modal')?.remove();const overlay=doc.createElement('div');overlay.id='ro-v156-register-modal';overlay.className='moverlay';
+    const total=cfg.groups.reduce((n,g)=>n+g.items.length,0),duplicates=(cfg.reports||[]).reduce((n,r)=>n+(r.duplicateRows||0),0),stale=(cfg.reports||[]).filter(r=>r.declaredMismatch).length,added=cfg.reconciliation?.added||0,conflicts=cfg.reconciliation?.conflicts||0;
+    const modeLabel=cfg.mode==='replace'?'Remplacer le registre':'Importer le registre';const warning=cfg.mode==='replace'?'Les références absentes du nouveau registre seront retirées des chantiers concernés, mais leur identité, scans et historique seront conservés.':'Aucune référence déjà présente sur un autre chantier ne sera supprimée. Une référence commune restera une occurrence distincte et conservera la pastille Multi-chantier.';
+    const formatNote=cfg.adaptiveFormat?`<br><strong>Format détecté :</strong> ${esc(cfg.adaptiveFormat)}.`:'';
+    overlay.innerHTML=`<div class="msheet" style="max-height:90vh;overflow:auto"><div class="mhandle"></div><h3 style="margin:0 0 4px">${modeLabel}</h3><div style="font-size:11px;color:var(--text2);margin-bottom:12px">${esc(cfg.fileName)} · ${total} occurrence(s) · ${cfg.groups.length} destination(s)</div><label class="fl">Chantier maître</label><select id="ro-v156-master" class="fi">${cfg.masters.map(m=>`<option value="${esc(m.id)}">${esc(m.nom)}</option>`).join('')}</select><div style="margin:12px 0">${cfg.groups.map(g=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 10px;margin-bottom:6px;border-radius:9px;background:var(--bg3)"><strong>${esc(g.site)}</strong><span style="color:var(--text2)">${g.items.length} réf.</span></div>`).join('')}</div><div style="font-size:11px;color:var(--text2);padding:9px 11px;border-radius:9px;background:var(--bg3);margin-bottom:10px">${warning}${formatNote}${added?`<br><strong>${added}</strong> référence(s) manquante(s) récupérée(s) depuis les onglets site.`:''}${conflicts?`<br><strong>${conflicts}</strong> conflit(s) de source détecté(s) ; les affectations explicites d’INVENTAIRE sont conservées.`:''}${duplicates?`<br><strong>${duplicates}</strong> doublon(s) du même chantier seront neutralisés.`:''}${stale?'<br>Les compteurs obsolètes du fichier sont ignorés au profit des lignes réellement présentes.':''}</div><div id="ro-v156-error" style="display:none;font-size:11px;color:#e24b4a;margin:8px 0"></div><button id="ro-v156-go" class="btn btn-accent">${modeLabel}</button><button id="ro-v156-cancel" class="btn btn-outline" style="margin-top:8px">Annuler</button></div>`;
+    (doc.getElementById('app')||doc.body).appendChild(overlay);doc.getElementById('ro-v156-cancel').onclick=()=>overlay.remove();doc.getElementById('ro-v156-go').onclick=async()=>{const button=doc.getElementById('ro-v156-go'),errorBox=doc.getElementById('ro-v156-error'),parentId=doc.getElementById('ro-v156-master')?.value;button.disabled=true;button.textContent='Traitement sécurisé…';errorBox.style.display='none';try{await cfg.onSubmit(parentId);overlay.remove();}catch(e){errorBox.textContent=e.message||String(e);errorBox.style.display='block';button.disabled=false;button.textContent=modeLabel;}};
   }
-  function openDialog(cfg){
-    const custom=win.RailOpsStructuredRegisterUI?.open;
-    if(typeof custom==='function')return custom(cfg);
-    return defaultDialog(cfg);
-  }
+  function openDialog(cfg){const custom=win.RailOpsStructuredRegisterUI?.open;if(typeof custom==='function')return custom(cfg);return defaultDialog(cfg);}
   async function structuredFlow(wb,file,input,mode){
-    const outcome=normalizeWorkbook(wb,win.XLSX);
-    const blocking=outcome.reconciliation?.blockingConflictRefs||[];
-    if(blocking.length){
-      const refs=blocking.slice(0,5).join(', ')+(blocking.length>5?'…':'');
-      notify(`Import interrompu sans écriture : affectation ambiguë pour ${blocking.length} référence(s) (${refs})`,'danger');
-      return {handled:true,error:'AMBIGUOUS_SOURCE_ASSIGNMENT',conflicts:blocking};
-    }
-    const parsed=structuredGroupsFromWorkbook(wb,win.XLSX);
+    const outcome=normalizeWorkbook(wb,win.XLSX);const blocking=outcome.reconciliation?.blockingConflictRefs||[];
+    if(blocking.length){const refs=blocking.slice(0,5).join(', ')+(blocking.length>5?'…':'');notify(`Import interrompu sans écriture : affectation ambiguë pour ${blocking.length} référence(s) (${refs})`,'danger');return {handled:true,error:'AMBIGUOUS_SOURCE_ASSIGNMENT',conflicts:blocking};}
+    let parsed=structuredGroupsFromWorkbook(wb,win.XLSX),adaptiveFormat='';
+    if(!parsed.groups.length){const adaptive=await adaptiveGroupsFromWorkbook(wb);if(adaptive?.error){const refs=(adaptive.conflicts||[]).slice(0,5).map(c=>c.reference).join(', ');notify(`Import interrompu sans écriture : affectation adaptative ambiguë${refs?' ('+refs+')':''}`,'danger');return {handled:true,error:adaptive.error,conflicts:adaptive.conflicts};}if(adaptive?.groups?.length){parsed={groups:adaptive.groups,crossSiteReferences:adaptive.crossSiteReferences||[]};adaptiveFormat=adaptive.adaptiveFormat||'';}}
     if(!parsed.groups.length)return {handled:false};
-    const masters=activeMasters(win);
-    if(!masters.length){notify('Aucun chantier maître actif disponible pour ce registre','danger');return {handled:true,error:'NO_ACTIVE_MASTER'};}
-    try{input.value='';}catch(e){}
-    const cfg={mode,groups:parsed.groups,masters,fileName:file.name,reports:outcome.reports,reconciliation:outcome.reconciliation,crossSiteReferences:parsed.crossSiteReferences,onSubmit:async parentId=>{
-      if(!parentId)throw new Error('Sélectionnez un chantier maître');
-      const payload=buildStructuredPayload(mode,parentId,parsed.groups);
-      const data=await rpc('railops_apply_structured_register_admin',payload);
-      await refresh();
-      const total=parsed.groups.reduce((n,g)=>n+g.items.length,0);
-      if(mode==='replace')notify(`Registre remplacé ✓ · ${data?.targets??parsed.groups.length} chantier(s) · ${data?.detached??0} ancienne(s) occurrence(s) conservée(s) en historique`,'ok');
-      else notify(`Import validé ✓ · ${data?.processed??total}/${total} occurrence(s) traitée(s) · ${data?.createdTargets??0} sous-chantier(s) créé(s)`,'ok');
-      return data;
-    }};
-    openDialog(cfg);
-    return {handled:true,awaitingSelection:true};
+    const masters=activeMasters(win);if(!masters.length){notify('Aucun chantier maître actif disponible pour ce registre','danger');return {handled:true,error:'NO_ACTIVE_MASTER'};}try{input.value='';}catch(e){}
+    const cfg={mode,groups:parsed.groups,masters,fileName:file.name,reports:outcome.reports,reconciliation:outcome.reconciliation,adaptiveFormat,crossSiteReferences:parsed.crossSiteReferences,onSubmit:async parentId=>{if(!parentId)throw new Error('Sélectionnez un chantier maître');const payload=buildStructuredPayload(mode,parentId,parsed.groups);const data=await rpc('railops_apply_structured_register_admin',payload);await refresh();const total=parsed.groups.reduce((n,g)=>n+g.items.length,0);if(mode==='replace')notify(`Registre remplacé ✓ · ${data?.targets??parsed.groups.length} chantier(s) · ${data?.detached??0} ancienne(s) occurrence(s) conservée(s) en historique`,'ok');else notify(`Import validé ✓ · ${data?.processed??total}/${total} occurrence(s) traitée(s) · ${data?.createdTargets??0} sous-chantier(s) créé(s)`,'ok');return data;}};
+    openDialog(cfg);return {handled:true,awaitingSelection:true,adaptiveFormat};
   }
   async function handleInput(input){
-    const mode=(input?.id==='replaceFile'||input?.dataset?.railopsMode==='replace')?'replace':'import';
-    const file=input?.files?.[0];if(!file)return;
-    const ext=(file.name.split('.').pop()||'').toLowerCase();
-    const baseImport=resolveBaseImport();
-    if((!EXCEL_EXT.has(ext)&&!['csv','txt'].includes(ext))||!win.XLSX){
-      if(mode==='replace'){notify('Format non supporté pour le remplacement sécurisé','danger');return {handled:true,error:'UNSUPPORTED_REPLACE_FORMAT'};}
-      if(typeof baseImport==='function')return baseImport(input);
-      notify('Moteur d’import indisponible','danger');return;
-    }
-    try{
-      const wb=await readWorkbook(file);
-      const structured=await structuredFlow(wb,file,input,mode);
-      if(structured.handled)return structured;
-      if(mode==='replace')return handleUnstructuredReplace(wb,file,input);
-      if(typeof baseImport!=='function')throw new Error('Moteur d’import simple indisponible');
-      return baseImport(input);
-    }catch(e){
-      try{win.console?.error?.('[RailOps v156 registre]',e);}catch(_){}
-      notify(`${mode==='replace'?'Remplacement':'Import'} interrompu sans écriture : ${e.message||e}`,'danger');
-      return {handled:true,error:e};
-    }
+    const mode=(input?.id==='replaceFile'||input?.dataset?.railopsMode==='replace')?'replace':'import';const file=input?.files?.[0];if(!file)return;const ext=(file.name.split('.').pop()||'').toLowerCase();const baseImport=resolveBaseImport();
+    if((!EXCEL_EXT.has(ext)&&!['csv','txt'].includes(ext))||!win.XLSX){if(mode==='replace'){notify('Format non supporté pour le remplacement sécurisé','danger');return {handled:true,error:'UNSUPPORTED_REPLACE_FORMAT'};}if(typeof baseImport==='function')return baseImport(input);notify('Moteur d’import indisponible','danger');return;}
+    try{const wb=await readWorkbook(file);const structured=await structuredFlow(wb,file,input,mode);if(structured.handled)return structured;if(mode==='replace')return handleUnstructuredReplace(wb,file,input);if(typeof baseImport!=='function')throw new Error('Moteur d’import simple indisponible');return baseImport(input);}catch(e){try{win.console?.error?.('[RailOps v156 registre]',e);}catch(_){}notify(`${mode==='replace'?'Remplacement':'Import'} interrompu sans écriture : ${e.message||e}`,'danger');return {handled:true,error:e};}
   }
-  async function handleUnstructuredReplace(wb,file,input){
-    const groups=sheetGroupsFromV145(wb,win);if(!groups.length)throw new Error('Aucune référence exploitable détectée');
-    const mapping=resolveExistingTargets(groups,win);if(!mapping.ok)throw new Error('Destination introuvable ou ambiguë pour le remplacement');
-    const total=mapping.resolved.reduce((n,g)=>n+g.items.length,0);
-    if(typeof win.confirm==='function'&&!win.confirm(`Remplacer ${mapping.resolved.length} registre(s) avec ${total} référence(s) ?`))return {handled:true,cancelled:true};
-    const data=await rpc('railops_replace_material_register_admin',buildPayload(mapping.resolved));await refresh();notify(`Registre remplacé ✓ · ${data?.targets??mapping.resolved.length} chantier(s)`,'ok');try{input.value='';}catch(e){}return {handled:true,data};
-  }
+  async function handleUnstructuredReplace(wb,file,input){const groups=sheetGroupsFromV145(wb,win);if(!groups.length)throw new Error('Aucune référence exploitable détectée');const mapping=resolveExistingTargets(groups,win);if(!mapping.ok)throw new Error('Destination introuvable ou ambiguë pour le remplacement');const total=mapping.resolved.reduce((n,g)=>n+g.items.length,0);if(typeof win.confirm==='function'&&!win.confirm(`Remplacer ${mapping.resolved.length} registre(s) avec ${total} référence(s) ?`))return {handled:true,cancelled:true};const data=await rpc('railops_replace_material_register_admin',buildPayload(mapping.resolved));await refresh();notify(`Registre remplacé ✓ · ${data?.targets??mapping.resolved.length} chantier(s)`,'ok');try{input.value='';}catch(e){}return {handled:true,data};}
   async function handleReplaceInput(input){return handleInput(Object.assign(input||{},{dataset:Object.assign({},input?.dataset||{},{railopsMode:'replace'})}));}
-  const api={version:VERSION,handleInput,handleReplaceInput,normalizeStructuredRows,reconcileStructuredSources,normalizeWorkbook,structuredGroupsFromWorkbook,resolveExistingTargets,buildPayload,buildStructuredPayload,resolveBaseImport};
+  const api={version:VERSION,handleInput,handleReplaceInput,normalizeStructuredRows,reconcileStructuredSources,normalizeWorkbook,structuredGroupsFromWorkbook,resolveExistingTargets,buildPayload,buildStructuredPayload,resolveBaseImport,ensureAdaptiveReader,adaptiveGroupsFromWorkbook};
   return api;
 }
 return {version:VERSION,normalizeStructuredRows,reconcileStructuredSources,normalizeWorkbook,structuredGroupsFromWorkbook,resolveExistingTargets,buildPayload,buildStructuredPayload,createBrowserApi};
