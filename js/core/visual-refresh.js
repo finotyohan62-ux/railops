@@ -6,7 +6,8 @@ if(root){root.RailOpsVisualRefresh=api;try{api.install(root.document);}catch(e){
 })(typeof window!=='undefined'?window:null,function(){
 'use strict';
 
-const VISUAL_REFRESH_VERSION='1.2-visual-refresh-phase3-scanner';
+const VISUAL_REFRESH_PHASE3_VERSION='1.2-visual-refresh-phase3-scanner';
+const VISUAL_REFRESH_VERSION='1.3-visual-refresh-phase4-chantier';
 const STYLE_ID='ro-visual-refresh-phase1';
 const CSS=`
 /* VISUAL REFRESH PHASE 1 — presentation only */
@@ -24,8 +25,8 @@ const CSS=`
 .stat-card{border-radius:16px;padding:16px;border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.09)}
 .sv{font-size:28px;font-weight:750;letter-spacing:-.035em;line-height:1.05}
 .sl{font-size:11px;line-height:1.35;margin-top:5px}
-.cc{border-radius:16px;padding:16px;border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.09);transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
-.cc:active{transform:scale(.99);box-shadow:0 4px 14px rgba(0,0,0,.08)}
+.cc{border-radius:18px;padding:16px 46px 16px 18px;border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.09);transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease;position:relative;overflow:hidden;margin-bottom:10px;background:var(--bg2)}
+.cc:active{transform:scale(.99);box-shadow:0 4px 14px rgba(0,0,0,.08);border-color:rgba(244,121,32,.32)}
 .reg-item{border-radius:18px;padding:15px 15px 15px 18px;border:1px solid var(--border);box-shadow:0 7px 20px rgba(0,0,0,.08);position:relative;overflow:hidden;margin-bottom:10px;transition:transform .14s ease,border-color .14s ease,box-shadow .14s ease}
 
 /* VISUAL REFRESH PHASE 2 — inventory and material cards */
@@ -63,6 +64,22 @@ const CSS=`
 .sfbl{border-width:0 0 4px 4px;border-radius:0 0 0 8px}
 .scan-beam{height:3px;box-shadow:0 0 12px rgba(244,121,32,.90),0 0 28px rgba(244,121,32,.34);left:12px;right:12px;border-radius:999px}
 .scan-hint{min-height:36px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:8px 14px;border-radius:999px;background:rgba(8,10,14,.66);border:1px solid rgba(255,255,255,.12);font-size:12px;font-weight:600;color:rgba(255,255,255,.92);box-shadow:0 8px 20px rgba(0,0,0,.18)}
+
+/* VISUAL REFRESH PHASE 4 — chantier and detail surfaces */
+.cc::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent)}
+.cc::after{content:'›';position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:28px;line-height:1;color:var(--text3);font-weight:400}
+.cc .it{font-size:15px;font-weight:750;letter-spacing:-.012em;line-height:1.22}
+.cc .is{font-size:11px;line-height:1.4;margin-top:4px;color:var(--text2);white-space:normal;overflow:visible;text-overflow:clip}
+.cc .badge{padding:5px 9px;font-weight:700;border:1px solid var(--border)}
+.cc .ic{width:42px;height:42px;border-radius:13px;background:var(--bg3)}
+.cc .pbar{height:6px;margin-top:10px;background:var(--bg3)}
+.cc .li{padding:12px 0}
+.msheet .sec{padding-left:0;padding-right:0;padding-top:16px;padding-bottom:8px;letter-spacing:.10em}
+.msheet .li{min-height:52px;padding:12px 0;gap:12px}
+.msheet .li .it{font-size:14px;font-weight:650}
+.msheet .li .is{line-height:1.4}
+.msheet .tabs{padding-left:0;padding-right:0}
+.msheet .tab{min-height:42px}
 
 .btn{min-height:48px;padding:12px 18px;border-radius:14px;font-size:14px;font-weight:650;letter-spacing:.005em;transition:transform .12s ease,opacity .12s ease,box-shadow .15s ease}
 .btn:active{opacity:.9;transform:scale(.985)}
@@ -115,6 +132,10 @@ const CSS=`
   #cam-video{min-height:250px}
   .scan-frame{width:180px;height:180px}
   .scan-hint{min-height:34px;font-size:11px;padding:7px 12px}
+  .cc{padding:14px 42px 14px 16px;border-radius:16px}
+  .cc::after{right:14px;font-size:25px}
+  .cc .it{font-size:14px}
+  .msheet .li{min-height:50px}
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -139,5 +160,5 @@ function destroy(doc){
   return true;
 }
 
-return {VISUAL_REFRESH_VERSION,version:VISUAL_REFRESH_VERSION,STYLE_ID,CSS,install,destroy};
+return {VISUAL_REFRESH_VERSION,VISUAL_REFRESH_PHASE3_VERSION,version:VISUAL_REFRESH_VERSION,STYLE_ID,CSS,install,destroy};
 });
