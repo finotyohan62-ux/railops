@@ -36,5 +36,7 @@ jobs:
         run: node tests/register-adaptive-reader.test.js
       - name: Check adaptive register integration
         run: node tests/register-import-adaptive-integration.test.js
+      - name: Check sync status UI diagnostics
+        run: node tests/sync-status-ui.test.js
       - name: Check offline sync server acknowledgement handling
         run: node tests/sync-error-handling.test.js
