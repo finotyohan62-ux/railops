@@ -7,7 +7,8 @@ if(root){root.RailOpsVisualRefresh=api;try{api.install(root.document);}catch(e){
 'use strict';
 
 const VISUAL_REFRESH_PHASE3_VERSION='1.2-visual-refresh-phase3-scanner';
-const VISUAL_REFRESH_VERSION='1.3-visual-refresh-phase4-chantier';
+const VISUAL_REFRESH_PHASE4_VERSION='1.3-visual-refresh-phase4-chantier';
+const VISUAL_REFRESH_VERSION='1.4-visual-refresh-phase5-admin';
 const STYLE_ID='ro-visual-refresh-phase1';
 const CSS=`
 /* VISUAL REFRESH PHASE 1 — presentation only */
@@ -81,6 +82,19 @@ const CSS=`
 .msheet .tabs{padding-left:0;padding-right:0}
 .msheet .tab{min-height:42px}
 
+/* VISUAL REFRESH PHASE 5 — admin, agents and forms */
+.fl{font-size:11px;font-weight:700;letter-spacing:.02em;color:var(--text2);margin-top:16px;margin-bottom:7px}
+.msheet .fi{min-height:48px;border-radius:14px;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}
+.msheet .fi:focus{border-color:rgba(244,121,32,.55);box-shadow:0 0 0 3px rgba(244,121,32,.11)}
+select.fi{appearance:none;-webkit-appearance:none;padding-right:38px;background-color:var(--bg3)}
+textarea.fi{min-height:104px;line-height:1.5;padding-top:12px;padding-bottom:12px}
+.tgl-row{min-height:52px;border:1px solid var(--border);background:var(--bg2);box-shadow:0 5px 14px rgba(0,0,0,.05);gap:12px}
+.msheet .li .avatar{width:42px;height:42px;border-radius:13px;font-size:12px;font-weight:750;box-shadow:0 5px 14px rgba(244,121,32,.14)}
+.msheet .btn{min-height:50px;border-radius:14px;font-weight:700}
+.msheet .rg2{gap:10px}
+.msheet .ro{min-height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center}
+.msheet .badge{font-weight:700}
+
 .btn{min-height:48px;padding:12px 18px;border-radius:14px;font-size:14px;font-weight:650;letter-spacing:.005em;transition:transform .12s ease,opacity .12s ease,box-shadow .15s ease}
 .btn:active{opacity:.9;transform:scale(.985)}
 .btn-accent{box-shadow:0 8px 20px rgba(244,121,32,.18)}
@@ -136,6 +150,8 @@ const CSS=`
   .cc::after{right:14px;font-size:25px}
   .cc .it{font-size:14px}
   .msheet .li{min-height:50px}
+  .msheet .fi{min-height:46px;padding-left:12px;padding-right:12px}
+  .msheet .li .avatar{width:40px;height:40px}
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -160,5 +176,5 @@ function destroy(doc){
   return true;
 }
 
-return {VISUAL_REFRESH_VERSION,VISUAL_REFRESH_PHASE3_VERSION,version:VISUAL_REFRESH_VERSION,STYLE_ID,CSS,install,destroy};
+return {VISUAL_REFRESH_VERSION,VISUAL_REFRESH_PHASE4_VERSION,VISUAL_REFRESH_PHASE3_VERSION,version:VISUAL_REFRESH_VERSION,STYLE_ID,CSS,install,destroy};
 });
