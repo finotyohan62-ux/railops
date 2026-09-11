@@ -42,5 +42,7 @@ jobs:
         run: node tests/visual-refresh-phase1.test.js
       - name: Check visual refresh phase 2 inventory
         run: node tests/visual-refresh-phase2-inventory.test.js
+      - name: Check visual refresh phase 3 scanner
+        run: node tests/visual-refresh-phase3-scanner.test.js
       - name: Check offline sync server acknowledgement handling
         run: node tests/sync-error-handling.test.js
