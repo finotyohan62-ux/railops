@@ -6,6 +6,7 @@ if(root){root.RailOpsVisualRefresh=api;try{api.install(root.document);}catch(e){
 })(typeof window!=='undefined'?window:null,function(){
 'use strict';
 
+const VISUAL_REFRESH_PHASE3_VERSION='1.2-visual-refresh-phase3-scanner';
 const VISUAL_REFRESH_VERSION='1.3-visual-refresh-phase4-chantier';
 const STYLE_ID='ro-visual-refresh-phase1';
 const CSS=`
@@ -159,5 +160,5 @@ function destroy(doc){
   return true;
 }
 
-return {VISUAL_REFRESH_VERSION,version:VISUAL_REFRESH_VERSION,STYLE_ID,CSS,install,destroy};
+return {VISUAL_REFRESH_VERSION,VISUAL_REFRESH_PHASE3_VERSION,version:VISUAL_REFRESH_VERSION,STYLE_ID,CSS,install,destroy};
 });
