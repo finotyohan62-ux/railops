@@ -6,7 +6,7 @@ if(root){root.RailOpsVisualRefresh=api;try{api.install(root.document);}catch(e){
 })(typeof window!=='undefined'?window:null,function(){
 'use strict';
 
-const VISUAL_REFRESH_VERSION='1.1-visual-refresh-phase2-inventory';
+const VISUAL_REFRESH_VERSION='1.2-visual-refresh-phase3-scanner';
 const STYLE_ID='ro-visual-refresh-phase1';
 const CSS=`
 /* VISUAL REFRESH PHASE 1 — presentation only */
@@ -49,6 +49,20 @@ const CSS=`
 .ps-warn{background:rgba(244,121,32,.12)}
 .ps-absent{background:rgba(226,75,74,.14)}
 .avatar{width:38px;height:38px;border-radius:12px;font-size:12px;font-weight:750}
+
+/* VISUAL REFRESH PHASE 3 — scanner */
+.cam-wrap{border-radius:18px;overflow:hidden;box-shadow:0 12px 30px rgba(0,0,0,.22);margin:12px 16px 0;border:1px solid rgba(255,255,255,.07);min-height:280px;background:#07090d}
+#cam-video{min-height:280px;object-fit:cover;width:100%;max-height:340px;display:block}
+.scan-overlay{padding:18px;box-sizing:border-box;background:radial-gradient(circle at center,transparent 0,transparent 38%,rgba(0,0,0,.12) 68%,rgba(0,0,0,.30) 100%)}
+.scan-frame{width:210px;height:210px;filter:drop-shadow(0 8px 24px rgba(0,0,0,.28))}
+.scan-frame::before,.scan-frame::after{width:42px;height:42px;border-color:var(--accent);border-style:solid}
+.scan-frame::before{border-width:4px 0 0 4px;border-radius:8px 0 0 0}
+.scan-frame::after{border-width:0 4px 4px 0;border-radius:0 0 8px 0}
+.sftr,.sfbl{width:42px;height:42px;border-color:var(--accent);border-style:solid}
+.sftr{border-width:4px 4px 0 0;border-radius:0 8px 0 0}
+.sfbl{border-width:0 0 4px 4px;border-radius:0 0 0 8px}
+.scan-beam{height:3px;box-shadow:0 0 12px rgba(244,121,32,.90),0 0 28px rgba(244,121,32,.34);left:12px;right:12px;border-radius:999px}
+.scan-hint{min-height:36px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:8px 14px;border-radius:999px;background:rgba(8,10,14,.66);border:1px solid rgba(255,255,255,.12);font-size:12px;font-weight:600;color:rgba(255,255,255,.92);box-shadow:0 8px 20px rgba(0,0,0,.18)}
 
 .btn{min-height:48px;padding:12px 18px;border-radius:14px;font-size:14px;font-weight:650;letter-spacing:.005em;transition:transform .12s ease,opacity .12s ease,box-shadow .15s ease}
 .btn:active{opacity:.9;transform:scale(.985)}
@@ -97,6 +111,10 @@ const CSS=`
   .reg-top{gap:10px}
   .reg-item .it{font-size:14px}
   .reg-body{padding:9px;gap:8px}
+  .cam-wrap{margin-left:12px;margin-right:12px;border-radius:16px;min-height:250px}
+  #cam-video{min-height:250px}
+  .scan-frame{width:180px;height:180px}
+  .scan-hint{min-height:34px;font-size:11px;padding:7px 12px}
 }
 
 @media (prefers-reduced-motion: reduce){
