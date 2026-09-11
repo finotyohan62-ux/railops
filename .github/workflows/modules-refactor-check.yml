@@ -38,5 +38,7 @@ jobs:
         run: node tests/register-import-adaptive-integration.test.js
       - name: Check sync status UI diagnostics
         run: node tests/sync-status-ui.test.js
+      - name: Check visual refresh phase 1
+        run: node tests/visual-refresh-phase1.test.js
       - name: Check offline sync server acknowledgement handling
         run: node tests/sync-error-handling.test.js
