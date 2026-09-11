@@ -42,7 +42,7 @@ const CSS=`
 .reg-item .is{font-size:11px;line-height:1.35;margin-top:4px;color:var(--text2)}
 .reg-item .badge{padding:5px 9px;font-weight:700}
 .reg-item .ic{width:42px;height:42px;border-radius:13px;background:var(--bg3)}
-.reg-body{margin-top:12px;padding:10px;border-top:0;border-radius:12px;background:var(--bg3);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.reg-body{margin-top:12px;border-radius:12px;padding:10px;border-top:0;background:var(--bg3);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .reg-body .badge{background:var(--bg2);border:1px solid var(--border)}
 .ps-ok,.ps-warn,.ps-absent{width:34px;height:34px;border:1px solid var(--border);box-shadow:inset 0 0 0 1px rgba(255,255,255,.02)}
 .ps-ok{background:rgba(29,158,117,.14)}
