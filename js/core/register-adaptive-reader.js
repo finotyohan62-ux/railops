@@ -6,7 +6,7 @@ if(root)root.RailOpsAdaptiveRegisterReader=api;
 })(typeof window!=='undefined'?window:null,function(){
 'use strict';
 
-const VERSION='1.0-adaptive-register-reader';
+const VERSION='1.1-adaptive-register-reader';
 
 function text(v){return String(v??'').trim();}
 function key(v){
@@ -199,9 +199,31 @@ function parseSiteSheetEntry(entry){
   if(!items.length)return null;
   return {site,siteKey:siteKey(site),items:items.map(({site:_,siteKey:__,...item})=>item)};
 }
+function inferredPlainBlockMarkers(rows){
+  const candidates=[];
+  const data=Array.isArray(rows)?rows:[];
+  for(let r=0;r<data.length;r++){
+    const row=Array.isArray(data[r])?data[r]:[];
+    if(!row.map(headerKind).includes('ref'))continue;
+    let p=r-1;
+    while(p>=0&&!(Array.isArray(data[p])&&data[p].some(v=>text(v))))p--;
+    if(p<0)continue;
+    const cells=(Array.isArray(data[p])?data[p]:[]).map(text).filter(Boolean);
+    if(cells.length!==1)continue;
+    const raw=cells[0],k=key(raw);
+    if(!raw||raw.length>100||!k||isMetaSheetName(raw)||isGenericSheetName(raw))continue;
+    if(headerKind(raw)||/^(registre|materiel|matériel|inventaire|liste|tableau|recap|récap)/i.test(raw))continue;
+    candidates.push({row:p,site:raw.toUpperCase()});
+  }
+  const unique=[];const seenRows=new Set();
+  for(const marker of candidates){if(seenRows.has(marker.row))continue;seenRows.add(marker.row);unique.push(marker);}
+  return unique.length>=2?unique:[];
+}
 function blockSegments(entry){
-  const rows=entry.rows,markers=[];
+  const rows=entry.rows;
+  let markers=[];
   for(let r=0;r<rows.length;r++){const site=markerSite(rows[r]);if(site)markers.push({row:r,site});}
+  if(!markers.length)markers=inferredPlainBlockMarkers(rows);
   if(!markers.length)return [];
   const groups=[];
   for(let i=0;i<markers.length;i++){
