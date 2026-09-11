@@ -54,6 +54,7 @@ function inventoryPairs(result){
   assert(count('CONTAINER-01','C-001')===1,'sheet title must resolve CONTAINER-01 and supplement C-001');
   assert(result.added===3,`expected 3 safely supplemented references, got ${result.added}`);
   assert(result.conflictRefs.includes('X-999'),'X-999 must be reported as a conflict');
+  assert(!result.blockingConflictRefs.includes('X-999'),'explicit INVENTAIRE assignment must remain authoritative, not blocking');
 })();
 
 (function refusesToGuessWhenMissingReferenceAppearsOnMultipleSites(){
@@ -74,6 +75,7 @@ function inventoryPairs(result){
   const pairs=inventoryPairs(result);
   assert(!pairs.some(x=>x.ref==='AMB-001'),'ambiguous reference must not be auto-assigned');
   assert(result.conflictRefs.includes('AMB-001'),'ambiguous reference must be surfaced as conflict');
+  assert(result.blockingConflictRefs.includes('AMB-001'),'ambiguous reference with no authoritative assignment must block import');
 })();
 
 console.log('PASS: multi-chantier source reconciliation contract');
