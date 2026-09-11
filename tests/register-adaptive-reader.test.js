@@ -73,6 +73,22 @@ assert.strictEqual(typeof reader.parseSheetRows,'function','adaptive reader must
   assert.deepStrictEqual(refs(bySite(model,'LISON')),['L-001']);
 })();
 
+(function repeatedPlainSiteTitlesBeforeHeadersBecomeBlocks(){
+  const model=reader.detectAndParseWorkbook([{name:'REGISTRE CHEF',rows:[
+    ['VEMARS'],
+    ['Référence','Désignation','Catégorie'],
+    ['V-101','VAT','VAT'],
+    ['V-102','Perche','Perche'],
+    [],
+    ['LISON'],
+    ['Référence','Désignation','Catégorie'],
+    ['L-101','Pulsar','Signalisation']
+  ]}]);
+  assert.strictEqual(model.format,'block-per-site','repeated plain site titles immediately before tables must be recognized as blocks');
+  assert.deepStrictEqual(refs(bySite(model,'VEMARS')),['V-101','V-102']);
+  assert.deepStrictEqual(refs(bySite(model,'LISON')),['L-101']);
+})();
+
 (function singleSheetStaysSingleAndDoesNotInventSite(){
   const model=reader.detectAndParseWorkbook([{name:'Feuil1',rows:[
     ['Référence','Désignation','Catégorie'],
