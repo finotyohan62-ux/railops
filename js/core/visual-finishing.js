@@ -58,6 +58,7 @@ const CSS=`
 .ro144-okbox{border:1px solid rgba(29,158,117,.34);background:linear-gradient(90deg,rgba(29,158,117,.11),rgba(29,158,117,.05))}
 .ro144-errorbox{border:1px solid rgba(226,75,74,.34);background:linear-gradient(90deg,rgba(226,75,74,.11),rgba(226,75,74,.05))}
 .ro144-details{border:1px solid var(--border);border-radius:12px;padding:9px 11px;background:var(--bg3)}
+.ro-v142-mc{border-radius:999px!important;font-weight:700!important;padding:5px 9px!important;margin-top:8px!important;background:rgba(244,121,32,.12)!important;border:1px solid rgba(244,121,32,.30)!important;color:var(--accent)!important;line-height:1.3!important;box-shadow:0 4px 12px rgba(244,121,32,.08)}
 
 .ro147-wrap,.ro148-wrap{padding:14px 16px 96px}
 .ro147-summary,.ro147-big,.ro148-summary,.ro148-big{gap:10px;margin-bottom:12px}
