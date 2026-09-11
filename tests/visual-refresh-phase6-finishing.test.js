@@ -1,10 +1,13 @@
 const fs=require('fs');
 const assert=require('assert');
 
-const visual=fs.readFileSync('js/core/visual-refresh.js','utf8');
+assert.ok(fs.existsSync('js/core/visual-finishing.js'),'phase 6 finishing module missing');
+const visual=fs.readFileSync('js/core/visual-finishing.js','utf8');
+const sync=fs.readFileSync('js/core/sync.js','utf8');
 
 assert.ok(visual.includes('1.5-visual-refresh-phase6-finishing'),'phase 6 finishing version marker missing');
 assert.ok(visual.includes('VISUAL REFRESH PHASE 6 — finishing and global polish'),'phase 6 CSS marker missing');
+assert.ok(sync.includes("./js/core/visual-finishing.js"),'phase 6 finishing module must be loaded by RailOps');
 assert.match(visual,/\.moverlay\s*\{[^}]*backdrop-filter:\s*blur\(8px\)[^}]*background:/s,'modal overlay must soften background context');
 assert.match(visual,/\.alert-box\s*\{[^}]*min-height:\s*44px[^}]*border:\s*1px solid var\(--border\)[^}]*box-shadow:/s,'alerts must share a tactile premium surface');
 assert.match(visual,/\.chips\s*\{[^}]*scroll-snap-type:\s*x proximity/s,'filter chips must scroll cleanly on mobile');
