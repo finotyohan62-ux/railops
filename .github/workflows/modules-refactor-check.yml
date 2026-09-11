@@ -46,5 +46,7 @@ jobs:
         run: node tests/visual-refresh-phase3-scanner.test.js
       - name: Check visual refresh phase 4 chantier
         run: node tests/visual-refresh-phase4-chantier.test.js
+      - name: Check visual refresh phase 5 admin
+        run: node tests/visual-refresh-phase5-admin.test.js
       - name: Check offline sync server acknowledgement handling
         run: node tests/sync-error-handling.test.js
