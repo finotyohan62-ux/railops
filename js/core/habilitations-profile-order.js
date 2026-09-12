@@ -4,6 +4,8 @@ if(!root||root.RailOpsHabilitationsProfileOrder)return;
 const PANEL_ATTR='data-railops-habilitations-profile';
 let observer=null;
 let queued=false;
+let profileIntentUntil=0;
+let profileTriggerBridgeInstalled=false;
 
 function normalize(value){
   return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
@@ -54,11 +56,31 @@ function currentHost(){
   }catch(_){}
   return null;
 }
+function profileIntentActive(){return Date.now()<=profileIntentUntil;}
+function markProfileIntent(duration=2500){
+  profileIntentUntil=Date.now()+Math.max(250,Number(duration)||2500);
+  return profileIntentUntil;
+}
+function isProfileTrigger(target){
+  if(!target)return false;
+  try{
+    if(typeof target.closest==='function'&&target.closest('[onclick*="openProfil"]'))return true;
+  }catch(_){}
+  let node=target;
+  while(node&&node!==document){
+    try{
+      const handler=typeof node.getAttribute==='function'?node.getAttribute('onclick'):'';
+      if(/\bopenProfil\s*\(/.test(String(handler||'')))return true;
+    }catch(_){}
+    node=node.parentElement||node.parentNode||null;
+  }
+  return false;
+}
 function looksLikeProfile(host){
   if(!host)return false;
+  if(profileIntentActive())return true;
   const text=normalize(host.textContent||'');
-  // Dans RailOps, l'action de déconnexion est la signature stable de la fiche du compte.
-  // Certains profils n'affichent pas explicitement les mots « profil », « compte » ou « mot de passe ».
+  // Fallback historique : utile si le Profil a été ouvert autrement que par le bouton/avatar.
   return /(deconnexion|se deconnecter|logout)/.test(text);
 }
 function currentPanel(host){
@@ -84,7 +106,19 @@ function schedule(){
   if(typeof queueMicrotask==='function')queueMicrotask(run);
   else Promise.resolve().then(run);
 }
+function installProfileTriggerBridge(){
+  if(profileTriggerBridgeInstalled)return true;
+  if(typeof document==='undefined'||typeof document.addEventListener!=='function')return false;
+  document.addEventListener('click',event=>{
+    if(!isProfileTrigger(event?.target))return;
+    markProfileIntent();
+    schedule();
+  },true);
+  profileTriggerBridgeInstalled=true;
+  return true;
+}
 function install(){
+  installProfileTriggerBridge();
   schedule();
   if(observer||typeof MutationObserver!=='function'||!document?.body)return true;
   observer=new MutationObserver(()=>schedule());
@@ -93,7 +127,8 @@ function install(){
 }
 
 root.RailOpsHabilitationsProfileOrder={
-  findInsertionPoint,placePanel,currentHost,looksLikeProfile,mountAndOrder,schedule,install
+  findInsertionPoint,placePanel,currentHost,looksLikeProfile,mountAndOrder,schedule,install,
+  isProfileTrigger,markProfileIntent,profileIntentActive,installProfileTriggerBridge
 };
 install();
 })(typeof window!=='undefined'?window:this);
