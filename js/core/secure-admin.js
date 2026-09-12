@@ -38,7 +38,7 @@ window.doChangePass=async function(id,selfMode){
 
 // Feature bootstrap: the legacy index is intentionally left untouched while the
 // profile qualification feature is validated on its isolated branch. Load the
-// three small modules sequentially after the legacy/profile functions exist.
+// small modules sequentially after the legacy/profile functions exist.
 function loadFeatureScript(src){
   return new Promise((resolve,reject)=>{
     const existing=[...document.scripts].find(s=>String(s.src||'').endsWith(src));
@@ -60,6 +60,7 @@ async function bootstrapHabilitationProfile(){
     await loadFeatureScript('js/core/habilitations-parser.js');
     await loadFeatureScript('js/core/habilitations-pdf.js');
     await loadFeatureScript('js/core/habilitations-profile.js');
+    await loadFeatureScript('js/core/habilitations-profile-order.js');
   }catch(e){console.warn('[RailOps habilitations] bootstrap',e);}
 }
 setTimeout(bootstrapHabilitationProfile,0);

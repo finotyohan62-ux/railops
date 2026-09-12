@@ -1,15 +1,20 @@
 const fs=require('fs');
+const vm=require('vm');
 const assert=require('assert');
 
 const modulePath='js/core/habilitations-profile.js';
+const orderPath='js/core/habilitations-profile-order.js';
 assert.ok(fs.existsSync(modulePath),'agent profile habilitation module must exist');
+assert.ok(fs.existsSync(orderPath),'agent profile order helper must exist');
 const js=fs.readFileSync(modulePath,'utf8');
+const orderJs=fs.readFileSync(orderPath,'utf8');
 const bootstrap=fs.readFileSync('js/core/secure-admin.js','utf8');
 
 const parserPos=bootstrap.indexOf("loadFeatureScript('js/core/habilitations-parser.js')");
 const pdfPos=bootstrap.indexOf("loadFeatureScript('js/core/habilitations-pdf.js')");
 const profilePos=bootstrap.indexOf("loadFeatureScript('js/core/habilitations-profile.js')");
-assert.ok(parserPos>=0&&pdfPos>parserPos&&profilePos>pdfPos,'isolated feature bootstrap must load parser, PDF adapter and profile module sequentially');
+const orderPos=bootstrap.indexOf("loadFeatureScript('js/core/habilitations-profile-order.js')");
+assert.ok(parserPos>=0&&pdfPos>parserPos&&profilePos>pdfPos&&orderPos>profilePos,'isolated feature bootstrap must load parser, PDF adapter, profile and profile ordering sequentially');
 
 assert.ok(/openProfil/.test(js),'integration must hook the existing profile flow');
 assert.ok(/currentAgent/.test(js)&&/\.agent/.test(js),'profile integration must resolve the signed-in RailOps agent without trusting a foreign profile id');
@@ -41,5 +46,52 @@ for(const forbidden of [
 const uploadPos=js.indexOf(".from('railops-habilitations')");
 const activatePos=js.indexOf("railops_activate_habilitation_document");
 assert.ok(uploadPos>=0&&activatePos>uploadPos,'PDF upload must happen before transactional activation');
+
+function makeHost(){
+  return {
+    children:[],
+    _candidates:[],
+    querySelectorAll(){return this._candidates;},
+    querySelector(){return null;},
+    insertBefore(node,anchor){
+      this.children=this.children.filter(x=>x!==node);
+      const i=this.children.indexOf(anchor);
+      if(i<0)this.children.push(node);else this.children.splice(i,0,node);
+      node.parentElement=this;
+    }
+  };
+}
+function el(text,parent){return {textContent:text||'',value:'',parentElement:parent,getAttribute(){return '';}};}
+const context={window:{},document:{querySelector(){return null;}},setTimeout(fn){fn();},console};
+context.window.window=context.window;
+vm.runInNewContext(orderJs,context);
+const orderApi=context.window.RailOpsHabilitationsProfileOrder;
+assert.ok(orderApi,'profile order helper must expose its API');
+
+{
+  const host=makeHost();
+  const identity=el('Agent RailOps',host);
+  const security=el('',host);
+  const logout=el('',host);
+  const panel=el('Qualifications professionnelles',host);
+  const passwordButton=el('Changer le mot de passe',security);
+  const logoutButton=el('Déconnexion',logout);
+  host._candidates=[passwordButton,logoutButton];
+  host.children=[identity,security,logout,panel];
+  orderApi.placePanel(panel,host);
+  assert.deepStrictEqual(host.children.map(x=>x===identity?'identity':x===panel?'panel':x===security?'security':x===logout?'logout':'other'),['identity','panel','security','logout'],'qualifications must sit after identity and before account/security and logout');
+}
+
+{
+  const host=makeHost();
+  const identity=el('Agent RailOps',host);
+  const logout=el('',host);
+  const panel=el('Qualifications professionnelles',host);
+  const logoutButton=el('Se déconnecter',logout);
+  host._candidates=[logoutButton];
+  host.children=[identity,logout,panel];
+  orderApi.placePanel(panel,host);
+  assert.deepStrictEqual(host.children.map(x=>x===identity?'identity':x===panel?'panel':x===logout?'logout':'other'),['identity','panel','logout'],'logout must remain the final profile action');
+}
 
 console.log('habilitations agent profile integration contract: ok');
