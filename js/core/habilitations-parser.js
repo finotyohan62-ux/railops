@@ -54,33 +54,75 @@ function datesInLine(line){
 
 function extractHabilitations(text){
   const lines=String(text||'').split(/\r?\n/);
+  const foldedLines=lines.map(line=>String(line||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase());
+  const hasRangeHeader=foldedLines.some(line=>/\bdebut\b/.test(line)&&/\bfin\b/.test(line));
   const items=[];
   const ambiguities=[];
-  const seen=new Set();
-  const validityByCode=new Map();
+  const undated=[];
+  const byCode=new Map();
+
+  function register(item,lineNo){
+    const previous=byCode.get(item.code);
+    if(previous){
+      if(previous.validUntil!==item.validUntil){
+        ambiguities.push(`${item.code}: dates de validité contradictoires (${previous.validUntil} / ${item.validUntil})`);
+        return;
+      }
+      if(previous.validFrom&&item.validFrom&&previous.validFrom!==item.validFrom){
+        ambiguities.push(`${item.code}: dates de début contradictoires (${previous.validFrom} / ${item.validFrom})`);
+        return;
+      }
+      if(!previous.validFrom&&item.validFrom)previous.validFrom=item.validFrom;
+      return;
+    }
+    item.line=lineNo;
+    byCode.set(item.code,item);
+    items.push(item);
+  }
 
   for(let i=0;i<lines.length;i++){
     const line=lines[i];
     const codes=codesInLine(line);
     if(!codes.length)continue;
+    if(codes.length!==1){
+      ambiguities.push(`Ligne ${i+1}: plusieurs habilitations sur la même ligne`);
+      continue;
+    }
     const dates=datesInLine(line);
-    if(codes.length!==1||dates.length!==1){
-      ambiguities.push(`Ligne ${i+1}: association code/date ambiguë`);
+    if(dates.length===0){
+      undated.push({code:codes[0].code,line:i+1});
       continue;
     }
-    const item={code:codes[0].code,labelSource:codes[0].labelSource,validFrom:null,validUntil:dates[0].value};
-    const previousValidity=validityByCode.get(item.code);
-    if(previousValidity&&previousValidity!==item.validUntil){
-      ambiguities.push(`${item.code}: dates de validité contradictoires (${previousValidity} / ${item.validUntil})`);
+    if(dates.length>2){
+      ambiguities.push(`Ligne ${i+1}: trop de dates pour ${codes[0].code}`);
       continue;
     }
-    validityByCode.set(item.code,item.validUntil);
-    const key=`${item.code}|${item.validUntil}`;
-    if(seen.has(key))continue;
-    seen.add(key);
-    items.push(item);
+    let validFrom=null;
+    let validUntil=null;
+    if(dates.length===1){
+      const foldedLine=foldedLines[i];
+      const explicitEnd=/(jusqu|echeance|expiration|expire|date\s+de\s+fin|fin\s+de\s+validite)/.test(foldedLine);
+      if(hasRangeHeader&&!explicitEnd){
+        ambiguities.push(`${codes[0].code}: une seule date détectée dans un tableau Début/Fin (ligne ${i+1})`);
+        continue;
+      }
+      validUntil=dates[0].value;
+    }else{
+      validFrom=dates[0].value;
+      validUntil=dates[1].value;
+      if(validFrom>validUntil){
+        ambiguities.push(`${codes[0].code}: période de validité inversée (${validFrom} / ${validUntil})`);
+        continue;
+      }
+    }
+    register({code:codes[0].code,labelSource:codes[0].labelSource,validFrom,validUntil},i+1);
   }
 
+  for(const mention of undated){
+    if(!byCode.has(mention.code))ambiguities.push(`${mention.code}: aucune date de validité détectée (ligne ${mention.line})`);
+  }
+
+  for(const item of items)delete item.line;
   return {ok:ambiguities.length===0&&items.length>0,items,ambiguities};
 }
 
