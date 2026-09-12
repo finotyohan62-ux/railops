@@ -41,4 +41,13 @@ for(const forbidden of ['db.from','db.rpc','saveOfflineQueue','roPersistMaterial
 const sync=fs.readFileSync('js/core/sync.js','utf8');
 assert.ok(sync.includes('./js/core/chef-chantier-stats.js'),'sync loader must load Chef stats bridge');
 
+const sqlPath='docs/sql/2026-09-12-fix-chef-chantier-stats.sql';
+assert.ok(fs.existsSync(sqlPath),'auditable Chef stats RPC SQL missing');
+const sql=fs.readFileSync(sqlPath,'utf8');
+assert.ok(sql.includes('railops_chef_chantier_tree_stats'),'must replace the secure Chef stats RPC');
+assert.ok(sql.includes("date_trunc('week', current_timestamp at time zone 'Europe/Paris')"),'RPC must count the current local week');
+assert.ok(sql.includes('with recursive active_tree'),'RPC scope must match the active global Chef chantier tree');
+assert.ok(sql.includes('verifLundi')&&sql.includes('verifSemaine'),'RPC must aggregate both verification passes');
+assert.ok(!/select\s+m\.id\s*,/i.test(sql),'RPC must not expose material references');
+
 console.log('chef chantier secure stats contract: ok');
