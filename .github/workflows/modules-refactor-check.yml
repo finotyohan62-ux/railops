@@ -52,5 +52,7 @@ jobs:
         run: node tests/visual-refresh-phase6-finishing.test.js
       - name: Check visual audit legacy surfaces
         run: node tests/visual-audit-legacy-surfaces.test.js
+      - name: Check secure Chef chantier stats
+        run: node tests/chef-chantier-secure-stats.test.js
       - name: Check offline sync server acknowledgement handling
         run: node tests/sync-error-handling.test.js
