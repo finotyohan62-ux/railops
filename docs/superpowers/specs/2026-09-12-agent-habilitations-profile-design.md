@@ -98,28 +98,30 @@ Ordre de traitement :
 4. contrôle qu’une date est bien rattachée à chaque habilitation ;
 5. affichage d’une prévisualisation ;
 6. confirmation par l’agent ;
-7. upload et activation atomique côté serveur.
+7. upload du PDF dans un emplacement privé temporaire/pending ;
+8. activation transactionnelle des métadonnées et habilitations côté base.
 
 Si le PDF n’a pas de couche texte exploitable, RailOps tente un OCR en secours, chargé uniquement au moment du dépôt afin de ne pas alourdir le démarrage normal de l’application.
 
 Si RailOps n’est pas suffisamment sûr de l’association entre une habilitation et sa date, le document n’écrase jamais le document actif. Il passe en `needs_review`.
 
 ## Règles d’activation
-L’activation doit être atomique :
-- le nouveau document et ses habilitations sont enregistrés ;
-- le nouveau document devient `active` ;
-- l’ancien document devient `archived` ;
-- ces opérations réussissent ensemble ou aucune ne modifie l’état actif.
+Supabase Storage et PostgreSQL ne partagent pas une transaction unique. RailOps utilise donc un flux en deux phases :
 
-Cela évite qu’un agent se retrouve sans habilitation visible à cause d’un échec réseau ou d’une erreur de parsing.
+1. le fichier est envoyé dans un emplacement privé `pending` ;
+2. une fonction/RPC serveur exécute dans une transaction PostgreSQL : création du document, création de toutes ses habilitations, passage du nouveau document à `active` et archivage de l’ancien actif ;
+3. si la transaction échoue, l’ancien document reste actif et le fichier pending est supprimé ou marqué pour nettoyage ;
+4. si la transaction réussit, le document devient la référence active.
+
+L’état métier actif est donc atomique même si le stockage fichier lui-même est une étape distincte. Un échec réseau ou serveur ne peut pas laisser le profil sans habilitation active.
 
 ## Statuts affichés
 Chaque habilitation possède son propre statut calculé à partir de `valid_until` :
-- vert : valide ;
-- orange : expiration prochaine ;
-- rouge : expirée.
+- vert : plus de 60 jours avant échéance ;
+- orange : 60 jours ou moins avant échéance ;
+- rouge : date dépassée.
 
-La première version utilise des seuils simples configurables, avec un avertissement anticipé avant expiration. Aucun cron n’est nécessaire pour afficher correctement le statut : il est recalculé à l’ouverture/rafraîchissement du profil.
+Le nombre de jours restant est affiché lorsque l’échéance approche. Aucun cron n’est nécessaire pour afficher correctement le statut : il est recalculé à l’ouverture/rafraîchissement du profil.
 
 Le profil affiche aussi un statut global basé sur la situation la plus défavorable des habilitations actives.
 
@@ -141,6 +143,7 @@ Après sélection du PDF, un écran de prévisualisation affiche les habilitatio
 - Aucune habilitation reconnue : document non activé.
 - Habilitation détectée sans date fiable : document `needs_review`, ancien actif conservé.
 - Perte réseau pendant l’upload : aucun archivage de l’ancien document.
+- Échec transactionnel après upload : ancien actif conservé, fichier pending nettoyé ou marqué pour nettoyage.
 - Double clic / retry : opération idempotente par identifiant de document et hash du fichier.
 - Document déjà déposé : éviter un doublon actif.
 
@@ -159,7 +162,7 @@ Nouvelle logique dans un module dédié, sans modifier le cœur du scanner/impor
 - `js/core/habilitations.js` : état, parsing, prévisualisation et intégration profil ;
 - SQL/migration dédiée pour tables, fonctions et RLS ;
 - stockage privé Supabase ;
-- éventuellement une fonction serveur dédiée à l’activation atomique ;
+- fonction/RPC serveur dédiée à l’activation transactionnelle ;
 - tests dédiés `tests/habilitations-*.test.js` ;
 - chargement du lecteur PDF/OCR uniquement à la demande.
 
@@ -175,8 +178,9 @@ Le `legacy-core.js` n’est modifié que si un petit point d’intégration est 
 - fallback OCR ;
 - erreur de parsing sans perte de l’ancien actif ;
 - erreur réseau sans perte de l’ancien actif ;
-- activation atomique ;
+- activation transactionnelle ;
 - archivage de l’ancien uniquement après réussite ;
+- nettoyage/gestion d’un fichier pending après échec ;
 - détection de doublon ;
 - affichage valide / bientôt expirée / expirée ;
 - non-régression auth, rôles, chantiers, scanner, registre et synchronisation.
