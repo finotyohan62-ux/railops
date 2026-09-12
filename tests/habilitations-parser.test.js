@@ -75,7 +75,7 @@ assert.ok(incompleteRangeTable.ambiguities.some(x=>x.includes('H3B3')));
 
 // Anonymous regression fixture based on the real SFERIS title layout supplied for acceptance testing.
 // Real names, identifiers and document IDs are deliberately not committed.
-const sferisTitle=parser.extractHabilitations(`
+const sferisText=`
 Volet Habilitation
 TES M - ASP déplacement dans les emprises    Date d'Habilitation    Date limite d'Habilitation
 20/01/2025    19/01/2028
@@ -83,13 +83,17 @@ Particularité de l'habilitation
 TSAE op - Agent Prestataire S9    Date d'Habilitation    Date limite d'Habilitation
 31/03/2026    30/03/2029
 Particularité de l'habilitation
-TSAE op - CH1CB1 - Protection Electrique Caténaire    Date d'Habilitation    Date limite d'Habilitation
+TSAE op - CH1CB1 - Protection Electrique
+Caténaire    Date d'Habilitation    Date limite d'Habilitation
 20/01/2025    19/01/2028
 Volet autre(s) Compétence(s)
-Certification - Risques électriques C0    20/01/2025    19/01/2028
+Certification - Risques électriques C0    Date d'acquisition    Date limite
+20/01/2025    19/01/2028
 Volet Secourisme
+Délivré le : 31/03/2026
 Validité : 11/02/2028
-`);
+`;
+const sferisTitle=parser.extractHabilitations(sferisText);
 assert.equal(sferisTitle.ok,true,'the real-world SFERIS table structure must be parsed without guessing');
 assert.deepEqual(sferisTitle.items.map(x=>[x.code,x.validFrom,x.validUntil]),[
   ['TESM','2025-01-20','2028-01-19'],
@@ -98,5 +102,24 @@ assert.deepEqual(sferisTitle.items.map(x=>[x.code,x.validFrom,x.validUntil]),[
 ]);
 assert.ok(sferisTitle.items[0].labelSource.includes('ASP déplacement dans les emprises'),'official row wording must be preserved');
 assert.ok(!sferisTitle.items.some(x=>x.code==='C0'),'other competencies must not be silently mixed into the habilitation section');
+
+const profile=parser.extractProfileQualifications(sferisText);
+assert.equal(profile.ok,true,'one title should populate all professional qualification blocks');
+assert.deepEqual(profile.habilitations.map(x=>[x.code,x.validFrom,x.validUntil]),[
+  ['TESM','2025-01-20','2028-01-19'],
+  ['S9','2026-03-31','2029-03-30'],
+  ['CH1CB1','2025-01-20','2028-01-19']
+]);
+assert.deepEqual(profile.competences.map(x=>[x.code,x.validFrom,x.validUntil]),[
+  ['C0','2025-01-20','2028-01-19']
+]);
+assert.equal(profile.competences[0].labelSource,'Certification - Risques électriques C0');
+assert.deepEqual(profile.secourisme,[{
+  code:'SECOURISME',
+  labelSource:'Secourisme',
+  validFrom:'2026-03-31',
+  validUntil:'2028-02-11'
+}]);
+assert.deepEqual(profile.ambiguities,[]);
 
 console.log('habilitations parser contract: ok');
