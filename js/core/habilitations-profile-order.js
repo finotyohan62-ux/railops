@@ -93,7 +93,7 @@ function mountAndOrder(){
   if(!panel){
     const api=root.RailOpsHabilitationsProfile;
     if(!api||typeof api.injectProfilePanel!=='function')return false;
-    panel=api.injectProfilePanel();
+    panel=api.injectProfilePanel(host);
   }
   if(!panel)return false;
   placePanel(panel,host);
