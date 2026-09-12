@@ -57,9 +57,9 @@ function currentHost(){
 function looksLikeProfile(host){
   if(!host)return false;
   const text=normalize(host.textContent||'');
-  const logout=/(deconnexion|se deconnecter|logout)/.test(text);
-  const account=/(mot de passe|password|profil|compte)/.test(text);
-  return logout&&account;
+  // Dans RailOps, l'action de déconnexion est la signature stable de la fiche du compte.
+  // Certains profils n'affichent pas explicitement les mots « profil », « compte » ou « mot de passe ».
+  return /(deconnexion|se deconnecter|logout)/.test(text);
 }
 function currentPanel(host){
   try{return (host||document).querySelector(`[${PANEL_ATTR}]`);}catch(_){return null;}

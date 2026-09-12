@@ -69,6 +69,12 @@ const orderApi=context.window.RailOpsHabilitationsProfileOrder;
 assert.ok(orderApi,'profile order helper must expose its API');
 
 {
+  const logoutOnly={textContent:'Agent RailOps · Se déconnecter'};
+  assert.strictEqual(orderApi.looksLikeProfile(logoutOnly),true,'profile detection must work even when logout is the only stable account action');
+  assert.strictEqual(orderApi.looksLikeProfile({textContent:'Changer le mot de passe'}),false,'a password action alone must not be mistaken for the profile sheet');
+}
+
+{
   const host=makeHost();
   const identity=el('Agent RailOps',host);
   const security=el('',host);
