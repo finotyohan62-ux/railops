@@ -12,7 +12,7 @@ const profilePos=bootstrap.indexOf("loadFeatureScript('js/core/habilitations-pro
 assert.ok(parserPos>=0&&pdfPos>parserPos&&profilePos>pdfPos,'isolated feature bootstrap must load parser, PDF adapter and profile module sequentially');
 
 assert.ok(/openProfil/.test(js),'integration must hook the existing profile flow');
-assert.ok(/S\.currentAgent/.test(js),'profile integration must target the signed-in RailOps agent');
+assert.ok(/currentAgent/.test(js)&&/\.agent/.test(js),'profile integration must resolve the signed-in RailOps agent without trusting a foreign profile id');
 assert.ok(js.includes('data-railops-habilitations-profile'),'profile integration must guard against duplicate injection');
 assert.ok(!/nav-item[^\n]*(habilitation|comp[eé]tence)/i.test(js),'feature must not create a new bottom navigation item');
 
