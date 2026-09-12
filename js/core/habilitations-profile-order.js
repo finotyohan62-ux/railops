@@ -6,6 +6,7 @@ let observer=null;
 let queued=false;
 let profileIntentUntil=0;
 let profileTriggerBridgeInstalled=false;
+let directProfileHookInstalled=false;
 let activeProfileHost=null;
 
 function normalize(value){
@@ -96,9 +97,11 @@ function looksLikeProfile(host){
 function currentPanel(host){
   try{return (host||document).querySelector(`[${PANEL_ATTR}]`);}catch(_){return null;}
 }
-function mountAndOrder(){
+function mountAndOrder(forceProfile=false){
   const host=currentHost();
-  if(!looksLikeProfile(host))return false;
+  if(!host)return false;
+  if(forceProfile)activeProfileHost=host;
+  else if(!looksLikeProfile(host))return false;
   let panel=currentPanel(host);
   if(!panel){
     const api=root.RailOpsHabilitationsProfile;
@@ -116,6 +119,23 @@ function schedule(){
   if(typeof queueMicrotask==='function')queueMicrotask(run);
   else Promise.resolve().then(run);
 }
+function installDirectProfileHook(){
+  if(directProfileHookInstalled)return true;
+  const base=root.openProfil;
+  if(typeof base!=='function')return false;
+  if(base.__railopsHabilitationsOrderWrapped){directProfileHookInstalled=true;return true;}
+  const wrapped=function(){
+    const result=base.apply(this,arguments);
+    mountAndOrder(true);
+    return result;
+  };
+  wrapped.__railopsHabilitationsOrderWrapped=true;
+  wrapped.__railopsHabilitationsOrderBase=base;
+  root.openProfil=wrapped;
+  try{openProfil=wrapped;}catch(_){}
+  directProfileHookInstalled=true;
+  return true;
+}
 function installProfileTriggerBridge(){
   if(profileTriggerBridgeInstalled)return true;
   if(typeof document==='undefined'||typeof document.addEventListener!=='function')return false;
@@ -128,6 +148,9 @@ function installProfileTriggerBridge(){
   return true;
 }
 function install(){
+  // Chemin normal RailOps : legacy-core.js expose déjà openProfil quand ce module est chargé.
+  // Le fallback historique n'est conservé que pour les environnements où ce hook n'existe pas.
+  if(installDirectProfileHook())return true;
   installProfileTriggerBridge();
   schedule();
   if(observer||typeof MutationObserver!=='function'||!document?.body)return true;
@@ -138,7 +161,7 @@ function install(){
 
 root.RailOpsHabilitationsProfileOrder={
   findInsertionPoint,placePanel,currentHost,looksLikeProfile,mountAndOrder,schedule,install,
-  isProfileTrigger,markProfileIntent,profileIntentActive,installProfileTriggerBridge
+  isProfileTrigger,markProfileIntent,profileIntentActive,installProfileTriggerBridge,installDirectProfileHook
 };
 install();
 })(typeof window!=='undefined'?window:this);
