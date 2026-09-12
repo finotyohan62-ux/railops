@@ -45,4 +45,32 @@ S11 - validité 03/11/2027
 assert.equal(conflicting.ok,false,'same code with conflicting validity dates must block activation');
 assert.ok(conflicting.ambiguities.some(x=>x.includes('S11')));
 
+const datedRange=parser.extractHabilitations(`
+H1B1 - du 15/04/2024 au 15/04/2027
+S11 - du 03/11/2024 au 03/11/2026
+`);
+assert.equal(datedRange.ok,true,'a row with start and end dates must be accepted');
+assert.deepEqual(datedRange.items.map(x=>[x.code,x.validFrom,x.validUntil]),[
+  ['H1B1','2024-04-15','2027-04-15'],
+  ['S11','2024-11-03','2026-11-03']
+]);
+
+const repeatedTitle=parser.extractHabilitations(`
+Habilitation H1B1
+H1B1 - valable jusqu'au 15/04/2027
+`);
+assert.equal(repeatedTitle.ok,true,'an undated title mention must not invalidate a dated occurrence of the same code');
+assert.deepEqual(repeatedTitle.items.map(x=>[x.code,x.validUntil]),[['H1B1','2027-04-15']]);
+
+const reversedRange=parser.extractHabilitations('APS9 - du 28/09/2027 au 28/09/2026');
+assert.equal(reversedRange.ok,false,'a reversed validity range must be rejected');
+
+const incompleteRangeTable=parser.extractHabilitations(`
+Habilitation    Debut    Fin
+H3B3            12/01/2025
+S11             03/11/2024    03/11/2026
+`);
+assert.equal(incompleteRangeTable.ok,false,'a lone date in a Debut/Fin table must not be guessed as the expiry date');
+assert.ok(incompleteRangeTable.ambiguities.some(x=>x.includes('H3B3')));
+
 console.log('habilitations parser contract: ok');
