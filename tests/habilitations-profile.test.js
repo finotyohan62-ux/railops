@@ -103,6 +103,34 @@ assert.ok(orderApi,'profile order helper must expose its API');
   assert.strictEqual(orderApi.looksLikeProfile({textContent:'Agent RailOps'}),true,'a real profile click must recognize the profile even when the sheet has no logout/password signature');
 }
 
+// Regression: once the order helper has identified the active Profile sheet, the profile
+// module must receive that exact host. A second global modal lookup can otherwise mount the
+// qualifications panel into another #movl/modal and leave the visible Profile unchanged.
+{
+  const host=makeHost();
+  const identity=el('Agent RailOps',host);
+  const security=el('',host);
+  const logout=el('',host);
+  const passwordButton=el('Changer le mot de passe',security);
+  const logoutButton=el('Déconnexion',logout);
+  host._candidates=[passwordButton,logoutButton];
+  host.children=[identity,security,logout];
+  context.document.getElementById=id=>id==='movl'?host:null;
+  let receivedHost=null;
+  context.window.RailOpsHabilitationsProfile={
+    injectProfilePanel(profileHost){
+      receivedHost=profileHost;
+      const profilePanel=el('Qualifications professionnelles',host);
+      host.children.push(profilePanel);
+      return profilePanel;
+    }
+  };
+  orderApi.markProfileIntent();
+  assert.strictEqual(orderApi.mountAndOrder(),true,'active Profile sheet must mount the qualifications panel');
+  assert.strictEqual(receivedHost,host,'profile integration must pass the exact active Profile host to the qualifications module');
+  context.document.getElementById=()=>null;
+}
+
 {
   const host=makeHost();
   const identity=el('Agent RailOps',host);
