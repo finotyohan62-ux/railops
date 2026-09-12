@@ -86,9 +86,8 @@ assert.ok(orderApi,'profile order helper must expose its API');
   assert.strictEqual(orderApi.looksLikeProfile({textContent:'Changer le mot de passe'}),false,'a password action alone must not be mistaken for the profile sheet');
 }
 
-// Regression: sync.js loads the Habilitations feature before the obfuscated legacy core.
-// If window.openProfil is not hookable yet, the real dashboard click must still establish
-// an explicit Profile intent. This must not depend on modal copy such as “Déconnexion”.
+// If the openProfil hook is unavailable when feature modules initialize, the real dashboard
+// click must still establish an explicit Profile intent. This must not depend on modal copy.
 {
   assert.strictEqual(typeof orderApi.isProfileTrigger,'function','profile integration must expose a structural profile-trigger detector');
   assert.ok(listeners.click&&listeners.click.capture===true,'profile integration must install a capture click bridge before legacy openProfil is hookable');
@@ -103,9 +102,8 @@ assert.ok(orderApi,'profile order helper must expose its API');
   assert.strictEqual(orderApi.looksLikeProfile({textContent:'Agent RailOps'}),true,'a real profile click must recognize the profile even when the sheet has no logout/password signature');
 }
 
-// Regression: once the order helper has identified the active Profile sheet, the profile
-// module must receive that exact host. A second global modal lookup can otherwise mount the
-// qualifications panel into another #movl/modal and leave the visible Profile unchanged.
+// Once the order helper has identified the active Profile sheet, the profile module must
+// receive that exact host. A second global modal lookup can mount into another modal.
 {
   const host=makeHost();
   const identity=el('Agent RailOps',host);
@@ -129,6 +127,34 @@ assert.ok(orderApi,'profile order helper must expose its API');
   assert.strictEqual(orderApi.mountAndOrder(),true,'active Profile sheet must mount the qualifications panel');
   assert.strictEqual(receivedHost,host,'profile integration must pass the exact active Profile host to the qualifications module');
   context.document.getElementById=()=>null;
+}
+
+// A profile sheet remains a profile after the short click-intent window has expired. This
+// protects Qualifications from disappearing if the profile rerenders asynchronously later.
+{
+  const previousDate=context.Date;
+  let now=1000;
+  context.Date={now:()=>now};
+  const host=makeHost();
+  host.textContent='Agent RailOps';
+  context.document.getElementById=id=>id==='movl'?host:null;
+  let injected=0;
+  context.window.RailOpsHabilitationsProfile={
+    injectProfilePanel(profileHost){
+      injected++;
+      const profilePanel=el('Qualifications professionnelles',profileHost);
+      profileHost.children.push(profilePanel);
+      return profilePanel;
+    }
+  };
+  orderApi.markProfileIntent(250);
+  assert.strictEqual(orderApi.mountAndOrder(),true,'initial profile opening must mount qualifications');
+  now=2000;
+  assert.strictEqual(orderApi.looksLikeProfile(host),true,'the active profile host must stay recognized after click intent expires');
+  assert.strictEqual(orderApi.mountAndOrder(),true,'an asynchronous profile rerender must still allow qualifications reinjection');
+  assert.strictEqual(injected,2,'qualifications must be reinjected after a later profile rerender');
+  context.document.getElementById=()=>null;
+  context.Date=previousDate;
 }
 
 {
