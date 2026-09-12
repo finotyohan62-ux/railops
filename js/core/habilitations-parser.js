@@ -7,15 +7,26 @@ if(root)root.RailOpsHabilitationsParser=api;
 'use strict';
 
 const CODE_PATTERNS=[
-  /\bCH\s*\d\s*[\/\s-]*CB\s*\d\b/gi,
-  /\bH\s*\d\s*B\s*\d\b/gi,
-  /\bAPS\s*\d{1,2}\b/gi,
-  /\bS\s*\d{1,2}\b/gi
+  {pattern:/\bTES\s*M\b/gi,canonical:()=> 'TESM'},
+  {pattern:/\bCH\s*\d\s*[\/\s-]*CB\s*\d\b/gi,canonical:value=>normalizeCode(value)},
+  {pattern:/\bH\s*\d\s*B\s*\d\b/gi,canonical:value=>normalizeCode(value)},
+  {pattern:/\bAPS\s*\d{1,2}\b/gi,canonical:value=>normalizeCode(value)},
+  {pattern:/\bS\s*\d{1,2}\b/gi,canonical:value=>normalizeCode(value)}
 ];
 const DATE_PATTERN=/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/g;
 
 function normalizeCode(value){
   return String(value||'').toUpperCase().replace(/[\/\s-]+/g,'');
+}
+
+function fold(value){
+  return String(value||'')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .replace(/[’']/g,' ')
+    .replace(/\s+/g,' ')
+    .trim()
+    .toLowerCase();
 }
 
 function parseFrenchDate(value){
@@ -29,12 +40,12 @@ function parseFrenchDate(value){
 
 function codesInLine(line){
   const out=[];
-  for(const pattern of CODE_PATTERNS){
-    pattern.lastIndex=0;
+  for(const spec of CODE_PATTERNS){
+    spec.pattern.lastIndex=0;
     let match;
-    while((match=pattern.exec(line))){
-      out.push({code:normalizeCode(match[0]),labelSource:match[0].trim(),index:match.index});
-      if(match.index===pattern.lastIndex)pattern.lastIndex++;
+    while((match=spec.pattern.exec(line))){
+      out.push({code:spec.canonical(match[0]),matchSource:match[0].trim(),index:match.index});
+      if(match.index===spec.pattern.lastIndex)spec.pattern.lastIndex++;
     }
   }
   return out.sort((a,b)=>a.index-b.index);
@@ -52,10 +63,46 @@ function datesInLine(line){
   return out;
 }
 
+function hasRangeHeader(value){
+  const normalized=fold(value);
+  return /date\s+d\s+habilitation/.test(normalized)&&/date\s+limite/.test(normalized);
+}
+
+function officialLabel(lines,index,matchSource){
+  const line=String(lines[index]||'').replace(/\s+/g,' ').trim();
+  if(!/\b(?:TSAE|TES\s*M)\b/i.test(line))return matchSource;
+  let label=line.split(/\bDate\s+d[’']?Habilitation\b/i)[0].trim();
+  const next=String(lines[index+1]||'').replace(/\s+/g,' ').trim();
+  if(next&&!datesInLine(next).length){
+    const continuation=next.split(/\bd[’']?Habilitation\b/i)[0].trim();
+    if(continuation&&!/^date\s+limite$/i.test(continuation)&&continuation.length<=80){
+      label=`${label} ${continuation}`.replace(/\s+/g,' ').trim();
+    }
+  }
+  return label||matchSource;
+}
+
+function followingRange(lines,index){
+  const headerText=[lines[index],lines[index+1]].filter(Boolean).join(' ');
+  if(!hasRangeHeader(headerText))return null;
+  for(let offset=1;offset<=2;offset++){
+    const line=String(lines[index+offset]||'');
+    if(codesInLine(line).length)return null;
+    const dates=datesInLine(line);
+    if(dates.length===2){
+      return {validFrom:dates[0].value,validUntil:dates[1].value,offset};
+    }
+    if(dates.length===1){
+      return {ambiguous:true,offset};
+    }
+  }
+  return null;
+}
+
 function extractHabilitations(text){
   const lines=String(text||'').split(/\r?\n/);
-  const foldedLines=lines.map(line=>String(line||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase());
-  const hasRangeHeader=foldedLines.some(line=>/\bdebut\b/.test(line)&&/\bfin\b/.test(line));
+  const foldedLines=lines.map(fold);
+  const hasGlobalRangeHeader=foldedLines.some(line=>/\bdebut\b/.test(line)&&/\bfin\b/.test(line));
   const items=[];
   const ambiguities=[];
   const undated=[];
@@ -73,6 +120,7 @@ function extractHabilitations(text){
         return;
       }
       if(!previous.validFrom&&item.validFrom)previous.validFrom=item.validFrom;
+      if(previous.labelSource===previous.code&&item.labelSource!==item.code)previous.labelSource=item.labelSource;
       return;
     }
     item.line=lineNo;
@@ -88,13 +136,28 @@ function extractHabilitations(text){
       ambiguities.push(`Ligne ${i+1}: plusieurs habilitations sur la même ligne`);
       continue;
     }
+    const code=codes[0];
+    const labelSource=officialLabel(lines,i,code.matchSource);
     const dates=datesInLine(line);
     if(dates.length===0){
-      undated.push({code:codes[0].code,line:i+1});
+      const range=followingRange(lines,i);
+      if(range?.ambiguous){
+        ambiguities.push(`${code.code}: une seule date détectée dans une ligne Début/Fin (ligne ${i+range.offset+1})`);
+        continue;
+      }
+      if(range){
+        if(range.validFrom>range.validUntil){
+          ambiguities.push(`${code.code}: période de validité inversée (${range.validFrom} / ${range.validUntil})`);
+          continue;
+        }
+        register({code:code.code,labelSource,validFrom:range.validFrom,validUntil:range.validUntil},i+1);
+        continue;
+      }
+      undated.push({code:code.code,line:i+1});
       continue;
     }
     if(dates.length>2){
-      ambiguities.push(`Ligne ${i+1}: trop de dates pour ${codes[0].code}`);
+      ambiguities.push(`Ligne ${i+1}: trop de dates pour ${code.code}`);
       continue;
     }
     let validFrom=null;
@@ -102,8 +165,8 @@ function extractHabilitations(text){
     if(dates.length===1){
       const foldedLine=foldedLines[i];
       const explicitEnd=/(jusqu|echeance|expiration|expire|date\s+de\s+fin|fin\s+de\s+validite)/.test(foldedLine);
-      if(hasRangeHeader&&!explicitEnd){
-        ambiguities.push(`${codes[0].code}: une seule date détectée dans un tableau Début/Fin (ligne ${i+1})`);
+      if(hasGlobalRangeHeader&&!explicitEnd){
+        ambiguities.push(`${code.code}: une seule date détectée dans un tableau Début/Fin (ligne ${i+1})`);
         continue;
       }
       validUntil=dates[0].value;
@@ -111,11 +174,11 @@ function extractHabilitations(text){
       validFrom=dates[0].value;
       validUntil=dates[1].value;
       if(validFrom>validUntil){
-        ambiguities.push(`${codes[0].code}: période de validité inversée (${validFrom} / ${validUntil})`);
+        ambiguities.push(`${code.code}: période de validité inversée (${validFrom} / ${validUntil})`);
         continue;
       }
     }
-    register({code:codes[0].code,labelSource:codes[0].labelSource,validFrom,validUntil},i+1);
+    register({code:code.code,labelSource,validFrom,validUntil},i+1);
   }
 
   for(const mention of undated){
