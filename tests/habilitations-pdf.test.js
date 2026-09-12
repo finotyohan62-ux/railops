@@ -16,6 +16,27 @@ const pdf=require('../js/core/habilitations-pdf.js');
   assert.equal(reconstructed.split('\n').length,3,'PDF.js text items must preserve visual rows');
   assert.ok(reconstructed.includes('H1B1 15/04/2024 15/04/2027'));
 
+  // Real titles may store content-stream items out of visual order. Rebuild rows by coordinates,
+  // not by the order in which PDF.js returns the text objects.
+  const shuffledVisualRows=pdf.textItemsToLines([
+    {str:'TES M - ASP déplacement dans les emprises',transform:[1,0,0,1,15,700]},
+    {str:'TSAE op - Agent Prestataire S9',transform:[1,0,0,1,15,640]},
+    {str:"Date d'Habilitation",transform:[1,0,0,1,154,700]},
+    {str:'Date limite',transform:[1,0,0,1,228,700]},
+    {str:'20/01/2025',transform:[1,0,0,1,163,680]},
+    {str:'19/01/2028',transform:[1,0,0,1,229,680]},
+    {str:"Date d'Habilitation",transform:[1,0,0,1,154,640]},
+    {str:'Date limite',transform:[1,0,0,1,228,640]},
+    {str:'31/03/2026',transform:[1,0,0,1,163,620]},
+    {str:'30/03/2029',transform:[1,0,0,1,229,620]}
+  ]);
+  const visualLines=shuffledVisualRows.split('\n');
+  assert.ok(visualLines[0].includes('TES M - ASP déplacement dans les emprises'), 'first visual row must be reconstructed first');
+  assert.ok(visualLines[1].includes('20/01/2025')&&visualLines[1].includes('19/01/2028'),'the first date row must remain directly below its habilitation');
+  assert.ok(visualLines[2].includes('TSAE op - Agent Prestataire S9'),'the second habilitation row must follow the first date row');
+
+  assert.equal(pdf.hasHabilitationCode('TES M - ASP déplacement dans les emprises'),true,'TES M must be recognized as an habilitation marker');
+
   const textResult=await pdf.readHabilitationPdf(
     {type:'application/pdf',arrayBuffer:async()=>new ArrayBuffer(8)},
     {
