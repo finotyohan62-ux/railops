@@ -65,3 +65,5 @@ jobs:
         run: node tests/habilitations-prototype.test.js
       - name: Check habilitation security contract
         run: node tests/habilitations-security-contract.test.js
+      - name: Check agent profile habilitation integration
+        run: node tests/habilitations-profile.test.js
