@@ -20,13 +20,14 @@ create table if not exists public.agent_habilitation_documents (
 create table if not exists public.agent_habilitations (
   id uuid primary key default gen_random_uuid(),
   document_id uuid not null references public.agent_habilitation_documents(id) on delete cascade,
+  qualification_type text not null check (qualification_type in ('habilitation','competence','secourisme')),
   code text not null check (length(code) between 2 and 32),
   label_source text,
   valid_from date,
   valid_until date not null,
   created_at timestamptz not null default now(),
   check (valid_from is null or valid_from <= valid_until),
-  unique (document_id, code, valid_until)
+  unique (document_id, qualification_type, code, valid_until)
 );
 
 create unique index if not exists agent_habilitation_documents_one_active_per_user
@@ -95,6 +96,7 @@ declare
   v_user_id text;
   v_now timestamptz := clock_timestamp();
   v_item jsonb;
+  v_type text;
   v_code text;
   v_label text;
   v_from_text text;
@@ -154,10 +156,15 @@ begin
 
   for v_item in select value from jsonb_array_elements(p_items)
   loop
+    v_type := lower(trim(coalesce(v_item->>'type','')));
     v_code := upper(regexp_replace(coalesce(v_item->>'code',''),'[^A-Za-z0-9]','','g'));
     v_label := nullif(trim(coalesce(v_item->>'labelSource','')), '');
     v_from_text := nullif(trim(coalesce(v_item->>'validFrom','')), '');
     v_until_text := nullif(trim(coalesce(v_item->>'validUntil','')), '');
+
+    if v_type not in ('habilitation','competence','secourisme') then
+      raise exception 'RAILOPS_QUALIFICATION_TYPE_INVALID' using errcode='22023';
+    end if;
 
     if v_code = '' or length(v_code) < 2 or length(v_code) > 32 then
       raise exception 'RAILOPS_HABILITATION_CODE_INVALID' using errcode='22023';
@@ -195,8 +202,11 @@ begin
       end if;
     end if;
 
-    insert into public.agent_habilitations(document_id,code,label_source,valid_from,valid_until)
-    values (p_document_id,v_code,v_label,v_valid_from,v_valid_until);
+    insert into public.agent_habilitations(
+      document_id,qualification_type,code,label_source,valid_from,valid_until
+    ) values (
+      p_document_id,v_type,v_code,v_label,v_valid_from,v_valid_until
+    );
   end loop;
 
   update public.agent_habilitation_documents d
@@ -269,11 +279,12 @@ begin
     coalesce(
       jsonb_agg(
         jsonb_build_object(
+          'type',h.qualification_type,
           'code',h.code,
           'labelSource',h.label_source,
           'validFrom',case when h.valid_from is null then null else to_char(h.valid_from,'YYYY-MM-DD') end,
           'validUntil',to_char(h.valid_until,'YYYY-MM-DD')
-        ) order by h.code,h.valid_until
+        ) order by h.qualification_type,h.code,h.valid_until
       ) filter (where h.id is not null),
       '[]'::jsonb
     ) as items
