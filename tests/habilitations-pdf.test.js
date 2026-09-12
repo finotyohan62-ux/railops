@@ -2,6 +2,20 @@ const assert=require('assert');
 const pdf=require('../js/core/habilitations-pdf.js');
 
 (async()=>{
+  const reconstructed=pdf.textItemsToLines([
+    {str:'Habilitation',transform:[1,0,0,1,50,700]},
+    {str:'Debut',transform:[1,0,0,1,180,700]},
+    {str:'Fin',transform:[1,0,0,1,300,700],hasEOL:true},
+    {str:'H1B1',transform:[1,0,0,1,50,680]},
+    {str:'15/04/2024',transform:[1,0,0,1,180,680]},
+    {str:'15/04/2027',transform:[1,0,0,1,300,680],hasEOL:true},
+    {str:'S11',transform:[1,0,0,1,50,660]},
+    {str:'03/11/2024',transform:[1,0,0,1,180,660]},
+    {str:'03/11/2026',transform:[1,0,0,1,300,660]}
+  ]);
+  assert.equal(reconstructed.split('\n').length,3,'PDF.js text items must preserve visual rows');
+  assert.ok(reconstructed.includes('H1B1 15/04/2024 15/04/2027'));
+
   const textResult=await pdf.readHabilitationPdf(
     {type:'application/pdf',arrayBuffer:async()=>new ArrayBuffer(8)},
     {
@@ -30,6 +44,8 @@ const pdf=require('../js/core/habilitations-pdf.js');
     }
   );
   assert.equal(irrelevantText.method,'ocr','native text without a recognizable habilitation must fall back to OCR');
+
+  assert.ok(Number(pdf.OCR_RENDER_SCALE)>=3.3,'OCR render scale must be high enough for small habilitation codes');
 
   await assert.rejects(()=>pdf.readHabilitationPdf({type:'image/jpeg'}),/PDF/);
   console.log('habilitations PDF adapter contract: ok');
