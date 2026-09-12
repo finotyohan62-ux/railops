@@ -35,5 +35,34 @@ window.doChangePass=async function(id,selfMode){
   try{await invokeAdmin('change_password',{user_id:target,password:p1});document.getElementById('movl')?.remove();notify('Mot de passe mis à jour ✓','ok');}
   catch(e){console.error('[RailOps secure admin] password',e);notify(errorText(e.code||e.message),'danger');}
 };
+
+// Feature bootstrap: the legacy index is intentionally left untouched while the
+// profile qualification feature is validated on its isolated branch. Load the
+// three small modules sequentially after the legacy/profile functions exist.
+function loadFeatureScript(src){
+  return new Promise((resolve,reject)=>{
+    const existing=[...document.scripts].find(s=>String(s.src||'').endsWith(src));
+    if(existing){
+      if(existing.dataset.railopsLoaded==='1'||existing.readyState==='complete')return resolve();
+      existing.addEventListener('load',resolve,{once:true});
+      existing.addEventListener('error',reject,{once:true});
+      return;
+    }
+    const script=document.createElement('script');
+    script.src=src;script.async=false;
+    script.onload=()=>{script.dataset.railopsLoaded='1';resolve();};
+    script.onerror=()=>reject(new Error(`Impossible de charger ${src}`));
+    document.head.appendChild(script);
+  });
+}
+async function bootstrapHabilitationProfile(){
+  try{
+    await loadFeatureScript('js/core/habilitations-parser.js');
+    await loadFeatureScript('js/core/habilitations-pdf.js');
+    await loadFeatureScript('js/core/habilitations-profile.js');
+  }catch(e){console.warn('[RailOps habilitations] bootstrap',e);}
+}
+setTimeout(bootstrapHabilitationProfile,0);
+
 console.info('[RailOps] user administration routed through secure Edge Function');
 })();
