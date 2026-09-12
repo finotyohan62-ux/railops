@@ -7,6 +7,8 @@ const low=sql.toLowerCase();
 for(const token of [
   'agent_habilitation_documents',
   'agent_habilitations',
+  'qualification_type',
+  "'habilitation','competence','secourisme'",
   'enable row level security',
   'railops-habilitations',
   'private.railops_activate_habilitation_document_impl',
@@ -21,12 +23,15 @@ for(const token of [
 assert.ok(low.includes("set search_path = ''"),'privileged helpers must use an empty search_path');
 assert.ok(/security\s+definer/i.test(sql),'private privileged helpers must be security definer');
 assert.ok(/security\s+invoker/i.test(sql),'public RPC wrappers must remain security invoker');
-assert.ok(/unique\s*\([^)]*document_id[^)]*code[^)]*valid_until/i.test(sql),'document/code/date uniqueness must be enforced');
+assert.ok(/unique\s*\([^)]*document_id[^)]*qualification_type[^)]*code[^)]*valid_until/i.test(sql),'document/type/code/date uniqueness must be enforced');
 assert.ok(/where\s*\(status\s*=\s*'active'\)/i.test(sql),'one-active-document partial index must exist');
 assert.ok(low.includes("storage.foldername(name))[1] = (select auth.uid())::text"),'storage upload must be restricted to the caller folder');
 assert.ok(!/public\s*=\s*true/i.test(sql),'storage bucket must never be public');
 assert.ok(low.includes("p_storage_path <> (select auth.uid())::text || '/' || p_document_id::text || '.pdf'"),'activation must bind the DB document id to the caller-owned storage path');
 assert.ok(low.includes('from storage.objects'),'activation must verify that the uploaded object exists before DB activation');
+assert.ok(low.includes("v_type := lower(trim(coalesce(v_item->>'type','')))"),'activation must read the qualification type supplied by the verified parser');
+assert.ok(low.includes("v_type not in ('habilitation','competence','secourisme')"),'activation must reject unknown qualification types');
+assert.ok(low.includes("'type',h.qualification_type"),'scope RPC must return the qualification type for profile grouping');
 assert.ok(low.includes('revoke all on public.agent_habilitation_documents from anon, authenticated'),'direct table access must be revoked');
 assert.ok(low.includes('revoke all on public.agent_habilitations from anon, authenticated'),'direct item access must be revoked');
 console.log('habilitations SQL security contract: ok');
