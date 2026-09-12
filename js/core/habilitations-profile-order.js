@@ -2,6 +2,8 @@
 'use strict';
 if(!root||root.RailOpsHabilitationsProfileOrder)return;
 const PANEL_ATTR='data-railops-habilitations-profile';
+let observer=null;
+let queued=false;
 
 function normalize(value){
   return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
@@ -43,30 +45,55 @@ function placePanel(panel,host){
   host.insertBefore(panel,anchor);
   return true;
 }
-function currentPanel(){
-  try{return document.querySelector(`[${PANEL_ATTR}]`);}catch(_){return null;}
+function currentHost(){
+  try{
+    const movl=document.getElementById('movl');
+    if(movl)return movl.querySelector('.msheet,.modal-sheet,.modal-content,.sheet,.modal')||movl;
+    const overlay=document.getElementById('modal-overlay');
+    if(overlay&&overlay.children.length)return overlay.querySelector('.msheet,.modal-sheet,.modal-content,.sheet,.modal')||overlay.lastElementChild||overlay;
+  }catch(_){}
+  return null;
 }
-function reorder(){
-  const panel=currentPanel();
-  const host=panel?.parentElement;
-  if(!panel||!host)return false;
-  return placePanel(panel,host);
+function looksLikeProfile(host){
+  if(!host)return false;
+  const text=normalize(host.textContent||'');
+  const logout=/(deconnexion|se deconnecter|logout)/.test(text);
+  const account=/(mot de passe|password|profil|compte)/.test(text);
+  return logout&&account;
 }
-function schedule(){[0,40,120,300,700].forEach(delay=>setTimeout(reorder,delay));}
-function install(){
-  const base=root.openProfil;
-  if(typeof base!=='function')return false;
-  if(!base.__railopsProfileOrderWrapped){
-    const wrapped=function(){const result=base.apply(this,arguments);schedule();return result;};
-    wrapped.__railopsProfileOrderWrapped=true;
-    wrapped.__railopsProfileOrderBase=base;
-    root.openProfil=wrapped;
-    try{openProfil=wrapped;}catch(_){}
+function currentPanel(host){
+  try{return (host||document).querySelector(`[${PANEL_ATTR}]`);}catch(_){return null;}
+}
+function mountAndOrder(){
+  const host=currentHost();
+  if(!looksLikeProfile(host))return false;
+  let panel=currentPanel(host);
+  if(!panel){
+    const api=root.RailOpsHabilitationsProfile;
+    if(!api||typeof api.injectProfilePanel!=='function')return false;
+    panel=api.injectProfilePanel();
   }
+  if(!panel)return false;
+  placePanel(panel,host);
+  return true;
+}
+function schedule(){
+  if(queued)return;
+  queued=true;
+  const run=()=>{queued=false;mountAndOrder();};
+  if(typeof queueMicrotask==='function')queueMicrotask(run);
+  else Promise.resolve().then(run);
+}
+function install(){
   schedule();
+  if(observer||typeof MutationObserver!=='function'||!document?.body)return true;
+  observer=new MutationObserver(()=>schedule());
+  observer.observe(document.body,{childList:true,subtree:true,characterData:true});
   return true;
 }
 
-root.RailOpsHabilitationsProfileOrder={findInsertionPoint,placePanel,reorder,schedule,install};
-if(!install())setTimeout(install,100);
+root.RailOpsHabilitationsProfileOrder={
+  findInsertionPoint,placePanel,currentHost,looksLikeProfile,mountAndOrder,schedule,install
+};
+install();
 })(typeof window!=='undefined'?window:this);
