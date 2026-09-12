@@ -11,6 +11,7 @@ const TESSERACT_VERSION='7.0.0';
 const PDFJS_URL=`https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.mjs`;
 const PDFJS_WORKER_URL=`https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.mjs`;
 const TESSERACT_URL=`https://cdn.jsdelivr.net/npm/tesseract.js@${TESSERACT_VERSION}/dist/tesseract.min.js`;
+const OCR_RENDER_SCALE=3.5;
 let pdfJsPromise=null;
 let tesseractPromise=null;
 
@@ -67,6 +68,27 @@ async function openPdf(file){
   return task.promise;
 }
 
+function textItemsToLines(items){
+  const lines=[];
+  let current=[];
+  let currentY=null;
+  function flush(){
+    const line=current.join(' ').replace(/\s+/g,' ').trim();
+    if(line)lines.push(line);
+    current=[];currentY=null;
+  }
+  for(const item of Array.isArray(items)?items:[]){
+    const text=String(item?.str||'').trim();
+    const y=Number(item?.transform?.[5]);
+    if(current.length&&Number.isFinite(y)&&Number.isFinite(currentY)&&Math.abs(y-currentY)>2)flush();
+    if(text)current.push(text);
+    if(currentY===null&&Number.isFinite(y))currentY=y;
+    if(item?.hasEOL)flush();
+  }
+  flush();
+  return lines.join('\n');
+}
+
 async function extractTextWithPdfJs(file){
   const doc=await openPdf(file);
   const pages=[];
@@ -74,7 +96,7 @@ async function extractTextWithPdfJs(file){
     for(let pageNo=1;pageNo<=doc.numPages;pageNo++){
       const page=await doc.getPage(pageNo);
       const content=await page.getTextContent();
-      pages.push(content.items.map(item=>String(item?.str||'')).join(' '));
+      pages.push(textItemsToLines(content.items));
     }
     return pages.join('\n');
   }finally{
@@ -90,7 +112,7 @@ async function ocrWithTesseract(file){
   try{
     for(let pageNo=1;pageNo<=doc.numPages;pageNo++){
       const page=await doc.getPage(pageNo);
-      const viewport=page.getViewport({scale:2});
+      const viewport=page.getViewport({scale:OCR_RENDER_SCALE});
       const canvas=root.document.createElement('canvas');
       canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
       const context=canvas.getContext('2d',{alpha:false});
@@ -122,7 +144,7 @@ async function readHabilitationPdf(file,deps={}){
 }
 
 return {
-  PDFJS_VERSION,TESSERACT_VERSION,PDFJS_URL,PDFJS_WORKER_URL,TESSERACT_URL,
-  hasHabilitationCode,readHabilitationPdf,extractTextWithPdfJs,ocrWithTesseract
+  PDFJS_VERSION,TESSERACT_VERSION,PDFJS_URL,PDFJS_WORKER_URL,TESSERACT_URL,OCR_RENDER_SCALE,
+  hasHabilitationCode,textItemsToLines,readHabilitationPdf,extractTextWithPdfJs,ocrWithTesseract
 };
 });
