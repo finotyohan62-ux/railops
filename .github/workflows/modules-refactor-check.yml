@@ -5,6 +5,7 @@ on:
       - refactor/modules-progressive-offline-css
       - refactor/modules-progressive-offline
       - refactor/modules-progressive-offline-sync
+      - feat/agent-habilitations-profile
   pull_request:
     branches:
       - main
@@ -56,3 +57,11 @@ jobs:
         run: node tests/chef-chantier-secure-stats.test.js
       - name: Check offline sync server acknowledgement handling
         run: node tests/sync-error-handling.test.js
+      - name: Check habilitation parser
+        run: node tests/habilitations-parser.test.js
+      - name: Check habilitation PDF adapter
+        run: node tests/habilitations-pdf.test.js
+      - name: Check habilitation standalone prototype
+        run: node tests/habilitations-prototype.test.js
+      - name: Check habilitation security contract
+        run: node tests/habilitations-security-contract.test.js
