@@ -77,7 +77,9 @@ function findProfileHost(){
   if(overlay&&overlay.children.length){return overlay.querySelector('.msheet,.modal-sheet,.modal-content,.sheet,.modal')||overlay.lastElementChild||overlay;}
   return null;
 }
-function panel(){return document.querySelector(`[${PANEL_ATTR}]`);}
+function panel(host){
+  try{return (host||document).querySelector(`[${PANEL_ATTR}]`);}catch(_){return null;}
+}
 
 function rowHtml(item){
   const st=statusOf(item.validUntil);
@@ -203,10 +205,10 @@ async function viewOwnPdf(){
   }catch(error){console.error('[RailOps habilitations] ouverture PDF',error);notify('PDF indisponible pour le moment.','danger');}
 }
 
-function injectProfilePanel(){
+function injectProfilePanel(hostOverride){
   clearTimeout(injectTimer);
-  const existing=panel();if(existing)return existing;
-  const host=findProfileHost();if(!host)return null;
+  const host=hostOverride||findProfileHost();if(!host)return null;
+  const existing=panel(host);if(existing)return existing;
   ensureStyle();
   const target=document.createElement('section');target.setAttribute(PANEL_ATTR,'1');
   target.innerHTML='<div class="ro-hab-loading">Chargement des qualifications…</div>';
@@ -215,8 +217,11 @@ function injectProfilePanel(){
   loadActive(target);
   return target;
 }
-function scheduleInjection(){
-  [0,40,120,300,700].forEach(delay=>setTimeout(()=>{if(!panel())injectProfilePanel();},delay));
+function scheduleInjection(hostOverride){
+  [0,40,120,300,700].forEach(delay=>setTimeout(()=>{
+    const host=hostOverride||findProfileHost();
+    if(host&&!panel(host))injectProfilePanel(host);
+  },delay));
 }
 function installProfileHook(){
   const base=root.openProfil;
