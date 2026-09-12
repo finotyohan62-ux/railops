@@ -29,8 +29,6 @@ jobs:
         run: node tests/admin-mode.test.js
       - name: Check legacy core extraction invariants
         run: node tests/legacy-core-extraction.test.js
-      - name: Diagnose actual legacy profile renderer
-        run: node tests/profile-decode-diagnostic.js
       - name: Check offline sync extraction invariants
         run: node tests/sync-extraction.test.js
       - name: Check multi-chantier source reconciliation
@@ -69,3 +67,5 @@ jobs:
         run: node tests/habilitations-security-contract.test.js
       - name: Check agent profile habilitation integration
         run: node tests/habilitations-profile.test.js
+      - name: Check direct profile lifecycle hook
+        run: node tests/habilitations-profile-direct-hook.test.js
