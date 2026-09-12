@@ -6,6 +6,7 @@ let observer=null;
 let queued=false;
 let profileIntentUntil=0;
 let profileTriggerBridgeInstalled=false;
+let activeProfileHost=null;
 
 function normalize(value){
   return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
@@ -78,10 +79,19 @@ function isProfileTrigger(target){
 }
 function looksLikeProfile(host){
   if(!host)return false;
-  if(profileIntentActive())return true;
+  if(profileIntentActive()){
+    activeProfileHost=host;
+    return true;
+  }
+  if(activeProfileHost===host){
+    if(host.isConnected===false)activeProfileHost=null;
+    else return true;
+  }
   const text=normalize(host.textContent||'');
   // Fallback historique : utile si le Profil a été ouvert autrement que par le bouton/avatar.
-  return /(deconnexion|se deconnecter|logout)/.test(text);
+  const fallback=/(deconnexion|se deconnecter|logout)/.test(text);
+  if(fallback)activeProfileHost=host;
+  return fallback;
 }
 function currentPanel(host){
   try{return (host||document).querySelector(`[${PANEL_ATTR}]`);}catch(_){return null;}
