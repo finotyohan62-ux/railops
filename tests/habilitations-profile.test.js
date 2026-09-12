@@ -1,22 +1,15 @@
 const fs=require('fs');
 const assert=require('assert');
 
-const index=fs.readFileSync('index.html','utf8');
 const modulePath='js/core/habilitations-profile.js';
 assert.ok(fs.existsSync(modulePath),'agent profile habilitation module must exist');
 const js=fs.readFileSync(modulePath,'utf8');
+const bootstrap=fs.readFileSync('js/core/secure-admin.js','utf8');
 
-for(const script of [
-  'js/core/habilitations-parser.js',
-  'js/core/habilitations-pdf.js',
-  'js/core/habilitations-profile.js'
-]) assert.ok(index.includes(`src="${script}"`),`index must load ${script}`);
-
-const legacyPos=index.indexOf('src="js/legacy-core.js"');
-const parserPos=index.indexOf('src="js/core/habilitations-parser.js"');
-const pdfPos=index.indexOf('src="js/core/habilitations-pdf.js"');
-const profilePos=index.indexOf('src="js/core/habilitations-profile.js"');
-assert.ok(legacyPos>=0&&parserPos>legacyPos&&pdfPos>parserPos&&profilePos>pdfPos,'profile qualification scripts must load after legacy core in dependency order');
+const parserPos=bootstrap.indexOf("loadFeatureScript('js/core/habilitations-parser.js')");
+const pdfPos=bootstrap.indexOf("loadFeatureScript('js/core/habilitations-pdf.js')");
+const profilePos=bootstrap.indexOf("loadFeatureScript('js/core/habilitations-profile.js')");
+assert.ok(parserPos>=0&&pdfPos>parserPos&&profilePos>pdfPos,'isolated feature bootstrap must load parser, PDF adapter and profile module sequentially');
 
 assert.ok(/openProfil/.test(js),'integration must hook the existing profile flow');
 assert.ok(/S\.currentAgent/.test(js),'profile integration must target the signed-in RailOps agent');
