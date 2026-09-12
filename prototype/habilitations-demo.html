@@ -6,7 +6,7 @@
 <title>RailOps - Prototype habilitations</title>
 <style>
 :root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f4f6f8}
-*{box-sizing:border-box}body{margin:0;padding:24px}.shell{max-width:860px;margin:0 auto}.card{background:#fff;border:1px solid #dfe4ea;border-radius:16px;padding:22px;box-shadow:0 8px 24px rgba(24,39,75,.06)}h1{margin:0 0 8px;font-size:24px}.muted{color:#657084;font-size:14px}.upload{margin:20px 0;padding:18px;border:2px dashed #b8c2cf;border-radius:14px;background:#fafbfc}.upload input{display:block;width:100%;margin-top:10px}.status{margin-top:14px;padding:12px;border-radius:10px;background:#eef3f7;font-size:14px}.status.ok{background:#e9f7ef;color:#176b3a}.status.warn{background:#fff5dc;color:#8a5a00}.status.err{background:#fdecec;color:#9c2e2e}.meta{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.pill{font-size:12px;padding:6px 9px;background:#eef3f7;border-radius:999px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{text-align:left;padding:11px;border-bottom:1px solid #e7ebef;font-size:14px}th{font-size:12px;text-transform:uppercase;color:#657084}.empty{padding:24px 0;color:#657084;text-align:center}.issues{margin-top:16px;padding:14px;background:#fff5dc;border-radius:10px}.issues ul{margin:8px 0 0;padding-left:20px}@media(max-width:640px){body{padding:12px}.card{padding:16px}th,td{padding:9px 6px;font-size:13px}}
+*{box-sizing:border-box}body{margin:0;padding:24px}.shell{max-width:860px;margin:0 auto}.card{background:#fff;border:1px solid #dfe4ea;border-radius:16px;padding:22px;box-shadow:0 8px 24px rgba(24,39,75,.06)}h1{margin:0 0 8px;font-size:24px}.muted{color:#657084;font-size:14px}.upload{margin:20px 0;padding:18px;border:2px dashed #b8c2cf;border-radius:14px;background:#fafbfc}.upload input{display:block;width:100%;margin-top:10px}.status{margin-top:14px;padding:12px;border-radius:10px;background:#eef3f7;font-size:14px}.status.ok{background:#e9f7ef;color:#176b3a}.status.warn{background:#fff5dc;color:#8a5a00}.status.err{background:#fdecec;color:#9c2e2e}.meta{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.pill{font-size:12px;padding:6px 9px;background:#eef3f7;border-radius:999px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{text-align:left;padding:11px;border-bottom:1px solid #e7ebef;font-size:14px}th{font-size:12px;text-transform:uppercase;color:#657084}.empty{padding:24px 0;color:#657084;text-align:center}.issues{margin-top:16px;padding:14px;background:#fff5dc;border-radius:10px}.actions{display:flex;justify-content:flex-end;margin-top:18px}.actions button{border:0;border-radius:10px;padding:11px 15px;font:inherit;font-weight:700;background:#172033;color:#fff;cursor:pointer}.actions button:disabled{opacity:.4;cursor:not-allowed}.issues ul{margin:8px 0 0;padding-left:20px}@media(max-width:640px){body{padding:12px}.card{padding:16px}th,td{padding:9px 6px;font-size:13px}}
 </style>
 </head>
 <body>
@@ -22,6 +22,7 @@
     <div id="meta" class="meta" hidden></div>
     <div id="result" class="empty">Aucune habilitation analysée.</div>
     <div id="issues" class="issues" hidden></div>
+    <div class="actions"><button id="hab-confirm" type="button" disabled>Confirmer</button></div>
   </section>
 </main>
 <script src="../js/core/habilitations-parser.js"></script>
@@ -33,6 +34,8 @@
   const meta=document.getElementById('meta');
   const result=document.getElementById('result');
   const issues=document.getElementById('issues');
+  const confirmButton=document.getElementById('hab-confirm');
+  let lastParsed=null;
 
   function esc(value){return String(value??'').replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[ch]);}
   function setStatus(text,kind=''){status.className=`status ${kind}`.trim();status.textContent=text;}
@@ -59,6 +62,7 @@
 
   input.addEventListener('change',async()=>{
     const file=input.files?.[0];
+    confirmButton.disabled=true;lastParsed=null;
     meta.hidden=true;result.className='empty';result.textContent='Analyse en cours…';showIssues([]);
     if(!file){setStatus('En attente d’un PDF.');result.textContent='Aucune habilitation analysée.';return;}
     try{
@@ -66,13 +70,20 @@
       const read=await window.RailOpsHabilitationsPdf.readHabilitationPdf(file);
       showMeta(read);
       const parsed=window.RailOpsHabilitationsParser.extractHabilitations(read.text);
-      showItems(parsed);showIssues(parsed.ambiguities);
-      if(parsed.ok)setStatus(`${parsed.items.length} habilitation(s) détectée(s).`,'ok');
+      showItems(parsed);showIssues(parsed.ambiguities);lastParsed=parsed;
+      confirmButton.disabled=!parsed.ok;
+      if(parsed.ok)setStatus(`${parsed.items.length} habilitation(s) détectée(s). Vérifie puis confirme.`,'ok');
       else setStatus('Document lu, mais validation automatique bloquée : vérification nécessaire.','warn');
     }catch(error){
       result.className='empty';result.textContent='Analyse impossible.';showIssues([]);
       setStatus(error?.message||'Erreur pendant la lecture du PDF.','err');
     }
+  });
+
+  confirmButton.addEventListener('click',()=>{
+    if(!lastParsed?.ok)return;
+    confirmButton.disabled=true;
+    setStatus('Données confirmées localement. Rien n’a été enregistré.','ok');
   });
 })();
 </script>
