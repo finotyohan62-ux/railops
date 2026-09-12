@@ -47,6 +47,51 @@ const uploadPos=js.indexOf(".from('railops-habilitations')");
 const activatePos=js.indexOf("railops_activate_habilitation_document");
 assert.ok(uploadPos>=0&&activatePos>uploadPos,'PDF upload must happen before transactional activation');
 
+// Regression: sync.js loads feature modules before the obfuscated legacy code. In that
+// window window.openProfil may not exist yet. The profile feature must still install a
+// click bridge on the actual dashboard trigger so a real Agent/Chef profile click mounts
+// qualifications instead of depending on text such as “Déconnexion”.
+{
+  const listeners={};
+  const profileDocument={
+    addEventListener(type,handler,capture){listeners[type]={handler,capture};},
+    getElementById(){return null;},
+    querySelector(){return null;},
+    head:{appendChild(){}},
+    createElement(){return {setAttribute(){},querySelector(){return null;},innerHTML:'',style:{}};}
+  };
+  const profileWindow={
+    RailOpsHabilitationsParser:{},
+    RailOpsHabilitationsPdf:{},
+    addEventListener(){},
+    open(){}
+  };
+  profileWindow.window=profileWindow;
+  const profileContext={
+    window:profileWindow,
+    document:profileDocument,
+    console,
+    crypto:{randomUUID(){return 'test-id';}},
+    setTimeout(){return 1;},
+    clearTimeout(){},
+    setInterval(){return 1;},
+    clearInterval(){},
+    Promise,
+    Date
+  };
+  vm.runInNewContext(js,profileContext);
+  const profileApi=profileWindow.RailOpsHabilitationsProfile;
+  assert.ok(profileApi,'profile integration must expose its API even before legacy openProfil exists');
+  assert.strictEqual(typeof profileApi.isProfileTrigger,'function','profile integration must expose a structural profile-trigger detector');
+  assert.ok(listeners.click&&listeners.click.capture===true,'profile integration must install a capture click bridge before legacy openProfil is hookable');
+  const trigger={
+    closest(selector){return selector==='[onclick*="openProfil"]'?this:null;},
+    getAttribute(name){return name==='onclick'?'openProfil()':null;}
+  };
+  assert.strictEqual(profileApi.isProfileTrigger(trigger),true,'the real openProfil avatar trigger must be recognized structurally');
+  assert.strictEqual(profileApi.isProfileTrigger({closest(){return null;},getAttribute(){return null;}}),false,'unrelated controls must not be mistaken for profile triggers');
+}
+
 function makeHost(){
   return {
     children:[],
