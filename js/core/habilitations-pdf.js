@@ -12,12 +12,13 @@ const PDFJS_URL=`https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/
 const PDFJS_WORKER_URL=`https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.mjs`;
 const TESSERACT_URL=`https://cdn.jsdelivr.net/npm/tesseract.js@${TESSERACT_VERSION}/dist/tesseract.min.js`;
 const OCR_RENDER_SCALE=3.5;
+const ROW_Y_TOLERANCE=2.2;
 let pdfJsPromise=null;
 let tesseractPromise=null;
 
 function hasHabilitationCode(text){
   const value=String(text||'');
-  return /\b(?:H\s*\d\s*B\s*\d|CH\s*\d\s*[\/\s-]*CB\s*\d|APS\s*\d{1,2}|S\s*\d{1,2})\b/i.test(value);
+  return /\b(?:TES\s*M|H\s*\d\s*B\s*\d|CH\s*\d\s*[\/\s-]*CB\s*\d|APS\s*\d{1,2}|S\s*\d{1,2})\b/i.test(value);
 }
 
 async function loadPdfJs(){
@@ -69,23 +70,46 @@ async function openPdf(file){
 }
 
 function textItemsToLines(items){
-  const lines=[];
-  let current=[];
-  let currentY=null;
-  function flush(){
-    const line=current.join(' ').replace(/\s+/g,' ').trim();
-    if(line)lines.push(line);
-    current=[];currentY=null;
-  }
-  for(const item of Array.isArray(items)?items:[]){
-    const text=String(item?.str||'').trim();
+  const positioned=[];
+  const unpositioned=[];
+  for(let index=0;index<(Array.isArray(items)?items.length:0);index++){
+    const item=items[index];
+    const text=String(item?.str||'').replace(/\s+/g,' ').trim();
+    if(!text)continue;
+    const x=Number(item?.transform?.[4]);
     const y=Number(item?.transform?.[5]);
-    if(current.length&&Number.isFinite(y)&&Number.isFinite(currentY)&&Math.abs(y-currentY)>2)flush();
-    if(text)current.push(text);
-    if(currentY===null&&Number.isFinite(y))currentY=y;
-    if(item?.hasEOL)flush();
+    if(Number.isFinite(x)&&Number.isFinite(y))positioned.push({text,x,y,index});
+    else unpositioned.push({text,index});
   }
-  flush();
+
+  positioned.sort((a,b)=>{
+    if(Math.abs(a.y-b.y)>ROW_Y_TOLERANCE)return b.y-a.y;
+    if(Math.abs(a.x-b.x)>0.25)return a.x-b.x;
+    return a.index-b.index;
+  });
+
+  const rows=[];
+  for(const item of positioned){
+    let row=rows[rows.length-1];
+    if(!row||Math.abs(item.y-row.y)>ROW_Y_TOLERANCE){
+      row={y:item.y,items:[]};
+      rows.push(row);
+    }
+    row.items.push(item);
+    row.y=(row.y*(row.items.length-1)+item.y)/row.items.length;
+  }
+
+  const lines=rows.map(row=>row.items
+    .sort((a,b)=>a.x-b.x||a.index-b.index)
+    .map(item=>item.text)
+    .join(' ')
+    .replace(/\s+/g,' ')
+    .trim()
+  ).filter(Boolean);
+
+  if(unpositioned.length){
+    lines.push(...unpositioned.sort((a,b)=>a.index-b.index).map(item=>item.text));
+  }
   return lines.join('\n');
 }
 
@@ -144,7 +168,7 @@ async function readHabilitationPdf(file,deps={}){
 }
 
 return {
-  PDFJS_VERSION,TESSERACT_VERSION,PDFJS_URL,PDFJS_WORKER_URL,TESSERACT_URL,OCR_RENDER_SCALE,
+  PDFJS_VERSION,TESSERACT_VERSION,PDFJS_URL,PDFJS_WORKER_URL,TESSERACT_URL,OCR_RENDER_SCALE,ROW_Y_TOLERANCE,
   hasHabilitationCode,textItemsToLines,readHabilitationPdf,extractTextWithPdfJs,ocrWithTesseract
 };
 });
