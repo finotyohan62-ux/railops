@@ -6,7 +6,7 @@ if(root){root.RailOpsChefChantierStats=api;api.install(root);}
 })(typeof window!=='undefined'?window:null,function(){
 'use strict';
 
-const VERSION='1.0-chef-chantier-secure-stats';
+const VERSION='1.1-chef-chantier-secure-stats';
 const SYNTHETIC_PREFIX='__CHEF_STATS__';
 let installed=false;
 
@@ -33,8 +33,8 @@ function buildSyntheticMaterials(rows,weekKey=mondayKey()){
     const chantierId=String(raw?.chantier_id??raw?.chantierId??'').trim();
     if(!chantierId)continue;
     const total=num(raw?.total_materiels);
-    const v1=Math.min(total,num(raw?.verif1_faite));
-    const v2=Math.min(total,num(raw?.verif2_faite));
+    const v1=Math.min(total,num(raw?.verif_1_ok??raw?.verif1_faite));
+    const v2=Math.min(total,num(raw?.verif_2_ok??raw?.verif2_faite));
     const absents=Math.min(total,num(raw?.absents));
     const horsService=Math.min(total,num(raw?.hors_service));
     for(let i=0;i<total;i++){
