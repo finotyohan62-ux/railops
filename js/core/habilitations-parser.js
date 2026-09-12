@@ -74,7 +74,7 @@ function officialLabel(lines,index,matchSource){
   let label=line.split(/\bDate\s+d[’']?Habilitation\b/i)[0].trim();
   const next=String(lines[index+1]||'').replace(/\s+/g,' ').trim();
   if(next&&!datesInLine(next).length){
-    const continuation=next.split(/\bd[’']?Habilitation\b/i)[0].trim();
+    const continuation=next.split(/\bDate\s+d[’']?Habilitation\b/i)[0].trim();
     if(continuation&&!/^date\s+limite$/i.test(continuation)&&continuation.length<=80){
       label=`${label} ${continuation}`.replace(/\s+/g,' ').trim();
     }
@@ -189,6 +189,88 @@ function extractHabilitations(text){
   return {ok:ambiguities.length===0&&items.length>0,items,ambiguities};
 }
 
+function sectionBetween(text,startMatcher,endMatchers=[]){
+  const lines=String(text||'').split(/\r?\n/);
+  const folded=lines.map(fold);
+  const start=folded.findIndex(startMatcher);
+  if(start<0)return {present:false,lines:[]};
+  let end=lines.length;
+  for(let i=start+1;i<lines.length;i++){
+    if(endMatchers.some(matcher=>matcher(folded[i]))){end=i;break;}
+  }
+  return {present:true,lines:lines.slice(start+1,end)};
+}
+
+function extractCompetences(text){
+  const section=sectionBetween(
+    text,
+    line=>line.includes('volet autre')&&line.includes('competence'),
+    [line=>line.includes('volet secourisme')]
+  );
+  if(!section.present)return {present:false,ok:true,items:[],ambiguities:[]};
+  const items=[];
+  const ambiguities=[];
+  for(let i=0;i<section.lines.length;i++){
+    const line=String(section.lines[i]||'').replace(/\s+/g,' ').trim();
+    if(!/certification/i.test(line))continue;
+    const codeMatch=line.match(/\bC\s*\d{1,2}\b/i);
+    if(!codeMatch)continue;
+    const code=normalizeCode(codeMatch[0]);
+    const labelSource=(line.split(/\bDate\s+d[’']?acquisition\b/i)[0].trim()||codeMatch[0]);
+    let dates=datesInLine(line);
+    if(dates.length<2){
+      for(let offset=1;offset<=2&&i+offset<section.lines.length;offset++){
+        const nextDates=datesInLine(section.lines[i+offset]);
+        if(nextDates.length){dates=nextDates;break;}
+      }
+    }
+    if(dates.length!==2){
+      ambiguities.push(`${code}: dates d'acquisition/limite incomplètes`);
+      continue;
+    }
+    if(dates[0].value>dates[1].value){
+      ambiguities.push(`${code}: période de compétence inversée (${dates[0].value} / ${dates[1].value})`);
+      continue;
+    }
+    items.push({code,labelSource,validFrom:dates[0].value,validUntil:dates[1].value});
+  }
+  return {present:true,ok:ambiguities.length===0,items,ambiguities};
+}
+
+function extractSecourisme(text){
+  const section=sectionBetween(text,line=>line.includes('volet secourisme'));
+  if(!section.present)return {present:false,ok:true,items:[],ambiguities:[]};
+  const value=section.lines.join('\n');
+  const delivered=value.match(/d[eé]livr[eé]\s+le\s*:?\s*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{4})/i);
+  const validity=value.match(/validit[eé]\s*:?\s*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{4})/i);
+  const validFrom=delivered?parseFrenchDate(delivered[1]):null;
+  const validUntil=validity?parseFrenchDate(validity[1]):null;
+  const ambiguities=[];
+  if(!validUntil)ambiguities.push('Secourisme: date de validité non détectée');
+  if(validFrom&&validUntil&&validFrom>validUntil)ambiguities.push(`Secourisme: période inversée (${validFrom} / ${validUntil})`);
+  const items=validUntil?[{code:'SECOURISME',labelSource:'Secourisme',validFrom,validUntil}]:[];
+  return {present:true,ok:ambiguities.length===0,items,ambiguities};
+}
+
+function extractProfileQualifications(text){
+  const habilitationSection=sectionBetween(
+    text,
+    line=>line.includes('volet habilitation'),
+    [line=>line.includes('volet autre')&&line.includes('competence'),line=>line.includes('volet secourisme')]
+  );
+  const hab=habilitationSection.present?extractHabilitations(habilitationSection.lines.join('\n')):extractHabilitations(text);
+  const competences=extractCompetences(text);
+  const secourisme=extractSecourisme(text);
+  const ambiguities=[...hab.ambiguities,...competences.ambiguities,...secourisme.ambiguities];
+  return {
+    ok:hab.ok&&competences.ok&&secourisme.ok&&ambiguities.length===0,
+    habilitations:hab.items,
+    competences:competences.items,
+    secourisme:secourisme.items,
+    ambiguities
+  };
+}
+
 function habilitationStatus(validUntil,now=new Date(),warningDays=60){
   const end=new Date(`${validUntil}T23:59:59.999Z`);
   const ref=now instanceof Date?now:new Date(`${now}T00:00:00.000Z`);
@@ -197,5 +279,8 @@ function habilitationStatus(validUntil,now=new Date(),warningDays=60){
   return (end-ref)<=Number(warningDays)*86400000?'expiring':'valid';
 }
 
-return {normalizeCode,parseFrenchDate,extractHabilitations,habilitationStatus};
+return {
+  normalizeCode,parseFrenchDate,extractHabilitations,extractCompetences,extractSecourisme,
+  extractProfileQualifications,habilitationStatus
+};
 });
