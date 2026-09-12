@@ -30,6 +30,10 @@ const OFFLINE_KEY='ro_offline_queue';function assertSyncResult(a){if(a&&a.error)
 (function loadRailOpsReportModules(){
   if(typeof document==='undefined'||typeof document.createElement!=='function')return;
   const modules=[
+    {src:'./js/core/habilitations-parser.js',ready:()=>!!window.RailOpsHabilitationsParser},
+    {src:'./js/core/habilitations-pdf.js',ready:()=>!!window.RailOpsHabilitationsPdf},
+    {src:'./js/core/habilitations-profile.js',ready:()=>!!window.RailOpsHabilitationsProfile},
+    {src:'./js/core/habilitations-profile-order.js',ready:()=>!!window.RailOpsHabilitationsProfileOrder},
     {src:'./js/core/sync-status.js',ready:()=>!!window.RailOpsSyncStatusUI},
     {src:'./js/core/visual-refresh.js',ready:()=>!!window.RailOpsVisualRefresh},
     {src:'./js/core/visual-finishing.js',ready:()=>!!window.RailOpsVisualFinishing},
